@@ -1,0 +1,17 @@
+# Artefactos y dependencias
+node_modules
+.next
+out
+build
+coverage
+
+# Lockfiles y generados
+package-lock.json
+*.tsbuildinfo
+next-env.d.ts
+
+# Activos binarios
+public
+
+# SQL de Supabase (formato propio)
+supabase/migrations

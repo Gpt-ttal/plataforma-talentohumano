@@ -1,0 +1,11 @@
+# Normaliza finales de línea a LF en el repositorio (evita conflictos
+# Windows/CRLF vs CI Linux/LF y mantiene consistente `prettier --check`).
+* text=auto eol=lf
+
+# Binarios: nunca tocar.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
