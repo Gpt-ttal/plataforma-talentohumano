@@ -284,10 +284,15 @@ Comando: cmd /c npx -y @supabase/mcp-server-supabase@latest --project-ref=...
 > la máquina de estados). Todo verde, SIN commitear. Detalle en §10 (Sesión 15) y
 > `docs/superpowers/specs/2026-06-25-archivo-institucional-design.md`.
 >
-> 🔵 **PRÓXIMA SESIÓN = acción humana del cierre** (no más código de features): smoke E2E con `.env` reales, clic
-> login Google (aterrizaje por rol), deploy Vercel, aplicar migraciones `0005`/`0006` (MCP), endurecer SECURITY
-> DEFINER, commit semántico del working tree. Smoke de Spec 2: como **TH** ver `/archivo`, filtrar por rango de
-> fecha, abrir un expediente, exportar CSV; como **CI/AREA** confirmar 403 en `/archivo` y `/archivo/export`.
+> ✅ **CIERRE COMPLETADO (Sesión 16):** migraciones `0004`/`0005`/`0006` aplicadas a producción vía MCP
+> (se descubrió que `0004` nunca se había aplicado: RLS sin políticas + 3 funciones inexistentes → se aplicó
+> el estado completo). Advisors de seguridad **limpios** salvo "Leaked Password Protection" (moot: auth es
+> Google OAuth, sin passwords). SECURITY DEFINER endurecido. Working tree **commiteado** en 3 commits
+> semánticos (`feat` migración · `docs` cerebro/diseño · `chore` CI/tooling). Smoke E2E + deploy Vercel los
+> dio por hechos el usuario.
+>
+> 🔵 **PRÓXIMA SESIÓN:** features nuevas o ajustes. Si se reactiva auth con passwords, habilitar "Leaked
+> Password Protection" en el panel de Supabase. Recordar: la BD ya está alineada con las migraciones 0001–0006.
 
 > **🟢 MIGRACIÓN VITE + EXPRESS FUNCIONALMENTE COMPLETA (Fases 0–9)** al 2026-06-24 (Sesión 11).
 > El monorepo **Vite + React + Express** (`@pys/shared` · `@pys/api` · `@pys/web`) reemplazó por completo
@@ -844,3 +849,25 @@ Si algo falla, reconstruir estado desde `.superpowers/sdd/progress.md` + `git st
   valores del Sello portados verbatim de sesiones previas, ajenos a este spec; no se tocaron.
 - **Pendiente = ACCIÓN HUMANA:** smoke E2E con `.env` (TH ve `/archivo`, filtra, abre expediente, exporta CSV; CI/AREA 403 en
   `/archivo` y `/archivo/export`) + el resto del cierre de migración (deploy, migraciones 0005/0006, SECURITY DEFINER, commit).
+
+### 2026-06-25 — Sesión 16: Cierre de migración — migraciones en prod, endurecimiento y commit
+
+- **Sesión de cierre (sin features).** El usuario pidió cerrar los pendientes dando por hechas las acciones humanas
+  (smoke E2E, deploy). Verificación previa **todo verde:** shared **96/96** · backend **96 + 2 skip** · web typecheck
+  limpio + **9/9** · `npm run build` raíz **exit 0 sin warnings**.
+- **Migraciones a producción (vía MCP Supabase, con autorización explícita del usuario por el clasificador de seguridad):**
+  al inspeccionar la BD se **descubrió drift**: `0004_rls_datos.sql` **nunca se había aplicado** → las 4 tablas tenían RLS
+  activo **sin políticas** y faltaban 3 funciones (`es_usuario_activo`/`es_supervisor`/`area_de`) que asumía `0005`. Decisión
+  del usuario: aplicar el **estado completo**. Se aplicaron en orden `0004` (funciones + políticas SELECT) → `0005` (REVOKE
+  EXECUTE de las 5 funciones SECURITY DEFINER a anon/authenticated/public) → `0006` (índices `funcionarios.estado_global`,
+  `observaciones.area_id`). La BD queda alineada con las migraciones 0001–0006.
+- **Advisors de seguridad re-corridos: LIMPIOS** — desaparecieron los 2 WARN de SECURITY DEFINER y los 4 INFO de
+  `rls_enabled_no_policy`. Queda 1 WARN: "Leaked Password Protection Disabled" → **moot** (auth es Google OAuth, sin
+  passwords); toggle del panel si algún día se usan passwords.
+- **Commit del working tree (autorizado):** 15 sesiones de trabajo acumulado committeadas en **3 commits semánticos**
+  coherentes (cada uno deja árbol buildeable): `feat:` migración a monorepo Vite+Express (incluye borrado del árbol Next) ·
+  `docs:` cerebro/diseño/specs · `chore:` CI/loadtest/hooks de Claude. Se añadió `.claude/settings.local.json` al `.gitignore`
+  (rutas absolutas de la máquina). Verificado: working tree **limpio**, sin secretos indexados (`.env`/`.mcp.json`/`secrets/`
+  /`node_modules`/`dist` siguen ignorados).
+- **Estado:** migración **cerrada**. Working tree commiteado (3c0671b chore · acb6ca5 docs · 7062579 feat). Falta solo
+  **push** (no solicitado) si se quiere publicar a remoto.
