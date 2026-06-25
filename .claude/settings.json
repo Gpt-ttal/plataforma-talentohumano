@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"REGLA DEL PROYECTO — CEREBRO ACTIVO: El archivo CLAUDE.md en la raiz del repositorio es la unica fuente de verdad del proyecto (ya cargado automaticamente). Contiene: origen, arquitectura, dominio, diseno, progreso, pendientes y reglas de trabajo. AL CERRAR ESTA SESION CON EXITO: (1) actualiza la seccion Progreso en CLAUDE.md, (2) agrega una entrada al Log de Sesiones. NUNCA commitear sin que el usuario lo pida.\"}}'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"systemMessage\": \"Cerebro activo — Antes de cerrar: ¿actualizaste CLAUDE.md con el progreso de esta sesion? (seccion Progreso + Log de Sesiones)\"}'",
+            "shell": "bash"
+          }
+        ]
+      }
+    ]
+  }
+}

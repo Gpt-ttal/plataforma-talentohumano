@@ -1,0 +1,54 @@
+name: CI
+
+# Compuerta de calidad: ningún cambio se integra si no compila, no pasa los tests
+# o no typechequea. Es la red mínima de un desarrollo profesional.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    name: build · test · typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # shared exporta dist/: SIEMPRE se construye antes de que backend/web lo vean.
+      - name: Build shared
+        run: npm run build --workspace=shared
+
+      - name: Test shared
+        run: npm run test --workspace=shared
+
+      # Si el secret DATABASE_URL_TEST está configurado (p. ej. una branch de
+      # prueba de Supabase), los tests de integración de repos Drizzle corren;
+      # si no, se auto-saltan (describe.skipIf). No fabrica el esquema `auth`.
+      - name: Test backend
+        run: npm run test --workspace=apps/backend
+        env:
+          DATABASE_URL_TEST: ${{ secrets.DATABASE_URL_TEST }}
+
+      - name: Typecheck web
+        run: npm run typecheck --workspace=apps/web
+
+      - name: Test web
+        run: npm run test --workspace=apps/web
+
+      - name: Build de producción (shared + backend + web)
+        run: npm run build
+
+      # Vulnerabilidades de severidad alta rompen el build (informativo en dev).
+      - name: Auditoría de dependencias (high)
+        run: npm audit --audit-level=high
+        continue-on-error: true
