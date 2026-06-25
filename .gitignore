@@ -27,8 +27,24 @@ yarn-error.log*
 .env
 .env*.local
 
+# secrets locales (credenciales OAuth, service accounts, etc.) — NUNCA commitear
+/secrets/
+
+# config MCP local (contiene tokens/credenciales reales) — NUNCA commitear
+.mcp.json
+
+# config local de Claude (rutas absolutas de la máquina) — no portable
+.claude/settings.local.json
+
 # vercel
 .vercel
 
+# superpowers brainstorm scratch (visual companion, mockups)
+.superpowers/
+
 # typescript
 *.tsbuildinfo
+
+# monorepo build artifacts (regenerados por tsc/vite)
+node_modules/
+dist/

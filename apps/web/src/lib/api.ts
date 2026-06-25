@@ -1,0 +1,168 @@
+import type {
+  AreaVistoBueno,
+  AsignarRolInput,
+  CambiarEstadoAreaInput,
+  CambiarEstadoUsuarioInput,
+  FilaGestionArea,
+  FiltroArchivo,
+  FiltroFuncionarios,
+  Funcionario,
+  FuncionarioDetalle,
+  MetricasDashboard,
+  ResultadoMutacion,
+  ResultadoPaginado,
+  Usuario,
+} from "@pys/shared"
+import { supabase } from "./supabase"
+
+/**
+ * Error de API con el código HTTP. El frontend lo usa para reflejar 401/403/400
+ * en la UX (la decisión real ya la tomó el backend).
+ */
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message)
+    this.name = "ApiError"
+  }
+}
+
+const BASE = import.meta.env.VITE_API_URL ?? "/api"
+
+/** Serializa un objeto a query-string omitiendo vacíos/undefined. */
+function qs(params: Record<string, string | number | undefined>): string {
+  const sp = new URLSearchParams()
+  for (const [clave, valor] of Object.entries(params)) {
+    if (valor !== undefined && valor !== "") sp.set(clave, String(valor))
+  }
+  const s = sp.toString()
+  return s ? `?${s}` : ""
+}
+
+async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  const res = await fetch(`${BASE}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string }
+    // 401 = sesión inválida/expirada (no 403, que es "sin permiso"): se cierra la
+    // sesión local; `onAuthStateChange` del AuthContext deja `usuario=null` y el
+    // guard reenvía a /login en vez de mostrar un error de página.
+    if (res.status === 401) {
+      await supabase.auth.signOut().catch(() => {})
+    }
+    throw new ApiError(res.status, payload.error ?? res.statusText)
+  }
+  if (res.status === 204) return undefined as T
+  return (await res.json()) as T
+}
+
+/**
+ * Descarga un recurso binario (p. ej. CSV) con el mismo Bearer que `request`.
+ * Devuelve el `Blob` para que el llamador dispare la descarga en el navegador.
+ */
+async function requestBlob(path: string): Promise<Blob> {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  const res = await fetch(`${BASE}${path}`, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  })
+  if (!res.ok) {
+    if (res.status === 401) {
+      await supabase.auth.signOut().catch(() => {})
+    }
+    const payload = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new ApiError(res.status, payload.error ?? res.statusText)
+  }
+  return res.blob()
+}
+
+/** Cliente HTTP base: adjunta el JWT de Supabase y normaliza errores. */
+export const api = {
+  get: <T>(path: string) => request<T>("GET", path),
+  post: <T>(path: string, body?: unknown) => request<T>("POST", path, body),
+  blob: (path: string) => requestBlob(path),
+}
+
+// ── Endpoints tipados (las formas coinciden con los casos de uso del backend) ──
+
+export const apiAuth = {
+  me: () => api.get<Usuario>("/auth/me"),
+}
+
+export const apiFuncionarios = {
+  listar: (filtro: FiltroFuncionarios = {}) =>
+    api.get<ResultadoPaginado<Funcionario>>(
+      `/funcionarios${qs({
+        q: filtro.q,
+        estado: filtro.estado,
+        pagina: filtro.pagina,
+        porPagina: filtro.porPagina,
+      })}`,
+    ),
+  detalle: (id: string) => api.get<FuncionarioDetalle>(`/funcionarios/${id}`),
+  cambiarEstadoArea: (input: CambiarEstadoAreaInput) =>
+    api.post<ResultadoMutacion>(
+      `/funcionarios/${input.funcionarioId}/areas/${input.areaId}/estado`,
+      { estado: input.estado, observacion: input.observacion },
+    ),
+  generarLiquidacion: (id: string) =>
+    api.post<ResultadoMutacion>(`/funcionarios/${id}/liquidacion`),
+  registrarPazYSalvo: (id: string) =>
+    api.post<ResultadoMutacion>(`/funcionarios/${id}/paz-y-salvo`),
+}
+
+export const apiMiArea = {
+  listar: (areaId: string, pagina?: number) =>
+    api.get<ResultadoPaginado<FilaGestionArea>>(`/mi-area${qs({ areaId, pagina })}`),
+}
+
+export const apiAreas = {
+  listar: () => api.get<AreaVistoBueno[]>("/areas"),
+}
+
+export const apiMetricas = {
+  obtener: () => api.get<MetricasDashboard>("/metricas"),
+}
+
+export const apiArchivo = {
+  listar: (filtro: FiltroArchivo = {}) =>
+    api.get<ResultadoPaginado<Funcionario>>(
+      `/archivo${qs({
+        q: filtro.q,
+        retiroDesde: filtro.retiroDesde,
+        retiroHasta: filtro.retiroHasta,
+        pagina: filtro.pagina,
+      })}`,
+    ),
+  expediente: (id: string) => api.get<FuncionarioDetalle>(`/archivo/${id}`),
+  exportCsv: (filtro: FiltroArchivo = {}) =>
+    api.blob(
+      `/archivo/export${qs({
+        q: filtro.q,
+        retiroDesde: filtro.retiroDesde,
+        retiroHasta: filtro.retiroHasta,
+      })}`,
+    ),
+}
+
+export const apiUsuarios = {
+  listar: (pagina?: number) =>
+    api.get<ResultadoPaginado<Usuario>>(`/usuarios${qs({ pagina })}`),
+  asignarRol: (input: AsignarRolInput) =>
+    api.post<Usuario>(`/usuarios/${input.usuarioId}/rol`, {
+      rol: input.rol,
+      areaId: input.areaId ?? null,
+    }),
+  cambiarEstado: (input: CambiarEstadoUsuarioInput) =>
+    api.post<Usuario>(`/usuarios/${input.usuarioId}/estado`, { estado: input.estado }),
+}

@@ -1,0 +1,48 @@
+import { Router } from "express"
+import { casos, requireAuth } from "../container.js"
+import { asyncHandler } from "../asyncHandler.js"
+import { requireRol } from "../middleware/requireRol.js"
+import { requireActivo } from "../middleware/requireActivo.js"
+import { funcionariosController } from "../controllers/funcionariosController.js"
+
+const c = funcionariosController(casos)
+
+/**
+ * Rutas de funcionarios y lecturas de supervisión. Todas tras `requireAuth`;
+ * cada operación añade su guarda de rol en el borde (los casos de uso la
+ * reaplican como red de seguridad).
+ */
+export const funcionariosRouter = Router()
+
+funcionariosRouter.use(requireAuth, requireActivo)
+
+// Lecturas de supervisión (TH / CI / SA)
+funcionariosRouter.get(
+  "/",
+  requireRol("SUPERADMIN", "TALENTO_HUMANO", "CONTROL_INTERNO"),
+  asyncHandler(c.listar),
+)
+funcionariosRouter.get(
+  "/:id",
+  requireRol("SUPERADMIN", "TALENTO_HUMANO", "CONTROL_INTERNO"),
+  asyncHandler(c.detalle),
+)
+
+// Visto bueno de área (AREA su área / SA cualquiera → guarda fina en el caso de uso)
+funcionariosRouter.post(
+  "/:id/areas/:areaId/estado",
+  requireRol("SUPERADMIN", "AREA"),
+  asyncHandler(c.cambiarEstado),
+)
+
+// Hitos de liquidación
+funcionariosRouter.post(
+  "/:id/liquidacion",
+  requireRol("SUPERADMIN", "TALENTO_HUMANO"),
+  asyncHandler(c.generarLiquidacion),
+)
+funcionariosRouter.post(
+  "/:id/paz-y-salvo",
+  requireRol("SUPERADMIN", "CONTROL_INTERNO"),
+  asyncHandler(c.registrarLiquidacion),
+)

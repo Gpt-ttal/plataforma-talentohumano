@@ -2,51 +2,25 @@
   "name": "sistema-paz-y-salvo",
   "version": "0.1.0",
   "private": true,
-  "description": "Sistema Paz y Salvo v2 — Corporación Universitaria Americana",
+  "type": "module",
+  "workspaces": [
+    "shared",
+    "apps/backend",
+    "apps/web"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "prepare": "husky"
-  },
-  "lint-staged": {
-    "*.{ts,tsx}": [
-      "prettier --write",
-      "eslint --fix --max-warnings=0"
-    ],
-    "*.{json,css,md}": [
-      "prettier --write"
-    ]
-  },
-  "dependencies": {
-    "@supabase/ssr": "^0.5.2",
-    "@supabase/supabase-js": "^2.47.10",
-    "clsx": "^2.1.1",
-    "next": "^15.1.6",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "zod": "^3.24.1"
+    "dev": "concurrently --kill-others --names \"API,WEB\" --prefix-colors \"blue.bold,magenta.bold\" \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:api": "npm run dev --workspace=apps/backend",
+    "build": "npm run build --workspace=shared && npm run build --workspace=apps/backend && npm run build --workspace=apps/web",
+    "test": "npm run test --workspace=shared && npm run test --workspace=apps/backend && npm run test --workspace=apps/web",
+    "loadtest": "node scripts/loadtest.mjs",
+    "format": "prettier --write ."
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.5",
-    "@types/node": "^22.10.5",
-    "@types/react": "^19.0.7",
-    "@types/react-dom": "^19.0.3",
-    "autoprefixer": "^10.4.20",
-    "eslint": "^9.18.0",
-    "eslint-config-next": "^15.1.6",
-    "eslint-config-prettier": "^10.1.8",
-    "husky": "^9.1.7",
-    "lint-staged": "^17.0.8",
-    "postcss": "^8.5.1",
+    "autocannon": "^7.15.0",
+    "concurrently": "^10.0.3",
     "prettier": "^3.8.4",
-    "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
   }
