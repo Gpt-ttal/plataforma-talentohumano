@@ -1,0 +1,9 @@
+{
+  "detector": {
+    "ignoreFiles": [
+      "apps/web/src/components/Layout.tsx"
+    ],
+    "ignoreRules": [],
+    "ignoreValues": []
+  }
+}

@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-23T00:00:00Z",
+  "title": "Design System: Sistema Paz y Salvo",
+  "extensions": {
+    "colorMeta": {
+      "navy": {
+        "role": "primary",
+        "displayName": "Navy Institucional",
+        "canonical": "#142943",
+        "tonalRamp": ["#06101F", "#0A1830", "#142943", "#22406B", "#42598A", "#6F86B0", "#A3B5D3", "#D2DCEC"]
+      },
+      "gold": {
+        "role": "secondary",
+        "displayName": "Oro Antiguo",
+        "canonical": "#B68D40",
+        "tonalRamp": ["#5C4319", "#785824", "#98722F", "#B68D40", "#CBA135", "#DAB55E", "#E9D196", "#F4E8C6"]
+      },
+      "silver-text": {
+        "role": "neutral",
+        "displayName": "Plata",
+        "canonical": "#8B93A6",
+        "tonalRamp": ["#697080", "#8B93A6", "#AEB6C6", "#CCD2DE", "#E0E4EC", "#EEF0F5", "#F6F7FA", "#FFFFFF"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#16202E",
+        "tonalRamp": ["#0A0F16", "#16202E", "#2B3848", "#475569", "#697080", "#8B93A6", "#CCD2DE", "#EEF0F5"]
+      },
+      "ok": {
+        "role": "tertiary",
+        "displayName": "Verde Paz",
+        "canonical": "#16936A",
+        "tonalRamp": ["#0B4E38", "#0F6B4D", "#13815E", "#16936A", "#3FB089", "#74C9AC", "#A9DECB", "#E4F5EE"]
+      },
+      "info": {
+        "role": "tertiary",
+        "displayName": "Azul Liquidación",
+        "canonical": "#3B6FD4",
+        "tonalRamp": ["#1E3E84", "#274FA6", "#315FC2", "#3B6FD4", "#6892E0", "#94B3EA", "#C0D2F2", "#E8EFFC"]
+      },
+      "rechazo": {
+        "role": "tertiary",
+        "displayName": "Rojo Rechazo",
+        "canonical": "#A4231F",
+        "tonalRamp": ["#5E1311", "#7C1A17", "#A4231F", "#C13B36", "#D6655F", "#E69A95", "#F3C9C6", "#FBEAE9"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display (Serif)", "purpose": "Wordmark, título de pantalla y de empty state. Raro y deliberado." },
+      "title": { "displayName": "Title", "purpose": "Encabezados de sección y nombre del funcionario." },
+      "body": { "displayName": "Body", "purpose": "Texto de interfaz; prosa ≤ 65–75ch." },
+      "label": { "displayName": "Label", "purpose": "Pills, chips, contadores, botones compactos." },
+      "data": { "displayName": "Data (tabular)", "purpose": "Documentos, fechas y contadores con cifras tabulares." }
+    },
+    "shadows": [
+      { "name": "luxe", "value": "0 1px 2px rgba(16,28,51,0.04), 0 12px 28px -14px rgba(16,28,51,0.22)", "purpose": "Elevación por defecto: tarjetas, filas, botón secundario en reposo." },
+      { "name": "luxe-lg", "value": "0 2px 6px rgba(16,28,51,0.05), 0 24px 48px -20px rgba(16,28,51,0.30)", "purpose": "Levante al interactuar: hover de fila, modal de detalle." },
+      { "name": "gold", "value": "0 8px 24px -10px rgba(182,141,64,0.55)", "purpose": "Única sombra de color: solo el botón-sello en hover." }
+    ],
+    "motion": [
+      { "name": "ease-state", "value": "cubic-bezier(0.2, 0.8, 0.2, 1)", "purpose": "Easing por defecto de cambios de estado (ease-out, sin rebote)." },
+      { "name": "dur-fast", "value": "150ms", "purpose": "Transiciones de color/hover en controles." },
+      { "name": "dur-base", "value": "200ms", "purpose": "Transiciones de elevación, chevrons, pestañas." },
+      { "name": "modal-in", "value": "200ms cubic-bezier(0.2, 0.8, 0.2, 1)", "purpose": "Entrada del modal de detalle (fade + translateY 10px scale .985)." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón Primario (Sello)",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal y única dorada de la pantalla — p.ej. 'Generar liquidación'.",
+      "html": "<button class=\"ds-btn-primary\"><span class=\"ds-dot\"></span>Generar liquidación</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #E9D196 0%, #CBA135 42%, #B68D40 58%, #DAB55E 100%); color: #0A1830; padding: 8px 16px; border: none; border-radius: 8px; font: 600 0.875rem/1.2 ui-sans-serif, system-ui, sans-serif; box-shadow: inset 0 0 0 1px rgba(152,114,47,0.3), 0 1px 2px rgba(16,28,51,0.04), 0 12px 28px -14px rgba(16,28,51,0.22); cursor: pointer; transition: box-shadow 0.2s, transform 0.2s; } .ds-btn-primary:hover { box-shadow: inset 0 0 0 1px rgba(152,114,47,0.3), 0 8px 24px -10px rgba(182,141,64,0.55); } .ds-btn-primary:focus-visible { outline: 2px solid rgba(182,141,64,0.65); outline-offset: 2px; } .ds-btn-primary .ds-dot { width: 6px; height: 6px; border-radius: 9999px; background: #0E1F35; transition: transform 0.2s; } .ds-btn-primary:hover .ds-dot { transform: scale(1.25); }"
+    },
+    {
+      "name": "Botón Secundario",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Acciones no principales y login — superficie blanca, borde de plata que vira a oro en hover.",
+      "html": "<button class=\"ds-btn-secondary\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 18 18\" aria-hidden=\"true\"><path fill=\"#4285F4\" d=\"M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z\"/><path fill=\"#34A853\" d=\"M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.02-3.7H.96v2.34A9 9 0 0 0 9 18z\"/><path fill=\"#FBBC05\" d=\"M3.98 10.72a5.4 5.4 0 0 1 0-3.44V4.94H.96a9 9 0 0 0 0 8.12l3.02-2.34z\"/><path fill=\"#EA4335\" d=\"M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.42 0 9 0A9 9 0 0 0 .96 4.94l3.02 2.34C4.68 5.16 6.66 3.58 9 3.58z\"/></svg>Continuar con Google</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 12px; background: #FFFFFF; color: #0E1F35; padding: 12px 20px; border: 1px solid #CCD2DE; border-radius: 12px; font: 600 0.875rem/1.2 ui-sans-serif, system-ui, sans-serif; box-shadow: 0 1px 2px rgba(16,28,51,0.04), 0 12px 28px -14px rgba(16,28,51,0.22); cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s; } .ds-btn-secondary:hover { border-color: rgba(182,141,64,0.5); box-shadow: 0 2px 6px rgba(16,28,51,0.05), 0 24px 48px -20px rgba(16,28,51,0.30); } .ds-btn-secondary:focus-visible { outline: 2px solid rgba(182,141,64,0.65); outline-offset: 2px; }"
+    },
+    {
+      "name": "Control Segmentado",
+      "kind": "nav",
+      "refersTo": "segmented-tab-active",
+      "description": "Toggle de vista de supervisión (Todo / Talento Humano / Control Interno). Server-driven.",
+      "html": "<div class=\"ds-seg\" role=\"tablist\"><a class=\"ds-seg-tab is-active\" role=\"tab\" aria-selected=\"true\">Todo</a><a class=\"ds-seg-tab\" role=\"tab\" aria-selected=\"false\">Talento Humano</a><a class=\"ds-seg-tab\" role=\"tab\" aria-selected=\"false\">Control Interno</a></div>",
+      "css": ".ds-seg { display: inline-flex; align-items: center; gap: 4px; background: #EEF0F5; padding: 4px; border-radius: 9999px; box-shadow: inset 0 0 0 1px #E0E4EC; } .ds-seg-tab { border-radius: 9999px; padding: 6px 16px; font: 500 0.75rem/1.4 ui-sans-serif, system-ui, sans-serif; color: #8B93A6; text-decoration: none; cursor: pointer; transition: all 0.2s; } .ds-seg-tab:hover { color: #142943; } .ds-seg-tab.is-active { background: #FFFFFF; color: #0E1F35; box-shadow: 0 1px 2px rgba(16,28,51,0.06), inset 0 0 0 1px #E0E4EC; }"
+    },
+    {
+      "name": "Chip de Filtro",
+      "kind": "chip",
+      "refersTo": "chip-active",
+      "description": "Filtro por estado global con contador tabular. Activo: navy profundo con anillo oro.",
+      "html": "<div style=\"display:flex;gap:8px\"><a class=\"ds-chip is-active\" aria-pressed=\"true\">Paz y salvo<span class=\"ds-chip-count\">12</span></a><a class=\"ds-chip\" aria-pressed=\"false\">Pendiente<span class=\"ds-chip-count\">31</span></a></div>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 9999px; padding: 6px 12px; font: 500 0.75rem/1.4 ui-sans-serif, system-ui, sans-serif; text-decoration: none; cursor: pointer; background: #FFFFFF; color: #1A3457; box-shadow: inset 0 0 0 1px #CCD2DE; transition: all 0.2s; } .ds-chip:hover { color: #142943; box-shadow: inset 0 0 0 1px #DAB55E; } .ds-chip .ds-chip-count { font-variant-numeric: tabular-nums; color: #AEB6C6; } .ds-chip.is-active { background: linear-gradient(160deg, #0E1F35 0%, #142943 55%, #1A3457 100%); color: #FFFFFF; box-shadow: inset 0 0 0 1px rgba(182,141,64,0.4), 0 1px 2px rgba(16,28,51,0.04), 0 12px 28px -14px rgba(16,28,51,0.22); } .ds-chip.is-active .ds-chip-count { color: #E9D196; }"
+    },
+    {
+      "name": "Buscador",
+      "kind": "input",
+      "refersTo": "input-search",
+      "description": "Búsqueda con ícono de lupa; foco vira a oro.",
+      "html": "<div class=\"ds-search\"><span class=\"ds-search-ico\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\"><circle cx=\"7\" cy=\"7\" r=\"5\" stroke=\"currentColor\" stroke-width=\"1.6\"/><path d=\"M11 11l3 3\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"/></svg></span><input class=\"ds-search-input\" type=\"search\" placeholder=\"Buscar por nombre o cédula…\"></div>",
+      "css": ".ds-search { position: relative; width: 100%; max-width: 20rem; } .ds-search-ico { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #AEB6C6; pointer-events: none; display: inline-flex; } .ds-search-input { width: 100%; border: 1px solid #CCD2DE; background: #FFFFFF; border-radius: 9999px; padding: 8px 16px 8px 36px; font: 400 0.875rem/1.5 ui-sans-serif, system-ui, sans-serif; color: #0E1F35; box-shadow: 0 1px 2px rgba(16,28,51,0.04); transition: border-color 0.2s, box-shadow 0.2s; } .ds-search-input::placeholder { color: #AEB6C6; } .ds-search-input:focus { outline: none; border-color: #CBA135; box-shadow: 0 0 0 1px #CBA135; }"
+    },
+    {
+      "name": "Estado Pill",
+      "kind": "custom",
+      "refersTo": "pill-ok",
+      "description": "Única fuente de color semántico: punto de color + etiqueta de texto. Nunca solo color.",
+      "html": "<div style=\"display:flex;gap:8px\"><span class=\"ds-pill ds-pill-ok\"><span class=\"ds-pill-dot\"></span>Paz y salvo</span><span class=\"ds-pill ds-pill-info\"><span class=\"ds-pill-dot\"></span>Liquidación generada</span></div>",
+      "css": ".ds-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 9999px; padding: 4px 10px; font: 500 0.75rem/1.4 ui-sans-serif, system-ui, sans-serif; white-space: nowrap; } .ds-pill .ds-pill-dot { width: 6px; height: 6px; border-radius: 9999px; background: currentColor; } .ds-pill-ok { background: #E4F5EE; color: #16936A; box-shadow: inset 0 0 0 1px rgba(22,147,106,0.3); } .ds-pill-info { background: #E8EFFC; color: #3B6FD4; box-shadow: inset 0 0 0 1px rgba(59,111,212,0.3); }"
+    },
+    {
+      "name": "Avatar",
+      "kind": "custom",
+      "refersTo": "card-row",
+      "description": "Iniciales del colaborador en disco navy con anillo de oro.",
+      "html": "<span class=\"ds-avatar\">LR</span>",
+      "css": ".ds-avatar { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 9999px; background: #EDF1F8; color: #142943; font: 600 0.75rem/1 ui-sans-serif, system-ui, sans-serif; box-shadow: inset 0 0 0 1px rgba(233,209,150,0.5); }"
+    },
+    {
+      "name": "Fila Desplegable",
+      "kind": "card",
+      "refersTo": "card-row",
+      "description": "Fila-acordeón: cabecera disparadora + acciones de rol; revela detalle al expandir.",
+      "html": "<div class=\"ds-row\"><div class=\"ds-row-head\"><span class=\"ds-row-chev\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\"><path d=\"M6 4l4 4-4 4\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></span><span class=\"ds-avatar\">MR</span><span class=\"ds-row-meta\"><span class=\"ds-row-name\">María Restrepo</span><span class=\"ds-row-sub\">Auxiliar contable · Retiro 30 jun</span></span><span class=\"ds-pill ds-pill-ok\" style=\"margin-left:auto\"><span class=\"ds-pill-dot\"></span>Paz y salvo</span></div></div>",
+      "css": ".ds-row { border: 1px solid #E0E4EC; background: #FFFFFF; border-radius: 16px; box-shadow: 0 1px 2px rgba(16,28,51,0.04), 0 12px 28px -14px rgba(16,28,51,0.22); transition: box-shadow 0.2s; overflow: hidden; } .ds-row:hover { box-shadow: 0 2px 6px rgba(16,28,51,0.05), 0 24px 48px -20px rgba(16,28,51,0.30); } .ds-row-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; } .ds-row-chev { display: grid; place-items: center; width: 28px; height: 28px; color: #AEB6C6; } .ds-row-meta { display: flex; flex-direction: column; min-width: 0; } .ds-row-name { font: 600 1rem/1.3 ui-sans-serif, system-ui, sans-serif; color: #0E1F35; } .ds-row-sub { font: 400 0.875rem/1.5 ui-sans-serif, system-ui, sans-serif; color: #8B93A6; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El Sello Institucional",
+    "overview": "El sistema se comporta como la papelería oficial de una universidad seria: un chasis navy sobrio que carga toda la estructura, y un oro que casi nunca aparece — porque cuando aparece, significa algo. El oro es el sello: marca la acción principal y el hito del trámite (la liquidación generada, el paz y salvo registrado). Es una herramienta diaria, no una vitrina: la densidad sirve a la lectura, la identidad premium se intuye en el oficio, no se exhibe. Rechaza el SaaS genérico y el software estatal anticuado, y baja el lujo recargado del sistema previo sin perder la identidad.",
+    "keyCharacteristics": [
+      "Navy estructural en todo; oro reservado al hito y a la acción principal.",
+      "Superficies blancas sobre fondo perla frío (#F4F7FB), separadas por sombra ambiente sutil y hairlines de plata.",
+      "Filas-acordeón antes que tablas; pills de estado como única fuente de color semántico.",
+      "Números tabulares para contadores, documentos y fechas.",
+      "Serif editorial solo para wordmark y titulares; sans nítida para todo lo demás."
+    ],
+    "rules": [
+      { "name": "La Regla del Sello", "body": "El oro cubre ≤ 10% de cualquier pantalla. Es la acción principal y el hito — nunca relleno, nunca fondo de sección, nunca decoración. Su rareza es el punto.", "section": "colors" },
+      { "name": "La Regla del Semáforo Único", "body": "El color semántico de un estado se define una sola vez en lib/ui.ts y se pinta solo vía EstadoPill. Ningún componente reconstruye el color de un estado a mano.", "section": "colors" },
+      { "name": "La Regla de la Serif Reservada", "body": "La serif (.font-display) es para marca y titulares, jamás para labels de UI, botones ni datos.", "section": "typography" },
+      { "name": "La Regla Tabular", "body": "Todo número que el ojo pueda comparar en columna (documentos, contadores, fechas) usa cifras tabulares.", "section": "typography" },
+      { "name": "La Regla del Hairline Primero", "body": "La separación por defecto es una línea de plata (#CCD2DE), no una sombra. La sombra se reserva para elevación real.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do reservar el oro al hito y a la acción principal (Regla del Sello, ≤10% de la pantalla).",
+      "Do pintar todo estado vía EstadoPill desde lib/ui.ts — punto de color + etiqueta de texto, nunca solo color.",
+      "Do usar cifras tabulares en documentos, contadores y fechas.",
+      "Do separar con hairline de plata (#CCD2DE) por defecto; usar sombra solo para elevación real.",
+      "Do mantener el cuerpo de texto en Ink (#16202E) con contraste ≥ 4.5:1; placeholders y secundarios en plata-500.",
+      "Do reservar la serif (.font-display) a wordmark y titulares.",
+      "Do dar a cada control sus estados: default, hover, focus visible (anillo oro), active, disabled; y alternativa prefers-reduced-motion."
+    ],
+    "donts": [
+      "Don't parecer SaaS genérico: nada de grids de cards idénticas, morados/gradientes de startup, eyebrows en mayúsculas tracked, ni marcadores numerados de relleno (01/02/03).",
+      "Don't parecer software estatal anticuado: nada de tablas grises densas sin jerarquía, formularios planos, ni contraste pobre.",
+      "Don't recargar de oro: nada de veladuras doradas de fondo, foil metálico en texto de UI, ni gradientes dorados fuera del botón-sello.",
+      "Don't usar background-clip: text con gradiente para énfasis; el énfasis es por peso o tamaño, color sólido.",
+      "Don't usar bordes laterales de color (border-left > 1px) como acento en filas o callouts.",
+      "Don't poner serif en labels, botones o datos.",
+      "Don't reconstruir el color de un estado a mano en un componente; siempre desde lib/ui.ts.",
+      "Don't abrir un modal como primer recurso; preferir la fila-acordeón y la revelación progresiva."
+    ]
+  }
+}
