@@ -2,17 +2,47 @@ import {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react"
 import type { Session } from "@supabase/supabase-js"
-import type { Usuario } from "@pys/shared"
+import type { RolUsuario, Usuario } from "@pys/shared"
 import { supabase } from "../lib/supabase"
 import { apiAuth, ApiError } from "../lib/api"
+import { queryClient } from "../lib/queryClient"
+import { suscribirRealtime } from "../lib/realtime"
+
+/**
+ * Impersonación de rol (herramienta de desarrollo, solo SUPERADMIN). El JWT real
+ * sigue siendo el del superadmin —el backend autoriza todo—; aquí solo se reescribe
+ * el `usuario` efectivo (rol + área) que ve la UI, para experimentar la experiencia
+ * de cada rol sin tocar la cuenta real. La identidad real queda siempre guardada.
+ */
+interface Impersonacion {
+  rol: RolUsuario
+  areaId: string | null
+}
+
+const CLAVE_IMPERSONACION = "pys_impersonacion"
+
+function leerImpersonacion(): Impersonacion | null {
+  try {
+    const raw = sessionStorage.getItem(CLAVE_IMPERSONACION)
+    return raw ? (JSON.parse(raw) as Impersonacion) : null
+  } catch {
+    return null
+  }
+}
 
 interface AuthState {
-  /** Usuario resuelto por el backend (`/auth/me`): rol, estado y área reales. */
+  /**
+   * Usuario efectivo que ve la UI: el real, o el impersonado si el superadmin
+   * activó la herramienta de roles. Rol/estado/área que reflejan la experiencia.
+   */
   usuario: Usuario | null
+  /** Usuario real resuelto por el backend (`/auth/me`), sin impersonación. */
+  usuarioReal: Usuario | null
   session: Session | null
   /** true mientras se resuelve la sesión inicial y el `/auth/me`. */
   isLoading: boolean
@@ -23,10 +53,16 @@ interface AuthState {
    * respuesta válida del backend: sin usuario resoluble).
    */
   errorArranque: boolean
+  /** Impersonación activa (solo si el usuario real es SUPERADMIN), o null. */
+  impersonacion: Impersonacion | null
   loginGoogle: () => Promise<void>
   logout: () => Promise<void>
   /** Recarga el usuario desde el backend (p. ej. tras un cambio de rol propio). */
   refrescar: () => Promise<void>
+  /** Activa la impersonación de un rol/área (solo SUPERADMIN). */
+  impersonar: (rol: RolUsuario, areaId?: string | null) => void
+  /** Restaura la identidad real (vuelve a Admin). */
+  detenerImpersonacion: () => void
 }
 
 const AuthContext = createContext<AuthState | null>(null)
@@ -38,9 +74,28 @@ const AuthContext = createContext<AuthState | null>(null)
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
-  const [usuario, setUsuario] = useState<Usuario | null>(null)
+  const [usuarioReal, setUsuarioReal] = useState<Usuario | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [errorArranque, setErrorArranque] = useState(false)
+  const [impersonacionRaw, setImpersonacionRaw] = useState<Impersonacion | null>(
+    leerImpersonacion,
+  )
+
+  // La impersonación solo es válida si el usuario REAL es superadmin. Esto evita
+  // que una entrada de sessionStorage huérfana altere a un usuario no autorizado.
+  const impersonacion =
+    usuarioReal?.rol === "SUPERADMIN" ? impersonacionRaw : null
+
+  // Usuario efectivo: el real, o uno derivado con el rol/área impersonados.
+  const usuario = useMemo<Usuario | null>(() => {
+    if (!usuarioReal) return null
+    if (!impersonacion) return usuarioReal
+    return {
+      ...usuarioReal,
+      rol: impersonacion.rol,
+      areaId: impersonacion.rol === "AREA" ? impersonacion.areaId : null,
+    }
+  }, [usuarioReal, impersonacion])
 
   useEffect(() => {
     let activo = true
@@ -48,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function cargarUsuario(s: Session | null): Promise<void> {
       if (!s) {
         if (activo) {
-          setUsuario(null)
+          setUsuarioReal(null)
           setErrorArranque(false)
         }
         return
@@ -56,12 +111,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const u = await apiAuth.me()
         if (activo) {
-          setUsuario(u)
+          setUsuarioReal(u)
           setErrorArranque(false)
         }
       } catch (e) {
         if (!activo) return
-        setUsuario(null)
+        setUsuarioReal(null)
         // Un ApiError (401/403) es una respuesta válida del backend: sin usuario
         // resoluble → el guard lleva a /login o /pendiente. Cualquier otro error
         // (red caída, API inalcanzable) NO debe colgar la app: se marca para que
@@ -95,6 +150,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Sincronía en vivo: un único canal Realtime mientras haya un usuario activo.
+  // Se (re)suscribe al cambiar de identidad y se limpia al salir o desmontar.
+  // Se liga al usuario REAL (la impersonación no cambia la identidad de la sesión).
+  useEffect(() => {
+    if (!usuarioReal || usuarioReal.estado !== "ACTIVO") return
+    const desuscribir = suscribirRealtime(queryClient)
+    return desuscribir
+  }, [usuarioReal?.id, usuarioReal?.estado])
+
   async function loginGoogle(): Promise<void> {
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -104,29 +168,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function logout(): Promise<void> {
     await supabase.auth.signOut()
-    setUsuario(null)
+    sessionStorage.removeItem(CLAVE_IMPERSONACION)
+    setImpersonacionRaw(null)
+    setUsuarioReal(null)
     setSession(null)
   }
 
   async function refrescar(): Promise<void> {
     const { data } = await supabase.auth.getSession()
     if (!data.session) {
-      setUsuario(null)
+      setUsuarioReal(null)
       setErrorArranque(false)
       return
     }
     try {
-      setUsuario(await apiAuth.me())
+      setUsuarioReal(await apiAuth.me())
       setErrorArranque(false)
     } catch (e) {
-      setUsuario(null)
+      setUsuarioReal(null)
       setErrorArranque(!(e instanceof ApiError))
     }
   }
 
+  function impersonar(rol: RolUsuario, areaId: string | null = null): void {
+    if (usuarioReal?.rol !== "SUPERADMIN") return
+    const next: Impersonacion = { rol, areaId: rol === "AREA" ? areaId : null }
+    sessionStorage.setItem(CLAVE_IMPERSONACION, JSON.stringify(next))
+    setImpersonacionRaw(next)
+    // Limpia caché de queries para que cada vista refetchee con el nuevo rol.
+    void queryClient.invalidateQueries()
+  }
+
+  function detenerImpersonacion(): void {
+    sessionStorage.removeItem(CLAVE_IMPERSONACION)
+    setImpersonacionRaw(null)
+    void queryClient.invalidateQueries()
+  }
+
   return (
     <AuthContext.Provider
-      value={{ usuario, session, isLoading, errorArranque, loginGoogle, logout, refrescar }}
+      value={{
+        usuario,
+        usuarioReal,
+        session,
+        isLoading,
+        errorArranque,
+        impersonacion,
+        loginGoogle,
+        logout,
+        refrescar,
+        impersonar,
+        detenerImpersonacion,
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -18,16 +18,16 @@ export function PageHeader({
   return (
     <header className="animate-card-in flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="min-w-0">
-        <h1 className="font-display text-3xl font-bold leading-tight tracking-tight text-navy-900">
+        <h1 className="font-display text-3xl font-bold leading-tight tracking-tight text-foreground">
           {title}
         </h1>
         {description && (
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-silver-600">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
             {description}
           </p>
         )}
         {meta && (
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-silver-600">
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted">
             {meta}
           </div>
         )}

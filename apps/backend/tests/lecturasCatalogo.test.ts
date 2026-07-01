@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest"
 import { listarFuncionarios } from "../src/application/funcionarios/listarFuncionarios"
+import { obtenerMatriz } from "../src/application/funcionarios/obtenerMatriz"
 import { obtenerDetalle } from "../src/application/funcionarios/obtenerDetalle"
 import { obtenerMetricas } from "../src/application/funcionarios/obtenerMetricas"
 import { ErrorAutorizacion, ErrorNoEncontrado } from "../src/application/errors"
@@ -24,6 +25,26 @@ describe("listarFuncionarios (catálogo de supervisión)", () => {
     const r = await uc(hacerUsuario({ rol }), { q: "ana", pagina: 2 })
     expect(r).toBe(pagina)
     expect(repo.listarFuncionariosPaginado).toHaveBeenCalledWith({ q: "ana", pagina: 2 })
+  })
+})
+
+describe("obtenerMatriz (matriz funcionario × área — solo supervisores)", () => {
+  it("rechaza a un usuario AREA → 403", async () => {
+    const repo = { listarMatrizPaginado: vi.fn() } as any
+    const uc = obtenerMatriz({ repo })
+    await expect(
+      uc(hacerUsuario({ rol: "AREA", areaId: "a1" })),
+    ).rejects.toBeInstanceOf(ErrorAutorizacion)
+    expect(repo.listarMatrizPaginado).not.toHaveBeenCalled()
+  })
+
+  it.each(SUPERVISORES)("permite a %s y delega el filtro", async (rol) => {
+    const matriz = { items: [], areas: [], total: 0, pagina: 1, porPagina: 20, totalPaginas: 1 }
+    const repo = { listarMatrizPaginado: vi.fn().mockResolvedValue(matriz) } as any
+    const uc = obtenerMatriz({ repo })
+    const r = await uc(hacerUsuario({ rol }), { q: "ana", estado: "PENDIENTE" })
+    expect(r).toBe(matriz)
+    expect(repo.listarMatrizPaginado).toHaveBeenCalledWith({ q: "ana", estado: "PENDIENTE" })
   })
 })
 

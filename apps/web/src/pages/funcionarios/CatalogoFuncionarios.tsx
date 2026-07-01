@@ -25,6 +25,7 @@ import { FilaDesplegable } from "../../components/ui/FilaDesplegable"
 import { EmptyState } from "../../components/ui/EmptyState"
 import { ListaSkeleton } from "../../components/ui/ListaSkeleton"
 import { HeaderMetaDot, PageHeader } from "../../components/ui/PageHeader"
+import { SpotSinResultados } from "../../components/ui/spot/Spots"
 import { GenerarLiquidacionButton } from "./GenerarLiquidacionButton"
 import { LiquidarButton } from "./LiquidarButton"
 
@@ -167,7 +168,7 @@ export function CatalogoFuncionarios({
         <div className="space-y-7">
           {data.items.length === 0 ? (
             <EmptyState
-              icono="🔍"
+              ilustracion={<SpotSinResultados />}
               titulo="Sin resultados"
               mensaje="No hay colaboradores que coincidan con la búsqueda o el filtro actual."
             />

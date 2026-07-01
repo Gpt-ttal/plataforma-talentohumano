@@ -31,6 +31,11 @@ describe("HTTP smoke", () => {
     expect(res.status).toBe(401)
   })
 
+  it("GET /api/funcionarios/matriz sin token → 401 (ruta montada y guardada)", async () => {
+    const res = await request(app).get("/api/funcionarios/matriz")
+    expect(res.status).toBe(401)
+  })
+
   it("GET /api/usuarios sin token → 401", async () => {
     const res = await request(app).get("/api/usuarios")
     expect(res.status).toBe(401)

@@ -4,6 +4,7 @@ import type { RolUsuario } from "@pys/shared"
 import { ROL_LABEL } from "@pys/shared"
 import { useAuth } from "../context/AuthContext"
 import { BotonSalir } from "./BotonSalir"
+import { ThemeToggle } from "./ThemeToggle"
 
 /**
  * Layout — chasis de la app (sidebar navy por rol + barra superior). Portado de
@@ -21,6 +22,7 @@ type IconName =
   | "close"
   | "dashboard"
   | "file"
+  | "graduation"
   | "menu"
   | "users"
 
@@ -40,11 +42,14 @@ interface NavSection {
 
 const routeLabels: { path: string; title: string; section: string }[] = [
   { path: "/usuarios", title: "Usuarios", section: "Administracion" },
+  { path: "/areas", title: "Catalogo de areas", section: "Administracion" },
   { path: "/paz-y-salvo/mi-area", title: "Mi area", section: "Operacion" },
   { path: "/paz-y-salvo/talento-humano", title: "Talento Humano", section: "Paz y Salvo" },
   { path: "/paz-y-salvo/control-interno", title: "Control Interno", section: "Paz y Salvo" },
+  { path: "/paz-y-salvo/avance", title: "Avance por area", section: "Paz y Salvo" },
   { path: "/paz-y-salvo/funcionarios", title: "Funcionarios", section: "Gestion" },
   { path: "/archivo", title: "Archivo institucional", section: "Administracion" },
+  { path: "/capacitaciones", title: "Capacitaciones", section: "Formacion" },
   { path: "/inicio", title: "Panel de control", section: "Plataforma" },
 ]
 
@@ -57,6 +62,7 @@ function iconPath(name: IconName): string {
     close: "M18 6 6 18M6 6l12 12",
     dashboard: "M4 13h6V4H4v9ZM14 20h6V4h-6v16ZM4 20h6v-3H4v3Z",
     file: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6ZM14 2v6h6M8 13h8M8 17h5",
+    graduation: "M22 10v6M2 10l10-5 10 5-10 5-10-5ZM6 12v5c3.33 1.67 6.67 1.67 10 0v-5",
     menu: "M4 6h16M4 12h16M4 18h16",
     users: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
   }[name]
@@ -110,10 +116,30 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
             status: "live",
           },
           {
+            href: "/paz-y-salvo/avance",
+            label: "Avance por area",
+            icon: "dashboard",
+            active: (p) => p.startsWith("/paz-y-salvo/avance"),
+            status: "live",
+          },
+          {
             href: "/paz-y-salvo/mi-area",
-            label: "Areas",
+            label: "Bandejas por area",
             icon: "area",
             active: (p) => p.startsWith("/paz-y-salvo/mi-area"),
+            status: "live",
+          },
+        ],
+      },
+      {
+        id: "formacion",
+        title: "Formacion",
+        items: [
+          {
+            href: "/capacitaciones",
+            label: "Capacitaciones",
+            icon: "graduation",
+            active: (p) => p.startsWith("/capacitaciones"),
             status: "live",
           },
         ],
@@ -122,6 +148,13 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
         id: "administracion",
         title: "Administracion",
         items: [
+          {
+            href: "/areas",
+            label: "Catalogo de areas",
+            icon: "area",
+            active: (p) => p.startsWith("/areas"),
+            status: "live",
+          },
           {
             href: "/archivo",
             label: "Archivo",
@@ -167,6 +200,26 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
             active: (p) => p.startsWith("/paz-y-salvo/talento-humano"),
             status: "live",
           },
+          {
+            href: "/paz-y-salvo/avance",
+            label: "Avance por area",
+            icon: "dashboard",
+            active: (p) => p.startsWith("/paz-y-salvo/avance"),
+            status: "live",
+          },
+        ],
+      },
+      {
+        id: "formacion",
+        title: "Formacion",
+        items: [
+          {
+            href: "/capacitaciones",
+            label: "Capacitaciones",
+            icon: "graduation",
+            active: (p) => p.startsWith("/capacitaciones"),
+            status: "live",
+          },
         ],
       },
       {
@@ -196,6 +249,32 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
             label: "Control Interno",
             icon: "file",
             active: (p) => p.startsWith("/paz-y-salvo/control-interno"),
+            status: "live",
+          },
+          {
+            href: "/paz-y-salvo/avance",
+            label: "Avance por area",
+            icon: "dashboard",
+            active: (p) => p.startsWith("/paz-y-salvo/avance"),
+            status: "live",
+          },
+        ],
+      },
+    ]
+  }
+
+  // SST (acotado): solo su módulo de capacitaciones
+  if (rol === "SST") {
+    return [
+      {
+        id: "formacion",
+        title: "Formacion",
+        items: [
+          {
+            href: "/capacitaciones",
+            label: "Capacitaciones",
+            icon: "graduation",
+            active: (p) => p.startsWith("/capacitaciones"),
             status: "live",
           },
         ],
@@ -363,7 +442,7 @@ export function Layout() {
             {!collapsed && (
               <span className="min-w-0 leading-none">
                 <span className="block truncate text-[15px] font-bold tracking-wide text-white">
-                  Paz y Salvo
+                  Gestión Humana
                 </span>
                 <span className="mt-1 block truncate font-mono text-[9px] uppercase tracking-[0.22em] text-[#d8c38d]">
                   Americana
@@ -413,6 +492,7 @@ export function Layout() {
                 </span>
               </div>
               <div className="mt-3 flex items-center justify-end gap-2">
+                <ThemeToggle variant="sidebar" />
                 <BotonSalir className="rounded-md px-2 py-1 text-[11px] font-semibold text-[#c6cfdd] transition hover:bg-white/[0.08] hover:text-white">
                   Salir
                 </BotonSalir>
@@ -453,7 +533,7 @@ export function Layout() {
               />
               <span className="leading-none">
                 <span className="block text-[15px] font-bold tracking-wide text-white">
-                  Paz y Salvo
+                  Gestión Humana
                 </span>
                 <span className="mt-1 block font-mono text-[9px] uppercase tracking-[0.22em] text-[#d8c38d]">
                   Americana
@@ -480,13 +560,13 @@ export function Layout() {
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-silver-200/70 bg-white/78 px-4 shadow-[0_1px_0_rgba(255,255,255,0.7)_inset] backdrop-blur-xl sm:px-6">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border bg-elevated/78 px-4 shadow-[0_1px_0_rgb(255_255_255/.45)_inset] backdrop-blur-xl dark:shadow-[0_1px_0_rgb(255_255_255/.04)_inset] sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
               aria-label="Abrir menu"
               onClick={() => setMobileOpen(true)}
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-navy-700 ring-1 ring-silver-200 transition hover:bg-white hover:ring-gold-300 lg:hidden"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-foreground ring-1 ring-border transition hover:bg-card hover:ring-gold-300 lg:hidden"
             >
               <Icon name="menu" className="h-5 w-5" />
             </button>
@@ -498,19 +578,19 @@ export function Layout() {
                 height={45}
                 className="h-8 w-auto shrink-0 drop-shadow-[0_0_9px_rgba(218,181,94,0.38)]"
               />
-              <span className="h-10 w-px bg-gradient-to-b from-transparent via-silver-300 to-transparent" />
+              <span className="h-10 w-px bg-gradient-to-b from-transparent via-hairline to-transparent" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="hidden font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-silver-600 sm:block">
+                <span className="hidden font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted sm:block">
                   {info.section}
                 </span>
-                <span className="hidden text-silver-300 sm:block">/</span>
-                <span className="truncate text-sm font-bold tracking-tight text-navy-900">
+                <span className="hidden text-faint sm:block">/</span>
+                <span className="truncate text-sm font-bold tracking-tight text-foreground">
                   {info.title}
                 </span>
               </div>
-              <div className="mt-1 flex items-center gap-1.5 text-[11px] text-silver-600">
+              <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted">
                 <span className="live-dot" />
                 Tramite institucional en linea
               </div>
@@ -519,10 +599,11 @@ export function Layout() {
 
           <div className="flex shrink-0 items-center gap-3">
             <div className="hidden text-right leading-tight sm:block">
-              <p className="text-xs font-semibold text-navy-900">{usuario.nombre}</p>
-              <p className="text-[11px] text-silver-600">{ROL_LABEL[usuario.rol]}</p>
+              <p className="text-xs font-semibold text-foreground">{usuario.nombre}</p>
+              <p className="text-[11px] text-muted">{ROL_LABEL[usuario.rol]}</p>
             </div>
-            <BotonSalir className="hidden rounded-lg border border-silver-200 bg-white/82 px-3 py-1.5 text-xs font-semibold text-silver-600 shadow-sm transition hover:border-gold-300 hover:text-navy-900 sm:inline-flex">
+            <ThemeToggle variant="header" />
+            <BotonSalir className="hidden rounded-lg border border-border bg-card/82 px-3 py-1.5 text-xs font-semibold text-muted shadow-sm transition hover:border-gold-300 hover:text-foreground sm:inline-flex">
               Salir
             </BotonSalir>
           </div>

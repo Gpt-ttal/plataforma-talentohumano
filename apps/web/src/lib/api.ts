@@ -1,16 +1,24 @@
 import type {
   AreaVistoBueno,
   AsignarRolInput,
+  BucketGestion,
   CambiarEstadoAreaInput,
   CambiarEstadoUsuarioInput,
-  FilaGestionArea,
+  Capacitacion,
+  CapacitacionDetalle,
+  CapacitacionPublica,
+  ColaGestionArea,
   FiltroArchivo,
+  FiltroCapacitaciones,
   FiltroFuncionarios,
   Funcionario,
   FuncionarioDetalle,
+  MatrizGestion,
   MetricasDashboard,
+  RegistrarAsistenciaInput,
   ResultadoMutacion,
   ResultadoPaginado,
+  ResultadoRegistro,
   Usuario,
 } from "@pys/shared"
 import { supabase } from "./supabase"
@@ -109,6 +117,15 @@ export const apiFuncionarios = {
         porPagina: filtro.porPagina,
       })}`,
     ),
+  matriz: (filtro: FiltroFuncionarios = {}) =>
+    api.get<MatrizGestion>(
+      `/funcionarios/matriz${qs({
+        q: filtro.q,
+        estado: filtro.estado,
+        pagina: filtro.pagina,
+        porPagina: filtro.porPagina,
+      })}`,
+    ),
   detalle: (id: string) => api.get<FuncionarioDetalle>(`/funcionarios/${id}`),
   cambiarEstadoArea: (input: CambiarEstadoAreaInput) =>
     api.post<ResultadoMutacion>(
@@ -122,12 +139,27 @@ export const apiFuncionarios = {
 }
 
 export const apiMiArea = {
-  listar: (areaId: string, pagina?: number) =>
-    api.get<ResultadoPaginado<FilaGestionArea>>(`/mi-area${qs({ areaId, pagina })}`),
+  listar: (
+    areaId: string,
+    opciones: { pagina?: number; bucket?: BucketGestion } = {},
+  ) =>
+    api.get<ColaGestionArea>(
+      `/mi-area${qs({ areaId, pagina: opciones.pagina, bucket: opciones.bucket })}`,
+    ),
 }
 
 export const apiAreas = {
   listar: () => api.get<AreaVistoBueno[]>("/areas"),
+  /** Vista de administración: incluye las inactivas (solo SUPERADMIN). */
+  listarAdmin: () => api.get<AreaVistoBueno[]>("/areas?incluirInactivas=1"),
+  // Las mutaciones devuelven el catálogo completo actualizado (orden incluido).
+  crear: (nombre: string) => api.post<AreaVistoBueno[]>("/areas", { nombre }),
+  renombrar: (id: string, nombre: string) =>
+    api.post<AreaVistoBueno[]>(`/areas/${id}/nombre`, { nombre }),
+  mover: (id: string, direccion: "subir" | "bajar") =>
+    api.post<AreaVistoBueno[]>(`/areas/${id}/mover`, { direccion }),
+  cambiarActiva: (id: string, activa: boolean) =>
+    api.post<AreaVistoBueno[]>(`/areas/${id}/activa`, { activa }),
 }
 
 export const apiMetricas = {
@@ -153,6 +185,56 @@ export const apiArchivo = {
         retiroHasta: filtro.retiroHasta,
       })}`,
     ),
+}
+
+export const apiCapacitaciones = {
+  listar: (filtro: FiltroCapacitaciones = {}) =>
+    api.get<ResultadoPaginado<Capacitacion>>(
+      `/capacitaciones${qs({
+        q: filtro.q,
+        ambito: filtro.ambito,
+        estado: filtro.estado,
+        pagina: filtro.pagina,
+      })}`,
+    ),
+  crear: (input: {
+    titulo: string
+    ambito: string
+    iniciaEn: string
+    terminaEn: string
+    descripcion?: string
+    lugar?: string
+    instructor?: string
+    horas?: number
+  }) => api.post<Capacitacion>("/capacitaciones", input),
+  detalle: (id: string) => api.get<CapacitacionDetalle>(`/capacitaciones/${id}`),
+  editar: (id: string, input: Partial<Omit<Capacitacion, "id" | "ambito" | "token" | "estadoRegistro" | "creadaPor" | "createdAt" | "updatedAt">>) =>
+    request<Capacitacion>("PATCH", `/capacitaciones/${id}`, input),
+  abrirRegistro: (id: string) => api.post<Capacitacion>(`/capacitaciones/${id}/registro/abrir`),
+  cerrarRegistro: (id: string) => api.post<Capacitacion>(`/capacitaciones/${id}/registro/cerrar`),
+  exportarAsistencias: (id: string) => api.blob(`/capacitaciones/${id}/asistencias/export`),
+}
+
+/** API pública para el formulario de asistencia (sin auth requerida). */
+export const apiRegistro = {
+  info: (token: string) =>
+    fetch(`${BASE}/capacitaciones/registro/${token}`)
+      .then(async (r) => {
+        if (!r.ok) throw new ApiError(r.status, (await r.json().catch(() => ({}))).error ?? r.statusText)
+        return r.json() as Promise<CapacitacionPublica>
+      }),
+  registrar: (token: string, datos: RegistrarAsistenciaInput) =>
+    fetch(`${BASE}/capacitaciones/registro/${token}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(datos),
+    }).then(async (r) => {
+      if (!r.ok) {
+        const payload = (await r.json().catch(() => ({}))) as { error?: string }
+        throw new ApiError(r.status, payload.error ?? r.statusText)
+      }
+      return r.json() as Promise<ResultadoRegistro>
+    }),
 }
 
 export const apiUsuarios = {

@@ -22,9 +22,6 @@ catalogoRouter.get(
   asyncHandler(c.miArea),
 )
 
-// Áreas: datos de referencia para cualquier usuario autenticado
-catalogoRouter.get("/areas", asyncHandler(c.areas))
-
 // Métricas del panel: la plataforma (superadministrador y talento humano)
 catalogoRouter.get(
   "/metricas",

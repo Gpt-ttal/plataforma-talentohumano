@@ -33,7 +33,7 @@ export function BotonSalir({
       disabled={cargando}
       className={
         className ??
-        "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold text-silver-600 transition hover:text-navy-800 disabled:opacity-60"
+        "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold text-muted transition hover:text-foreground disabled:opacity-60"
       }
     >
       {cargando ? "Saliendo…" : children}

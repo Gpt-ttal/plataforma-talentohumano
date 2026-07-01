@@ -18,6 +18,7 @@ export function useRole() {
     esTalentoHumano: rol === "TALENTO_HUMANO",
     esControlInterno: rol === "CONTROL_INTERNO",
     esArea: rol === "AREA",
+    esSst: rol === "SST",
     /** ¿El rol actual debe ver una vista de supervisión (todos/th/ci)? */
     puedeVer: (vista: VistaSupervision) =>
       rol ? rolPuedeVerVista(rol, vista) : false,

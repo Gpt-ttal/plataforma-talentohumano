@@ -167,7 +167,7 @@ type EstadoArea = "PENDIENTE" | "APROBADO" | "NO_APLICA" | "NO_APROBADO"
 type EstadoGlobal = "PENDIENTE" | "LISTO_PARA_LIQUIDAR" | "LIQUIDACION_GENERADA" | "PAZ_Y_SALVO"
 
 // Roles de usuario
-type RolUsuario = "SUPERADMIN" | "TALENTO_HUMANO" | "CONTROL_INTERNO" | "AREA"
+type RolUsuario = "SUPERADMIN" | "TALENTO_HUMANO" | "CONTROL_INTERNO" | "AREA" | "SST"
 
 // Ciclo de vida del usuario
 type EstadoUsuario = "PENDIENTE" | "ACTIVO" | "INACTIVO"
@@ -248,6 +248,9 @@ teclado de extremo a extremo, `prefers-reduced-motion` en toda animación, pills
 | `0001` | Esquema base (áreas, funcionarios, aprobaciones, observaciones) |
 | `0002` | Datos de soporte adicionales |
 | `0003_usuarios_y_roles.sql` | Tabla `usuarios`, enums `rol_usuario`/`estado_usuario`, funciones SECURITY DEFINER `rol_de`/`es_superadmin`, RLS |
+| `0004`/`0005`/`0006` | RLS+políticas SELECT, REVOKE SECURITY DEFINER, índices (aplicadas Sesión 16) |
+| `0007_rol_sst.sql` | Valor de enum `rol_usuario` = `SST` (aplicada Sesión 23) |
+| `0008_capacitaciones.sql` | Enums `ambito_capacitacion`/`estado_registro_capacitacion`/`tipo_vinculo` + tablas `capacitaciones`/`asistencias` (`UNIQUE(capacitacion_id, documento)`, RLS sin políticas = deny-directo) — aplicada Sesión 23 |
 | `seed.sql` | 10 áreas, 9 funcionarios, 90 aprobaciones, 1 observación |
 
 **Advisor abierto (endurecer próxima sesión):** funciones SECURITY DEFINER `rol_de`/`es_superadmin`
@@ -293,6 +296,42 @@ Comando: cmd /c npx -y @supabase/mcp-server-supabase@latest --project-ref=...
 >
 > 🔵 **PRÓXIMA SESIÓN:** features nuevas o ajustes. Si se reactiva auth con passwords, habilitar "Leaked
 > Password Protection" en el panel de Supabase. Recordar: la BD ya está alineada con las migraciones 0001–0006.
+>
+> ✅ **MÓDULO CAPACITACIONES COMPLETO (Sesiones 21–22):** Rol `SST` + migraciones `0007`/`0008` + backend
+> completo (140/140) + **web completo**: `useCapacitaciones` · `useRegistroAsistencia` · `CapacitacionesPage` +
+> `GestionCapacitacion` + `CapacitacionModal` (QR con `qrcode.react`) · `RegistroAsistenciaPage` pública
+> (`/asistencia/:token`, sin auth, idempotente) · rutas en `App.tsx` · sección Formación en `Layout.tsx` (SA/TH/SST)
+> · `esSst` en `useRole`. Todo verde: shared 152/152 · backend 140+2 skip · web 9/9 · typecheck limpio · build exit 0
+> sin warnings.
+>
+> ✅ **CACERÍA DE BUGS + CIERRE CAPACITACIONES (Sesión 23):** migraciones `0007`/`0008` **APLICADAS a prod vía MCP**
+> (causa raíz del bug reportado "no crea la capacitación": nunca se habían aplicado → la BD no tenía las tablas).
+> Cerrados 1 CRÍTICO (desync de caché TanStack: helper `invalidarVistasTramite` que también invalida `archivo`/
+> `expediente`/`funcionarios-todos`) + 4 IMPORTANTE (rango `terminaEn>iniciaEn` en schema crear/editar + caso de uso;
+> `ambito` opcional al crear; refine no-vacío en editar; `normalizarDocumento` para idempotencia real). Tests de frontera:
+> shared **162/162** · backend **142+2 skip** · web 9/9 · build raíz exit 0. SIN commitear. Detalle en §10 (Sesión 23).
+> MENOR (#6–#13) en backlog.
+>
+> 📐 **ARQUITECTURA DE PLATAFORMA — DISEÑO APROBADO (Sesión 24):** Spec escrito y aprobado en
+> `docs/superpowers/specs/2026-06-30-plataforma-multi-modulo-concurrencia-design.md`. Define: modelo
+> plataforma/módulos, registro declarativo `shared/src/modulos.ts`, contrato de concurrencia (garantizado en BD,
+> no tocar sin TDD), sincronía en vivo con Supabase Realtime (1 canal por usuario, invalida TanStack Query),
+> veredicto Vercel (bien configurado; cold start mitigable con keep-alive gratuito), y §11 nuevo en este archivo.
+>
+> ✅ **P1 IMPLEMENTADO (Sesión 25):** registro declarativo `shared/src/modulos.ts` (`Modulo`/`MODULOS`/`modulosParaRol`,
+> +8 tests) consumido por el lanzador del Panel (`ModuleLauncher` ahora recibe `{rol}` e itera `modulosParaRol`; corrige
+> de paso los módulos futuros "Contratación/Bienestar" → "Reportes/Organigrama" del spec) + **Supabase Realtime**
+> (`apps/web/src/lib/realtime.ts`: 1 canal `plataforma-sync` suscrito a `funcionarios`+`aprobaciones` → invalida TanStack
+> Query; montado en `AuthContext` con `useEffect` ligado a `usuario?.id`/`estado`, limpieza en logout/desmontaje). Todo
+> verde: shared **170/170** · backend 142+2 skip · web typecheck + 9/9 · build raíz exit 0 sin warnings. SIN commitear.
+> Detalle en §10 (Sesión 25). **Próximo:** P2 keep-alive UptimeRobot (config externa) + smoke E2E del Realtime con 2 sesiones.
+>
+> ✅ **HERRAMIENTA DE DEV — IMPERSONACIÓN DE ROL (Sesión 26):** selector flotante (`components/dev/RoleSwitcher.tsx`)
+> visible **solo para el SUPERADMIN real** para experimentar la UI/UX de cada rol (TH/CI/AREA→elige dependencia/SST) sin
+> tocar la cuenta real. `AuthContext` ahora expone `usuario` (efectivo) vs `usuarioReal` (guardado) + `impersonar`/
+> `detenerImpersonacion` (sessionStorage `pys_impersonacion`, se borra en logout). El JWT real sigue SUPERADMIN → el
+> backend autoriza todo → datos reales (las acciones impactan la BD, no es sandbox). Todo verde: web typecheck + 9/9 ·
+> build raíz exit 0. SIN commitear. Detalle en §10 (Sesión 26).
 
 > **🟢 MIGRACIÓN VITE + EXPRESS FUNCIONALMENTE COMPLETA (Fases 0–9)** al 2026-06-24 (Sesión 11).
 > El monorepo **Vite + React + Express** (`@pys/shared` · `@pys/api` · `@pys/web`) reemplazó por completo
@@ -519,6 +558,32 @@ Si algo falla, reconstruir estado desde `.superpowers/sdd/progress.md` + `git st
 2. Agregar una entrada al **"Log de Sesiones"** (§10).
 3. Verificar: `npm test` verde, `tsc` limpio, `build` OK.
 4. Ofrecer commit (pero no hacerlo sin instrucción).
+
+---
+
+## 11. Arquitectura de Plataforma
+
+**Plataforma de Gestión de Talento Humano** contiene módulos independientes. La fuente de verdad de qué
+módulos existen y quién los ve vive en `shared/src/modulos.ts` (`MODULOS`, `modulosParaRol`). El sidebar
+y el lanzador del Panel consumen esta lista; nunca tienen módulos hardcodeados.
+
+**Módulos actuales:** `paz-y-salvo` (todos) · `capacitaciones` (SA, TH, SST). Próximos: `reportes`, `organigrama`.
+
+**Roles plataforma vs. acotados:** `rolVePlataforma()` → SA y TH ven `/inicio`; CI/AREA/SST entran directo
+a su trabajo (`rutaInicialPorRol`). Sin cambios en la lógica existente.
+
+**Sincronía multi-usuario (Supabase Realtime):** un canal por sesión autenticada suscrito a `funcionarios`.
+Los eventos llaman `queryClient.invalidateQueries` → TanStack Query refetcha solo lo necesario. La conexión
+WebSocket va **directo browser↔Supabase**, no pasa por Vercel. RLS protege los eventos (el usuario solo
+recibe filas que su política SELECT permite).
+
+**Concurrencia (ya resuelta en BD):** `cambiarEstadoArea` usa `SELECT ... FOR UPDATE` + recálculo atómico en
+la misma transacción (`recomputarEstado.ts`). Los hitos TH→CI usan UPDATE condicional (`WHERE estado_global=esperado`)
+con `RETURNING` para detectar conflictos TOCTOU. **No tocar estas transacciones sin TDD previo.**
+
+**Vercel:** bien configurado (Supavisor pool, región `iad1` colocada con Supabase `us-east-1`, code-split,
+CSP ya incluye `wss://*.supabase.co`). Cold starts mitigables con ping gratuito a `/api/health` cada 5 min
+(UptimeRobot). Spec completo: `docs/superpowers/specs/2026-06-30-plataforma-multi-modulo-concurrencia-design.md`.
 
 ---
 
@@ -871,3 +936,336 @@ Si algo falla, reconstruir estado desde `.superpowers/sdd/progress.md` + `git st
   /`node_modules`/`dist` siguen ignorados).
 - **Estado:** migración **cerrada**. Working tree commiteado (3c0671b chore · acb6ca5 docs · 7062579 feat). Falta solo
   **push** (no solicitado) si se quiere publicar a remoto.
+
+### 2026-06-25 — Sesión 17: Rediseño Login & Pendiente "El Sello Lacrado" — PLAN APROBADO (checkpoint, sin implementar)
+
+- **Sesión de diseño** (brainstorming + `ui-ux-pro-max` como lente de calidad). El usuario pidió trabajar el **login**;
+  se investigó y se acordó un **rediseño visual premium** de `LoginPage` **y** su hermana `PendientePage` (se ven en
+  secuencia tras el OAuth; hoy ambas austeras + emojis ⏳/🔒 que violan "íconos SVG, no emojis").
+- **Dirección acordada — "El Sello Lacrado":** tarjeta premium centrada con **membrete navy** + **medallón (escudo)
+  montado sobre la costura navy↔blanco** (recurso de diploma) + **animación de entrada coreografiada** ("el sellado":
+  tarjeta sube → hairline oro se dibuja → medallón destella una vez → contenido escalona). Botón Google con **logo G
+  oficial (SVG)** + **estado de carga**. Reusa el lenguaje del `Avatar` (disco navy-50 + `ring-gold`), el `Icon`
+  (`clock`/`lock` ya existen), `ps-card-in`, `rule-gold`, foco oro. Respeta el Sello (oro ≤10%, serif solo wordmark,
+  hairline-primero, AA, `prefers-reduced-motion`). **Cero cambios en la lógica de auth.**
+- **Plan aprobado** en `C:\Users\Leonardo\.claude\plans\flickering-plotting-scroll.md`: 2 archivos nuevos
+  (`components/auth/GoogleIcon.tsx`, `components/auth/AuthShell.tsx`) + 3 ediciones (`LoginPage.tsx`,
+  `PendientePage.tsx`, `index.css`). Política lean → sin tests nuevos (cambio presentacional).
+- **CHECKPOINT inicial — pausa solicitada ANTES de tocar código.** Tras "retoma y continúa", el plan se **ejecutó completo**
+  en esta misma sesión (ver abajo).
+- **✅ IMPLEMENTADO.** **2 archivos nuevos:** `components/auth/GoogleIcon.tsx` (logo "G" oficial, 4 trazos de marca,
+  `aria-hidden`) · `components/auth/AuthShell.tsx` (chasis presentacional compartido: tarjeta `max-w-md` con membrete
+  `bg-navy-deep` + medallón `h-20 w-20` montado sobre la costura con `-mt-10` y `ring-gold-200/60` + hairline `rule-gold` +
+  cuerpo `auth-stagger`; reusa `animate-card-in`). **3 ediciones:** `index.css` (keyframes `ps-rule-draw`/`ps-seal-glint`/
+  `ps-auth-rise` + clases `.auth-rule`/`.auth-seal`/`.auth-stagger` + las 3 añadidas al bloque `prefers-reduced-motion`) ·
+  `LoginPage.tsx` (envuelto en `AuthShell`, medallón = `/escudo.png`, botón Google con `<GoogleIcon>` + estado `cargando`
+  → "Conectando…" con spinner `animate-spin` + `disabled`/`cursor-pointer` + pie de dominio; **lógica de auth intacta**) ·
+  `PendientePage.tsx` (envuelto en `AuthShell`, **emojis ⏳/🔒 reemplazados** por `<Icon name="clock|lock">` coloreado,
+  botón "Cerrar sesión" consistente; lógica intacta). **Sin tocar** `AuthContext`/`CallbackPage`/`App.tsx`/routing.
+- **Política lean:** sin tests nuevos (cambio presentacional). **Findings del hook impeccable** en `index.css`
+  (`rgba(254,252,248,0.94)` L206, `Sfmono-Regular` L255) = **preexistentes** en `premium-card`/`plaqueta`, ajenos a este
+  cambio (port verbatim del Sello ya clasificado en sesiones previas); no se tocaron.
+- **Verificación (todo verde):** web typecheck limpio + **9/9** · `npm run build` raíz **exit 0 SIN warnings**.
+  **Working tree SIN commitear** (constraint respetado).
+- **Pendiente = ACCIÓN HUMANA:** smoke visual en `dev:web` (:5173) — entrada coreografiada en `/login` (tarjeta sube →
+  hairline se dibuja → medallón destella → contenido escalona), botón "Conectando…", `/pendiente` con el mismo chasis,
+  `prefers-reduced-motion` y responsive a 375px. Sigue abierto el plan de Sesión 18 (vistas por área).
+
+### 2026-06-25 — Sesión 18: Vistas por Área (catálogo + visibilidad TH/CI) — PLAN APROBADO (checkpoint, sin implementar)
+
+- **Sesión de diseño** (brainstorming, modo plan). El usuario pidió **"configurar las vistas por área"**. Exploración
+  exhaustiva (3 agentes Explore: backend/datos · shared · web). **Hallazgo:** el código evolucionó más allá del cerebro —
+  ya existen `/archivo`, oficinas dedicadas `talento-humano`/`control-interno`, `PanelControlPage`, `metricas.ts`, `archivo.ts`.
+- **Diagnóstico clave:** la **independencia por área YA existe en los datos** (`aprobaciones` = fila por funcionario×área;
+  `listarGestionArea` filtra por `areaId`, así que Activos Fijos no ve lo de Sistemas). El **flag `areas.activa` existe pero
+  nada lo usa**. El **dolor real** = TH y Control Interno no tienen visibilidad consolidada del avance por área (solo un
+  conteo agregado); no pueden ver "este funcionario solo espera a Sistemas".
+- **3 decisiones de producto acordadas:** **D1** área nueva → `PENDIENTE` solo a funcionarios en proceso, cerrados quedan
+  `NO_APLICA` (no se reabren). **D2** área inactiva → **deja de exigirse** (sale del cálculo de estado/colas/matriz; si era
+  el único bloqueante el funcionario pasa a `LISTO_PARA_LIQUIDAR`). **D3** matriz TH/CI → **solo lectura** + clic abre ficha.
+- **Plan aprobado** en `C:\Users\Leonardo\.claude\plans\desarrolla-un-plan-completo-snoopy-eich.md`. **Dos partes** sobre un
+  bloque **transversal**: (Transversal) extraer `recomputar()` a `recomputarEstado.ts` y filtrar por **área activa** (alimenta
+  a `calcularEstadoGlobal` intocada) + recálculo en lote tras mutar el catálogo. (**Parte A**) CRUD de áreas en todas las capas
+  — schemas Zod, `AreaRepo` con `crearArea`(backfill `aprobaciones` por D1)/`renombrar`/`mover`/`cambiarActiva`, casos de uso
+  SA, `areas.routes.ts`, `AreasPage`+`GestionArea` (espejo de Usuarios), nav. (**Parte B**) B1 matriz funcionario×área
+  (`listarMatrizPaginado` → `MatrizGestion`, ruta `GET /funcionarios/matriz` supervisores, `MatrizPage`+`CeldaMatriz`,
+  `/paz-y-salvo/avance`) + B2 cola por área pulida (`bucket` pendientes/gestionados en `MiAreaPage`). Tests lean (schemas,
+  guardas 403, transiciones de estado).
+- **CHECKPOINT — pausa solicitada por el usuario ANTES de tocar código.** **Nada implementado todavía.** Working tree =
+  el de la Sesión 16 (commiteado, limpio). Pendientes previos que siguen abiertos: rediseño Login/Pendiente (plan Sesión 17,
+  sin implementar). **Próximo:** ejecutar el plan en orden — Transversal → Parte A → Parte B.1/B.2 → verificación (build
+  shared → tests×3 → typecheck web → build raíz). Sin commitear salvo orden.
+
+### 2026-06-25 — Sesión 19: Vistas por Área — **Transversal + Parte A COMPLETAS** (Parte B preparada para sesión nueva)
+
+- **Ejecución del plan** `desarrolla-un-plan-completo-snoopy-eich.md` (TDD lean). El usuario pidió completar **solo hasta
+  Parte A**, dejar listo el terreno para Parte B en otra sesión, actualizar memoria y cerrar. **Sin commits** (constraint).
+- **✅ TRANSVERSAL COMPLETO** — el corazón de integridad del estado por "área activa":
+  - **shared** `src/areas.ts` (nuevo, puro): `estadoInicialAreaNueva(estadoGlobal)` (D1: cerrado→`NO_APLICA`, en proceso→
+    `PENDIENTE`) + `soloActivas(areas)` (D2). Barrel actualizado. **+6 tests** (`tests/areas.test.ts`). `estado.ts` **intocado**.
+  - **backend** `infrastructure/db/recomputarEstado.ts` (nuevo): se **extrajo** el `recomputar()` privado de
+    `funcionarioRepository.ts` a módulo exportado, y su query de `aprobaciones` ahora **innerJoin `areas` + `activa=true`**
+    → un área inactiva no entra al conjunto que alimenta a `calcularEstadoGlobal` (intocada). Exporta el tipo `Ejecutor`.
+  - **Filtro de área activa** aplicado además en `listarGestionArea` (innerJoin areas + activa → cola vacía si el área se
+    desactivó) y en `obtenerMetricas` → `pendientesPorArea` (solo activas). Las 3 mutaciones del trámite ahora llaman
+    `recomputarEstado` (mismo comportamiento, dentro de su `tx`).
+- **✅ PARTE A COMPLETA — Catálogo de áreas CRUD, todas las capas:**
+  - **shared schemas:** `crearAreaSchema`/`renombrarAreaSchema`/`cambiarActivaAreaSchema`/`moverAreaSchema` (`.strict()`+
+    `.uuid()`+`nombre` trim 2–80) y `filtroMatrizSchema` (= `filtroFuncionariosSchema`, **adelantado para Parte B**). **+6 tests**.
+  - **backend puerto** `AreaRepo` extendido: `listarAreas(incluirInactivas?)`, `crearArea`/`renombrarArea`/`moverArea`/
+    `cambiarActivaArea` (todas devuelven el **catálogo completo** actualizado). **Repo Drizzle** implementado: `crearArea`
+    (orden=max+1 + **backfill `aprobaciones`** por D1 + recálculo de todos en una `tx`), `moverArea` (swap de `orden` con
+    **sentinela temporal `-1`** para no violar `UNIQUE(orden)`, no-op en extremos), `cambiarActivaArea` (set + **recálculo en
+    lote** de los funcionarios con fila en esa área en una `tx`), `renombrarArea` (404 si no existe).
+  - **casos de uso** `application/areas/` (`crearArea`/`renombrarArea`/`moverArea`/`cambiarActivaArea`, guarda `exigirRol
+    ["SUPERADMIN"]`) + `listarAreas` extendido (`incluirInactivas` exige SA). Barrel + `container.ts` cableados.
+  - **HTTP:** `areasController.ts` (Zod→400) + `areas.routes.ts` montado en **`/api/areas`** (`GET /` cualquier activo;
+    `POST /`, `/:id/nombre`, `/:id/mover`, `/:id/activa` con `requireRol("SUPERADMIN")`). Se **movió** `GET /areas` fuera de
+    `catalogo.routes.ts` (y se quitó el método huérfano `c.areas` de `funcionariosController`). **+18 tests** (`tests/areas.test.ts`:
+    guardas 403 de las 4 mutaciones + guard de `incluirInactivas` + delegación).
+  - **web:** `apiAreas` (listarAdmin/crear/renombrar/mover/cambiarActiva) + `useAreas.ts` (`useAreasAdmin` + 4 mutaciones que
+    revalidan `areas`/`funcionarios`/`mi-area`/`metricas`/`matriz`). Páginas `pages/areas/AreasPage.tsx` (form "Crear área" +
+    `FilaDesplegable` por área con pill Activa/Inactiva) + `GestionArea.tsx` (renombrar · subir/bajar · activar/**desactivar con
+    confirmación inline**, espejo de Usuarios). `App.tsx` ruta `/areas` (SA). `Layout.tsx`: ítem "Catalogo de areas"→`/areas`
+    en Administracion (SA) + `routeLabels`; se **desambiguó** la entrada vieja "Areas"→`/paz-y-salvo/mi-area` ahora "Bandejas por area".
+- **Verificación (todo verde):** shared **107/107** (+12) · backend **114 pass + 2 skip** (+18) · web typecheck limpio +
+  **9/9** · `npm run build` raíz **exit 0 SIN warnings**. **Working tree SIN commitear.** Sin migración SQL (el esquema ya
+  soporta `activa`; no se tocó la BD ni el MCP).
+- **🔵 PARTE B — LISTA PARA EJECUTAR EN SESIÓN NUEVA** (plan §"Parte B", mismo doc). Ya adelantado: `filtroMatrizSchema`.
+  **Pendiente B.1 (matriz funcionario×área, TH/CI/SA):** tipos `FilaMatriz`/`MatrizGestion` en `domain.ts`;
+  `FuncionarioRepo.listarMatrizPaginado` (2 consultas: página de funcionarios + sus `aprobaciones` de **áreas activas** →
+  columnas); caso de uso `obtenerMatriz` (guarda supervisores SA/TH/CI); ruta `GET /api/funcionarios/matriz` **antes de `/:id`**;
+  `apiFuncionarios.matriz` + `useMatriz`; `MatrizPage` + `CeldaMatriz` (color desde `lib/ui.ts`); ruta `/paz-y-salvo/avance` +
+  nav para los 3 supervisores. **Pendiente B.2 (cola pulida):** `bucket` pendientes/gestionados en `listarGestionArea`/ruta
+  `/mi-area` (Zod) + `ChipFiltro` `?bucket=` en `MiAreaPage`. **Opcional:** `0007_indices.sql` (`aprobaciones.area_id`).
+  Otros pendientes abiertos: rediseño Login/Pendiente (plan Sesión 17). **Arranque:** `npm run build --workspace=shared` primero.
+
+### 2026-06-25 — Sesión 20: Iconografía e ilustraciones del Sello (íconos de línea, ícono por área, estados vacíos)
+
+- **Feature presentacional** (plan `C:\Users\Leonardo\.claude\plans\resilient-inventing-teapot.md`, política lean → sin
+  tests nuevos). El usuario pidió **vectores/íconos/SVG** para la app; decisión: **recrear todo como SVG inline en el Sello**
+  (sin descargas de stock, sin atribución, sin gradientes morados). Autoridad del usuario: "si te lo pido, rompes la regla".
+  3 entregables vía AskUserQuestion: **(1)** más íconos de línea · **(2)** ícono por área · **(3)** ilustraciones de estado vacío
+  (NO hero). Iceberg/Sinu/Eva = **áreas de sistema** → monograma fallback. Integración = "mapa por nombre + fallback". Alcance =
+  "crear y cablear". **Sin commits.**
+- **NOTA — el código ya tiene Parte B (Sesión 19) implementada:** al cablear se confirmó que el árbol **ya contiene**
+  `pages/matriz/MatrizPage.tsx` (+ `CeldaMatriz`, `useMatriz`, ruta `/paz-y-salvo/avance`) y el `bucket` pendientes/gestionados en
+  `MiAreaPage` — es decir, **Parte B (B.1 matriz + B.2 cola pulida) está hecha** aunque el bloque de la Sesión 19 todavía la
+  lista como "pendiente". El cerebro venía rezagado respecto al código (patrón ya visto). Al editar `MatrizPage` se observó que
+  sus filas pasaron de `onClick`+`useNavigate` a `<Link to>` (refactor previo). Verde antes y después de tocar.
+- **✅ ASSETS (3 archivos):** **`components/ui/dash/Icon.tsx`** ampliado de 9 → ~33 íconos de línea (mismo formato 24×24/
+  `currentColor`/familia Lucide): `building`, `shield-check`, `search`, `edit`, `plus`, `close`, `chevron-down`, `mail`,
+  `mail-off`, `calendar`, `coins`, `download`, `filter`, `eye`, `logout`, `badge`, `book`, `box`, `server`, `database`,
+  `briefcase`, `iceberg`, `grad-cap`, `calculator`. **Acento oro** (sub-trazo con `stroke="#B68D40"` literal, no `currentColor`)
+  vía mapa `ACENTO_ORO` para `mail-off` (tachado) e `iceberg` (línea de flotación). **`components/ui/AreaIcon.tsx`** (nuevo):
+  helper puro `iconoDeArea(nombre): IconName | null` (reglas ordenadas palabraClave→ícono sobre el nombre normalizado sin
+  acentos; `activo→box`, `sistema→server`, `tesoreria→coins`, `contabilidad→calculator`, `carnetiz→badge`, `biblioteca→book`,
+  `correo→mail-off`; resto → `null` → monograma) + componente `<AreaIcon variant="disc"|"bare" size>` (disc = estética `Avatar`
+  navy-50+`ring-gold`; **monograma** `iniciales()` de `@pys/shared` como fallback de Iceberg/Sinu/Eva y futuras). La variante
+  `bare` **hereda `currentColor`** (se ve bien sobre chip claro o navy activo). **`components/ui/spot/Spots.tsx`** (nuevo):
+  3 spot illustrations ~120px (línea navy + acento oro, `aria-hidden`): `SpotSinResultados` (lupa+destello), `SpotArchivoVacio`
+  (archivador), `SpotBandejaAlDia` (bandeja+check).
+- **✅ EmptyState** (`components/ui/EmptyState.tsx`): nueva prop opcional `ilustracion?: ReactNode` (spot grande centrado; si
+  está, prima sobre `icono`). Retrocompatible.
+- **✅ CABLEADO (5 páginas) — TODOS los emojis de estado vacío eliminados** (regla del Sello "íconos SVG, no emojis"):
+  `CatalogoFuncionarios` (🔍→`SpotSinResultados`) · `ArchivoPage` (🗂️→`SpotArchivoVacio`) · `MatrizPage` (🔍→`SpotSinResultados`,
+  🗂️→`<Icon name="grid">`, **cabeceras de columna** con `<AreaIcon variant="bare">` sobre el nombre) · `MiAreaPage` (🔒→
+  `<Icon name="lock">`, 🗂️→`<Icon name="grid">`, ✓→`SpotBandejaAlDia`, **chips de área del SA** con `<AreaIcon variant="bare">`) ·
+  `AreasPage` (disco del orden → `<AreaIcon variant="disc" size="sm">`; el orden sigue en el subtítulo "Orden N en el flujo").
+  Grep final: **cero emojis** `🔍🗂️🔒✓⏳` en `icono=` de `apps/web/src`.
+- **Verificación (todo verde):** web typecheck limpio + **9/9** · `npm run build` raíz **exit 0 SIN warnings** (Recharts en
+  chunks lazy aparte). **Working tree SIN commitear** (constraint respetado). Sin tocar backend, `shared` ni `estado.ts`.
+- **Pendiente = ACCIÓN HUMANA:** smoke visual en `dev:web` (:5173) — íconos por área en chips de Mi área, cabeceras de la matriz
+  de Avance y discos del Catálogo de áreas; monograma para Iceberg/Sinu/Eva; las 3 spot illustrations en sus estados vacíos;
+  confirmar que el acento oro se mantiene discreto. Pendientes abiertos previos: rediseño Login/Pendiente (Sesión 17, ya
+  implementado en árbol). Si se quiere publicar: `push` (no solicitado).
+
+### 2026-06-26 — Sesión 21: Módulo Capacitaciones — shared + backend completos (web pendiente)
+
+- **Módulo nuevo** (plan `tranquil-shimmying-abelson.md` aprobado en sesión anterior; esta sesión = implementación). Política lean
+  (tests solo en frontera: guardas 403, idempotencia, smoke público). **Sin commits** (constraint).
+- **shared — rol SST + dominio capacitaciones COMPLETOS:** `domain.ts`/`permisos.ts`/`ui.ts` actualizados para SST (typecheck-driven).
+  Nuevo `src/capacitaciones.ts` puro: tipos (`AmbitoCapacitacion`, `EstadoRegistro`, `TipoVinculo`, `Capacitacion`, `Asistencia`,
+  `CapacitacionDetalle`, `CapacitacionPublica`, `FiltroCapacitaciones`, `ResultadoRegistro`) + funciones puras
+  (`ambitoPorDefecto`, `puedeGestionarAmbito`, `ambitosVisibles`, `registroAbierto`, `construirCsvAsistencias`). Schemas Zod en
+  `schemas.ts` (`crearCapacitacionSchema`, `editarCapacitacionSchema`, `filtroCapacitacionesSchema`, `registrarAsistenciaSchema`).
+  Pills en `ui.ts` (`estadoRegistroPill`/`ESTADO_REGISTRO_BADGE`/`AMBITO_LABEL`/`TIPO_VINCULO_LABEL`). **152/152 tests** (+33).
+- **backend COMPLETO:** 2 migraciones SQL (`0007_rol_sst.sql`, `0008_capacitaciones.sql`; NO aplicadas a prod). Schema Drizzle
+  espejo (`ambitoCapacitacionEnum`, `estadoRegistroEnum`, `tipoVinculoEnum`, tablas `capacitaciones`/`asistencias` con
+  UNIQUE(capacitacion_id, documento)). Puerto `CapacitacionRepo.ts`. Repo `capacitacionRepository.ts`: token = `randomBytes(16)
+  .toString("base64url")`, `onConflictDoNothing` idempotente, mappers Date→ISO. **8 casos de uso** con guardas de rol+ámbito:
+  `crearCapacitacion` (TH→TH, SST→SST, SA→cualquiera), `listarCapacitaciones` (filtra por ámbito automático por rol),
+  `obtenerDetalleCapacitacion`, `obtenerCapacitacionPublica` (sin actor), `editarCapacitacion` (solo BORRADOR), `abrirRegistro`/
+  `cerrarRegistro` (transiciones de estado), `exportarAsistencias` (CSV), `registrarAsistenciaPublica` (sin actor). Controllers
+  `capacitacionesController` + `registroPublicoController`. **1 router unificado** `capacitaciones.routes.ts` en
+  `/api/capacitaciones`: rutas públicas `/registro/:token` (GET+POST, rate-limit estricto 10/min) **antes** del `.use(requireAuth)`
+  → `/` CRUD autenticado. Montado en `app.ts`. **140 pass + 2 skip** (+20).
+- **web parcial:** `apiCapacitaciones` + `apiRegistro` añadidos a `lib/api.ts` (web typecheck limpio). Resto de la web (hooks,
+  páginas, `App.tsx`, `Layout.tsx`) queda para la próxima sesión.
+- **Pendiente = PRÓXIMA SESIÓN (web):** `npm install qrcode.react` · `hooks/useCapacitaciones.ts` · `hooks/useRegistroAsistencia.ts`
+  · `pages/capacitaciones/CapacitacionesPage.tsx` + `CapacitacionModal.tsx` · `pages/asistencia/RegistroAsistenciaPage.tsx`
+  · `App.tsx` rutas + `Layout.tsx` sección SST + `useRole.esSst` · verificación final (build raíz, tests×3, node dist).
+  Plan actualizado: `C:\Users\Leonardo\.claude\plans\tranquil-shimmying-abelson.md` (§6 con checkboxes de progreso).
+- **Pendiente = ACCIÓN HUMANA:** aplicar `0007`/`0008` a Supabase vía MCP cuando el web esté listo.
+
+### 2026-06-26 — Sesión 22: Módulo Capacitaciones — web completo (hooks + páginas + QR + ruta pública)
+
+- **Módulo Capacitaciones web COMPLETO** (continuación de Sesión 21). Skills activas: `design-taste-frontend` +
+  `engineering-skills:senior-fullstack`. Política lean (sin tests nuevos — cambio presentacional + hooks de datos ya cubiertos
+  por backend; typecheck es el gate). **Sin commits** (constraint respetado).
+- **`npm install qrcode.react --workspace=apps/web`** → `qrcode.react@^4.2.0` añadido como depedencia.
+- **hooks COMPLETOS:**
+  - `hooks/useCapacitaciones.ts` (nuevo): `useCapacitaciones(filtro)` (lista paginada) · `useCapacitacionDetalle(id)` (enabled:!!id) ·
+    factory `useMutacionCapacitacion` · `useCrearCapacitacion` · `useEditarCapacitacion` · `useAbrirRegistro` · `useCerrarRegistro`.
+    Todas las mutaciones invalidan la clave `"capacitaciones"`.
+  - `hooks/useRegistroAsistencia.ts` (nuevo): `useCapacitacionPublica(token)` (sin auth, retry:false) ·
+    `useRegistrarAsistencia(token)` (mutación idempotente sin auth). Función helper `apiPublico` sin bearer.
+- **páginas COMPLETAS:**
+  - `pages/capacitaciones/CapacitacionesPage.tsx` (nuevo): listado con `Buscador`+`FiltroEstado`+`FiltroAmbito` (server-driven por
+    searchParams) + formulario "Nueva capacitación" (grid con título/ámbito-condicional/fechas/lugar/instructor/horas/descripcion) +
+    `FilaDesplegable` por capacitación con monograma de ámbito + pill de estado + `<GestionCapacitacion>` + `<Outlet/>` modal.
+  - `pages/capacitaciones/GestionCapacitacion.tsx` (nuevo): dl de metadata (fechas, lugar, instructor, horas, descripcion) + acciones
+    "Abrir registro" / "Cerrar registro" gateadas por `puedeGestionarAmbito(rol,ambito)` + link "Ver detalle y QR" + `ExportarButton`
+    (descarga blob CSV).
+  - `pages/capacitaciones/CapacitacionModal.tsx` (nuevo): abre el detalle vía `useCapacitacionDetalle(id)`, envuelto en `Modal`.
+    Sección QR: `<QRCodeSVG value={urlRegistro} size={160} fgColor="#142943" level="M" />` + URL + `CopiarButton`
+    (`navigator.clipboard.writeText`) + avisos de estado BORRADOR/CERRADO. Tabla de asistentes (nombre · documento · tipo de vínculo
+    · fecha). `BASE_WEB = import.meta.env.VITE_WEB_URL ?? window.location.origin`.
+  - `pages/asistencia/RegistroAsistenciaPage.tsx` (nuevo): página pública sin auth (ruta `/asistencia/:token` fuera del
+    `<Layout>`). `PantallaBase` institucional (logo header · max-w-lg · footer). Máquina de estados: loading → error / BORRADOR /
+    CERRADO → `FormularioAsistencia`. Formulario: nombre(req) · documento(req) · correo(opt) · dependencia(opt) · tipoVinculo
+    (radio PLANTA/CONTRATISTA/EXTERNO). Confirmación: `ok` ("Asistencia registrada") · `ya-existia` ("Ya registrado") · `error`.
+    Idempotencia por documento (el backend usa `onConflictDoNothing`).
+- **`useRole.ts`:** añadido `esSst: rol === "SST"` (ya reflejado en el árbol desde sesiones previas).
+- **`App.tsx`:** ruta pública `/asistencia/:token` (antes de `<Layout>`) + ruta protegida `/capacitaciones`
+  (SA+TH+SST) con hijo `:id` → `<CapacitacionModal>`.
+- **`Layout.tsx`:** ícono `graduation` añadido (24×24, `currentColor`). Sección "Formacion" con item Capacitaciones para SA, TH
+  y nueva rama SST (sidebar acotado solo con su sección). `routeLabels` actualizado.
+- **`shared/permisos.ts`:** `rutaInicialPorRol` ya tenía `case "SST": return "/capacitaciones"` — no se tocó.
+- **Verificación final (todo verde):** shared **152/152** · backend **140 pass + 2 skip** · web typecheck limpio + **9/9** ·
+  `npm run build` raíz **exit 0 SIN warnings** (chunks lazy: react-vendor, data-vendor, Recharts, qrcode). **Working tree SIN commitear.**
+- **Pendiente = ACCIÓN HUMANA:** (1) aplicar `0007`/`0008` a Supabase vía MCP · (2) smoke E2E: SST aterriza en `/capacitaciones`,
+  SA/TH ven sección "Formación" en sidebar, crear capacitación → abrir registro → QR aparece en modal → escanear QR desde móvil →
+  formulario público → "Asistencia registrada" → mismo documento → "Ya registrado" → exportar CSV → CI/AREA → 403 en endpoints
+  de capacitaciones · (3) confirmar que `VITE_WEB_URL` está en el `.env` del backend para que la URL del QR sea la correcta en
+  producción (si no, cae a `window.location.origin` que también funciona en dev).
+
+### 2026-06-26 — Sesión 23: Cacería de bugs (multi-agente) — CRÍTICO + IMPORTANTE cerrados + migraciones a prod
+
+- **Cacería adversarial de bugs** (skills `code-review` · `adversarial-reviewer` · `code-reviewer` · `systematic-debugging`):
+  3 agentes por capa (`shared`/`backend`/`web`) + investigación de causa raíz. El usuario pidió **atacar CRÍTICO +
+  IMPORTANTE en el mismo plan** y exigió **sincronización 100%**. Plan: `ahora-construye-el-plan-agile-coral.md`. **Sin commits.**
+- **🐛 BUG REPORTADO RESUELTO — "no crea la capacitación con todos los datos":** la causa raíz **no era código**. Vía MCP se
+  descubrió que la BD de prod solo tenía `0004/0005/0006` aplicadas y 5 tablas → **`0007_rol_sst`/`0008_capacitaciones` nunca
+  se aplicaron** (pendiente arrastrado de Sesión 21). El `INSERT` reventaba con `relation "public.capacitaciones" does not
+  exist`. **Fix:** se aplicaron `0007` (valor enum `SST`) y luego `0008` (enums + tablas `capacitaciones`/`asistencias` con
+  `UNIQUE(capacitacion_id, documento)` + RLS sin políticas = deny-directo) vía `apply_migration`. Verificado: ambas tablas
+  existen (0 filas, RLS on). Advisors: 2 INFO `rls_enabled_no_policy` (por diseño) + 1 WARN leaked-password (moot, OAuth).
+- **CRÍTICO #1 — desincronización de caché (web):** las 3 mutaciones del trámite (`useCambiarEstadoArea`/`useGenerarLiquidacion`/
+  `useRegistrarPazYSalvo`) invalidaban `funcionarios/funcionario/mi-area/matriz/metricas` pero **nunca** `archivo`/`expediente`/
+  `funcionarios-todos` → `/archivo` y el Panel mostraban datos viejos. **Fix:** helper `invalidarVistasTramite(qc)` en
+  `useFuncionarios.ts` que invalida el conjunto completo; usado en las 3 (elimina la deriva inline).
+- **IMPORTANTE #2 — rango de fechas:** `terminaEn > iniciaEn` solo lo validaba el form. **Fix:** `.refine` en
+  `crearCapacitacionSchema` + `editarCapacitacionSchema` (solo cuando ambas vienen) + validación de **rango fusionado** en el
+  caso de uso `editarCapacitacion.ts` (usa `obtenerDetalle` ya cargado; cierra el borde de editar un solo extremo).
+- **IMPORTANTE #3 — contrato de `ambito`:** `crearCapacitacionSchema.ambito` era requerido pero el caso de uso ya derivaba para
+  TH/SST. **Fix:** `ambito` ahora `.optional()` (revive la rama: TH/SST omiten, SA especifica). Backend sin cambios.
+- **IMPORTANTE #4 — edición vacía:** `editarCapacitacionSchema` aceptaba `{}` (PATCH no-op). **Fix:** `.refine` no-vacío.
+- **IMPORTANTE #5 — idempotencia del documento:** distintas grafías de la misma cédula ("1.234.567" vs "1234567") creaban filas
+  duplicadas. **Fix:** helper puro `normalizarDocumento` en `capacitaciones.ts` (quita espacios/puntos/guiones + mayúsculas) +
+  `.transform` en `registrarAsistenciaSchema` → la clave `UNIQUE(capacitacion_id, documento)` usa la forma canónica.
+- **Tests de frontera (política lean):** shared schemas (rango crear/editar, ambito opcional, cuerpo vacío, normalización doc) +
+  `normalizarDocumento` en capacitaciones + backend `editarCapacitacion` (rango fusionado invertido → 400 / un extremo válido → ok).
+- **Verificación (todo verde):** shared **162/162** (+10) · backend **142 pass + 2 skip** (+2) · web typecheck limpio + **9/9** ·
+  `npm run build` raíz **exit 0 SIN warnings**. **Working tree SIN commitear** (constraint respetado).
+- **MENOR (#6–#13) DIFERIDOS al backlog:** enumeración 403-vs-404 entre ámbitos · `obtenerPorToken` expone BORRADOR ·
+  `recomputarEstado` con 0 áreas activas deja PENDIENTE atascado · `iniciales("")` sin fallback · página fuera de rango ·
+  tipo de `editar` permite `null` (código muerto) · refresco en vivo de asistentes · `q` sin `.trim()` en filtros.
+- **Pendiente = ACCIÓN HUMANA:** smoke E2E (crear capacitación end-to-end ahora que las tablas existen · idempotencia con dos
+  grafías del mismo documento · rango fin≤inicio rechazado · cerrar trámite como CI → `/archivo` actualiza sin refrescar) +
+  los pendientes históricos abiertos (rediseño Login/Pendiente ya en árbol; deploy; push si se quiere publicar).
+
+### 2026-06-30 — Sesión 24: Arquitectura de Plataforma — diseño aprobado (sin código)
+
+- **Sesión de diseño** (`superpowers:brainstorming`). El usuario pidió formalizar la arquitectura multi-módulo y multi-usuario
+  concurrente del sistema. Dos objetivos: **plataforma declarativa** (registro único de módulos que reemplaza referencias
+  hardcodeadas en lanzador/sidebar/guards) + **sincronía en vivo** (Supabase Realtime, push browser↔Supabase sin pasar por Vercel).
+- **Exploración técnica** (lectura de `permisos.ts`, `domain.ts`, `recomputarEstado.ts`, `funcionarioRepository.ts`, `app.ts`,
+  `vercel.json`, `vite.config.ts`): se verificó que la concurrencia multi-área **ya está resuelta** en la BD (lock pesimista +
+  recálculo atómico + guarda TOCTOU/idempotencia). No hay nada que "arreglar".
+- **Decisiones acordadas:** Approach A (plataforma/módulos declarativa) + sincronía push en vivo. Escala real: 30–40 retiros/mes,
+  1–2 personas por área, raramente todas a la vez → no se sobre-ingenieriza (sin Redis global, sin CRDT, sin presencia en tiempo real).
+- **Spec escrito y aprobado:** `docs/superpowers/specs/2026-06-30-plataforma-multi-modulo-concurrencia-design.md` — 7 secciones:
+  modelo plataforma, registro declarativo `MODULOS[]`, contrato de concurrencia (escrito para no tocar sin TDD), diseño Realtime
+  (1 canal por sesión, invalidación TanStack Query por evento, RLS ya filtra), veredicto Vercel (bien configurado; cold start
+  mitigable con keep-alive gratuito en `/api/health`), backlog priorizado (P1: `modulos.ts` + Realtime).
+- **§11 "Arquitectura de Plataforma"** añadido a este CLAUDE.md como sección permanente.
+- **Sin código.** Working tree SIN modificar (ningún archivo de `apps/` o `shared/` tocado esta sesión).
+- **Próximo:** invocar `writing-plans` → plan de implementación para P1 (`shared/src/modulos.ts` + `lib/realtime.ts` en `AuthContext`)
+  → ejecutar en sesión nueva. Sin commits hasta que el usuario lo pida.
+
+### 2026-06-30 — Sesión 25: P1 de la Arquitectura de Plataforma — registro declarativo de módulos + Supabase Realtime
+
+- **Ejecución del backlog P1** del spec `2026-06-30-plataforma-multi-modulo-concurrencia-design.md` (skill `engineering-architecture-pro`,
+  modo DESIGN: archivos nuevos + ediciones quirúrgicas; política lean → tests solo en la lógica pura nueva). **Sin commits** (constraint).
+- **✅ TAREA 1 — Registro declarativo de módulos:**
+  - **shared** `src/modulos.ts` (nuevo, puro): interfaz `Modulo` (`id`/`nombre`/`icono`/`rutaBase`/`nota`/`rolesQueVen[]`/`estado`),
+    array `MODULOS` (paz-y-salvo + capacitaciones ACTIVO · reportes + organigrama PROXIMO) y `modulosParaRol(rol)`. Barrel actualizado.
+    **+8 tests** (`tests/modulos.test.ts`: ids únicos, invariantes de forma, filtrado y orden por rol) → shared **170/170**.
+  - **web** `pages/panel/ModuleLauncher.tsx` **reescrito** para consumir `modulosParaRol(rol)` en vez de listas inline: props
+    `{esSuperadmin,oficina}` → **`{rol}`**; cada módulo activo usa su propio ícono y `nota`; Paz y Salvo es **role-aware** (destino =
+    `rutaOficinaPorRol(rol)`, el resto usa `rutaBase`). **Bug corregido de paso:** los módulos "Próximamente" eran "Contratación/
+    Bienestar" (no existían en el spec) → ahora "Reportes/Organigrama". `PanelControlPage`: nuevo `rolEfectivo = rol ?? "SUPERADMIN"`,
+    los 2 call sites pasan `rol={rolEfectivo}`, y `ErrorPanel` recibe `rol` (la prop `oficina` se conserva: la usan `PanelHeader`/`FlujoTramite`).
+- **✅ TAREA 2 — Supabase Realtime (sincronía en vivo):**
+  - **web** `lib/realtime.ts` (nuevo): `suscribirRealtime(qc)` abre **1 canal `plataforma-sync`** suscrito a `postgres_changes` de
+    `funcionarios` y `aprobaciones`; cada evento invalida el conjunto de vistas del trámite en TanStack Query (`funcionarios`,
+    `funcionarios-todos`, `metricas`, `matriz`, `mi-area`, `archivo`, y `funcionario/<id>` por payload). WebSocket directo
+    browser↔Supabase (no pasa por Vercel); RLS ya filtra qué filas recibe cada rol. Devuelve cleanup (`removeChannel`).
+  - **web** `context/AuthContext.tsx`: `useEffect` nuevo ligado a `usuario?.id`/`usuario?.estado` que suscribe solo si hay usuario
+    **ACTIVO** y limpia al cambiar de identidad / logout / desmontaje. Usa el singleton `queryClient`. CSP de `vercel.json` ya incluía `wss://*.supabase.co`.
+- **Verificación final (todo verde):** shared **170/170** (+8) · backend **142 pass + 2 skip** · web typecheck limpio + **9/9** ·
+  `npm run build` raíz **exit 0 SIN warnings** (chunks lazy intactos). **Working tree SIN commitear** (constraint respetado).
+  Sin tocar backend, BD, `estado.ts` ni las transacciones de concurrencia.
+- **Pendiente = ACCIÓN HUMANA:** smoke E2E del Realtime — abrir 2 sesiones (p. ej. SA y un AREA), mover un área en una y confirmar
+  que la otra refetcha sin recargar; verificar que el canal se cierra al cerrar sesión. P2 keep-alive UptimeRobot → `/api/health`
+  (config externa, sin código). Pendientes históricos abiertos (deploy, push si se quiere publicar).
+
+### 2026-06-30 — Sesión 26: Herramienta de dev — impersonación de rol (experimentar UI/UX por rol)
+
+- **Petición del usuario:** poder cambiar de rol temporalmente para experimentar la UI/UX de cada encargado (probó como
+  **AREA · Activos Fijos**), dejando la cuenta de **Admin guardada**. Primero se rectificó el flujo del rol AREA al entrar
+  (aterriza en `/paz-y-salvo/mi-area` → sidebar de una sección "Operación" → cola de visto bueno de SU dependencia →
+  acciones Aprobar/No aplica/Rechazar/Devolver; **no** ve la ficha completa, eso es supervisión SA/TH/CI).
+- **Enfoque elegido — impersonación frontend (reversible, sin tocar la cuenta real):** el JWT real sigue SUPERADMIN → el
+  backend autoriza todo (un SA puede consultar la cola de cualquier área y ejecutar cualquier acción) → los datos se cargan
+  reales. Solo se reescribe el `usuario` **efectivo** (rol + área) que ve la UI; toda la cadena (Layout sidebar, `useRole`,
+  `ProtectedRoute`, `RootRedirect`, `MiAreaPage`) se comporta idéntico a como lo vería ese rol. **Caveat consciente:** las
+  acciones impactan la BD real (no es sandbox); es un banco de pruebas de experiencia.
+- **Implementación (3 archivos, política lean → sin tests nuevos, cambio presentacional/infra de contexto):**
+  - `context/AuthContext.tsx` **reescrito**: estado interno `usuarioReal` (backend) + `impersonacionRaw` (de sessionStorage
+    `pys_impersonacion`); `usuario` efectivo vía `useMemo` (`{...usuarioReal, rol, areaId}` solo si el real es SUPERADMIN —
+    guarda contra entradas huérfanas); nuevos del contrato: `usuarioReal`, `impersonacion`, `impersonar(rol, areaId?)`,
+    `detenerImpersonacion()`. El `useEffect` de Realtime se religó a `usuarioReal?.id/estado` (la impersonación no cambia la
+    identidad de la sesión). `logout` limpia la impersonación. `impersonar`/`detener` invalidan todas las queries.
+  - `components/dev/RoleSwitcher.tsx` **(nuevo)**: pastilla flotante abajo-derecha, **visible solo si `usuarioReal.rol ===
+    "SUPERADMIN"`**. Verde = Admin, dorada = impersonando. Menú: TH · CI · AREA (→ submenú con la lista de áreas de
+    `useAreas`, muestra `#orden`) · SST · "← Volver a Admin". Al elegir, navega al aterrizaje del rol (`rutaInicialPorRol`).
+    Sello respetado (navy `#0b1324` + oro discreto + hairlines).
+  - `App.tsx`: `<RoleSwitcher/>` montado dentro de `BrowserRouter` (junto al `Toaster`) para que `useNavigate` funcione.
+- **Verificación (todo verde):** shared build OK · web typecheck limpio + **9/9** · `npm run build` raíz **exit 0 SIN
+  warnings**. Sin tocar backend, BD, `estado.ts` ni `shared`. **Working tree SIN commitear** (constraint respetado).
+- **Findings del hook impeccable** en `index.css` (L206 `rgba(254,252,248,0.94)`, L255 `Sfmono-Regular`) = preexistentes del
+  Sello, ajenos a este cambio; no se tocaron.
+- **Pendiente = ACCIÓN HUMANA:** probar en `dev:web` (:5173, con `dev:api` en :3000) — entrar como Admin → pastilla → AREA →
+  Activos Fijos → ver la app como ese encargado → "Volver a Admin". Pendientes históricos abiertos (Realtime E2E, deploy, push).
+
+### 2026-06-30 - Sesion 27: Theming global light/dark
+
+- **Plan ejecutado:** `C:\Users\Leonardo\.claude\plans\rustling-growing-hamming.md` sobre `main`, sin worktree y sin commits.
+- **Spec:** `docs/superpowers/specs/2026-06-30-theming-light-dark-design.md`.
+- **Infra:** `ThemeProvider` + `useTheme`, storage `pys_theme`, anti-FOUC en `index.html`, `darkMode: "class"` y toggle en sidebar/header.
+- **Tokens:** CSS variables RGB semanticas (`bg/surface/card/foreground/muted/border/...`), estados y rampas `silver`/`estado.*` theme-aware, compatibilidad dark para superficies heredadas.
+- **Retrofit:** componentes UI base, auth, panel/charts, matriz, areas y usuarios migrados a tokens semanticos donde el cambio era seguro; chrome navy de sidebar/RoleSwitcher se conserva por identidad de marca.
+- **Limpieza prudente:** no se borro codigo sin evidencia de desuso; se evitaron cambios en backend/BD y no se tocaron transacciones ni dominio.
+- **Verificacion:** se hizo RED/GREEN acotado de `ThemeContext.test.tsx` antes de la pausa. Los gates finales quedaron bloqueados porque el aprobador rechazo la escalacion por falta de creditos del workspace. Repetir cuando haya creditos: `npm run build --workspace=shared`, `npm run typecheck --workspace=apps/web`, `npm run test --workspace=apps/web`, `npm run test --workspace=shared`, `npm run build`.

@@ -1,6 +1,34 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query"
 import type { CambiarEstadoAreaInput, FiltroFuncionarios } from "@pys/shared"
 import { apiFuncionarios } from "../lib/api"
+
+/**
+ * Invalida TODAS las vistas que dependen del trámite tras cualquier mutación.
+ * Cualquier transición (área, liquidación, paz y salvo) puede mover a un
+ * funcionario entre el catálogo, la cola del área, la matriz, las métricas, el
+ * desglose del Panel (`funcionarios-todos`) y el Archivo (`archivo`/`expediente`,
+ * lista de cerrados). Invalidar de más es barato (solo marca *stale*); garantiza
+ * sincronización 100% y elimina la deriva entre mutaciones que dejaba vistas viejas.
+ */
+function invalidarVistasTramite(qc: QueryClient) {
+  for (const key of [
+    "funcionarios",
+    "funcionario",
+    "mi-area",
+    "matriz",
+    "metricas",
+    "funcionarios-todos",
+    "archivo",
+    "expediente",
+  ]) {
+    void qc.invalidateQueries({ queryKey: [key] })
+  }
+}
 
 /**
  * Lista paginada de funcionarios con filtros opcionales (q, estado, pagina, porPagina).
@@ -32,49 +60,36 @@ export function useFuncionarioDetalle(id: string | undefined) {
 
 /**
  * Cambia el estado de un área para un funcionario (aprueba, rechaza, etc.).
- * Invalida funcionarios, detalle del funcionario, mi-area y métricas.
+ * Invalida todas las vistas del trámite (ver `invalidarVistasTramite`).
  */
 export function useCambiarEstadoArea() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: CambiarEstadoAreaInput) => apiFuncionarios.cambiarEstadoArea(input),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["funcionarios"] })
-      void qc.invalidateQueries({ queryKey: ["funcionario"] })
-      void qc.invalidateQueries({ queryKey: ["mi-area"] })
-      void qc.invalidateQueries({ queryKey: ["metricas"] })
-    },
+    onSuccess: () => invalidarVistasTramite(qc),
   })
 }
 
 /**
  * Genera la liquidación de un funcionario cuando todas las áreas están OK.
- * Invalida funcionarios, detalle del funcionario y métricas.
+ * Invalida todas las vistas del trámite (ver `invalidarVistasTramite`).
  */
 export function useGenerarLiquidacion() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => apiFuncionarios.generarLiquidacion(id),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["funcionarios"] })
-      void qc.invalidateQueries({ queryKey: ["funcionario"] })
-      void qc.invalidateQueries({ queryKey: ["metricas"] })
-    },
+    onSuccess: () => invalidarVistasTramite(qc),
   })
 }
 
 /**
  * Registra el paz y salvo final de un funcionario (solo Control Interno).
- * Invalida funcionarios, detalle del funcionario y métricas.
+ * Invalida todas las vistas del trámite (ver `invalidarVistasTramite`).
  */
 export function useRegistrarPazYSalvo() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => apiFuncionarios.registrarPazYSalvo(id),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["funcionarios"] })
-      void qc.invalidateQueries({ queryKey: ["funcionario"] })
-      void qc.invalidateQueries({ queryKey: ["metricas"] })
-    },
+    onSuccess: () => invalidarVistasTramite(qc),
   })
 }

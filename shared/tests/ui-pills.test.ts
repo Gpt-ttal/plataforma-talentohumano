@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { ESTADOS_AREA, ESTADOS_GLOBAL } from "../src/domain";
+import { ESTADOS_AREA, ESTADOS_GLOBAL, ROLES_USUARIO } from "../src/domain";
+import { ESTADOS_REGISTRO } from "../src/capacitaciones";
 import {
   ESTADO_AREA_LABEL,
   ESTADO_GLOBAL_LABEL,
+  ESTADO_REGISTRO_LABEL,
+  ROL_LABEL,
   estadoAreaPill,
   estadoGlobalPill,
+  estadoRegistroPill,
 } from "../src/ui";
 
 /**
@@ -43,5 +47,30 @@ describe("estadoAreaPill", () => {
 
   it("APROBADO usa el verde 'ok' del sistema C", () => {
     expect(estadoAreaPill("APROBADO").className).toContain("estado-ok");
+  });
+});
+
+describe("estadoRegistroPill", () => {
+  it("cubre todos los estados de registro con className, dot y etiqueta", () => {
+    for (const e of ESTADOS_REGISTRO) {
+      const pill = estadoRegistroPill(e);
+      expect(pill.className.length).toBeGreaterThan(0);
+      expect(pill.dot.length).toBeGreaterThan(0);
+      expect(pill.label).toBe(ESTADO_REGISTRO_LABEL[e]);
+    }
+  });
+
+  it("ABIERTO usa el verde 'ok'; CERRADO el azul 'info'", () => {
+    expect(estadoRegistroPill("ABIERTO").className).toContain("estado-ok");
+    expect(estadoRegistroPill("CERRADO").className).toContain("estado-info");
+  });
+});
+
+describe("ROL_LABEL", () => {
+  it("tiene etiqueta no vacía para cada rol (incluye SST)", () => {
+    for (const rol of ROLES_USUARIO) {
+      expect(ROL_LABEL[rol]?.length ?? 0).toBeGreaterThan(0);
+    }
+    expect(ROL_LABEL.SST).toContain("Seguridad");
   });
 });

@@ -56,10 +56,10 @@ export default function DonutEstado({
           </PieChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-bold tabular-nums text-navy-900">
+          <span className="text-2xl font-bold tabular-nums text-foreground">
             {fmt(total)}
           </span>
-          <span className="text-[11px] text-silver-600">funcionarios</span>
+          <span className="text-[11px] text-muted">funcionarios</span>
         </div>
       </div>
 
@@ -70,8 +70,8 @@ export default function DonutEstado({
               className="h-2 w-2 shrink-0 rounded-full"
               style={{ background: d.color }}
             />
-            <span className="min-w-0 flex-1 truncate text-silver-600">{d.label}</span>
-            <span className="font-mono tabular-nums text-navy-800">{fmt(d.valor)}</span>
+            <span className="min-w-0 flex-1 truncate text-muted">{d.label}</span>
+            <span className="font-mono tabular-nums text-foreground">{fmt(d.valor)}</span>
           </li>
         ))}
       </ul>

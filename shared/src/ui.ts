@@ -6,6 +6,11 @@
  */
 
 import type { EstadoArea, EstadoGlobal, EstadoUsuario, Rol } from "./domain.js";
+import type {
+  AmbitoCapacitacion,
+  EstadoRegistro,
+  TipoVinculo,
+} from "./capacitaciones.js";
 
 export const ESTADO_GLOBAL_LABEL: Record<EstadoGlobal, string> = {
   PENDIENTE: "Pendiente",
@@ -20,6 +25,7 @@ export const ROL_LABEL: Record<Rol, string> = {
   TALENTO_HUMANO: "Talento Humano",
   CONTROL_INTERNO: "Control Interno",
   AREA: "Área",
+  SST: "Seguridad y Salud en el Trabajo",
 };
 
 export const ESTADO_AREA_LABEL: Record<EstadoArea, string> = {
@@ -43,11 +49,11 @@ export const ESTADO_USUARIO_LABEL: Record<EstadoUsuario, string> = {
 export const ESTADO_USUARIO_BADGE: Record<EstadoUsuario, string> = {
   PENDIENTE: "bg-gold-50 text-gold-700 ring-1 ring-gold-300/60",
   ACTIVO: "bg-estado-okBg text-estado-ok ring-1 ring-estado-ok/30",
-  INACTIVO: "bg-silver-100 text-silver-600 ring-1 ring-silver-300",
+  INACTIVO: "bg-surface-2 text-muted ring-1 ring-border",
 };
 
 export const ESTADO_GLOBAL_BADGE: Record<EstadoGlobal, string> = {
-  PENDIENTE: "bg-silver-100 text-silver-600 ring-1 ring-silver-300",
+  PENDIENTE: "bg-surface-2 text-muted ring-1 ring-border",
   LISTO_PARA_LIQUIDAR: "bg-gold-50 text-gold-700 ring-1 ring-gold-300/60",
   LIQUIDACION_GENERADA:
     "bg-estado-infoBg text-estado-info ring-1 ring-estado-info/30",
@@ -55,10 +61,25 @@ export const ESTADO_GLOBAL_BADGE: Record<EstadoGlobal, string> = {
 };
 
 export const ESTADO_AREA_BADGE: Record<EstadoArea, string> = {
-  PENDIENTE: "bg-silver-100 text-silver-600 ring-1 ring-silver-300",
+  PENDIENTE: "bg-surface-2 text-muted ring-1 ring-border",
   APROBADO: "bg-estado-okBg text-estado-ok ring-1 ring-estado-ok/30",
-  NO_APLICA: "bg-silver-50 text-silver-600 ring-1 ring-silver-200",
-  NO_APROBADO: "bg-red-50 text-estado-rechazo ring-1 ring-estado-rechazo/40",
+  NO_APLICA: "bg-surface-2 text-muted ring-1 ring-border",
+  NO_APROBADO: "bg-estado-rechazoBg text-estado-rechazo ring-1 ring-estado-rechazo/40",
+};
+
+/**
+ * Representación compacta para la celda de la matriz funcionario × área: un
+ * símbolo + color por estado. Misma fuente de color que los badges (Regla del
+ * Semáforo Único); colores AA (silver-600 mínimo). Clases literales para el purge.
+ */
+export const ESTADO_AREA_CELDA: Record<
+  EstadoArea,
+  { simbolo: string; className: string }
+> = {
+  PENDIENTE: { simbolo: "•", className: "text-silver-600" },
+  APROBADO: { simbolo: "✓", className: "text-estado-ok" },
+  NO_APLICA: { simbolo: "–", className: "text-silver-600" },
+  NO_APROBADO: { simbolo: "✕", className: "text-estado-rechazo" },
 };
 
 /** Punto de color (semáforo) para listas compactas. */
@@ -129,6 +150,59 @@ export function estadoUsuarioPill(estado: EstadoUsuario): {
   return {
     className: `${PILL_BASE} ${ESTADO_USUARIO_BADGE[estado]}`,
     label: ESTADO_USUARIO_LABEL[estado],
+  };
+}
+
+// ── Capacitaciones ───────────────────────────────────────────────────────────
+
+/** Etiqueta legible del ámbito de una capacitación. */
+export const AMBITO_LABEL: Record<AmbitoCapacitacion, string> = {
+  TH: "Talento Humano",
+  SST: "Seguridad y Salud en el Trabajo",
+};
+
+/** Etiqueta legible del tipo de vínculo del asistente. */
+export const TIPO_VINCULO_LABEL: Record<TipoVinculo, string> = {
+  PLANTA: "Planta",
+  CONTRATISTA: "Contratista",
+  EXTERNO: "Externo",
+};
+
+/** Etiqueta del estado del registro de asistencia. */
+export const ESTADO_REGISTRO_LABEL: Record<EstadoRegistro, string> = {
+  BORRADOR: "Borrador",
+  ABIERTO: "Registro abierto",
+  CERRADO: "Registro cerrado",
+};
+
+/**
+ * Color del estado de registro. Vive aquí (no en cada página) por la Regla del
+ * Semáforo Único. BORRADOR = neutro; ABIERTO = ok/verde (acepta asistentes);
+ * CERRADO = info/navy (evidencia consolidada).
+ */
+export const ESTADO_REGISTRO_BADGE: Record<EstadoRegistro, string> = {
+  BORRADOR: "bg-surface-2 text-muted ring-1 ring-border",
+  ABIERTO: "bg-estado-okBg text-estado-ok ring-1 ring-estado-ok/30",
+  CERRADO: "bg-estado-infoBg text-estado-info ring-1 ring-estado-info/30",
+};
+
+/** Punto de color del estado de registro, para listas compactas. */
+export const ESTADO_REGISTRO_DOT: Record<EstadoRegistro, string> = {
+  BORRADOR: "bg-estado-pendiente",
+  ABIERTO: "bg-estado-ok",
+  CERRADO: "bg-estado-info",
+};
+
+/** Pill de estado de registro ya resuelta: className + punto + etiqueta. */
+export function estadoRegistroPill(estado: EstadoRegistro): {
+  className: string;
+  dot: string;
+  label: string;
+} {
+  return {
+    className: `${PILL_BASE} ${ESTADO_REGISTRO_BADGE[estado]}`,
+    dot: ESTADO_REGISTRO_DOT[estado],
+    label: ESTADO_REGISTRO_LABEL[estado],
   };
 }
 

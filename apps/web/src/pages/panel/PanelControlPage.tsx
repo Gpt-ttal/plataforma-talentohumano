@@ -1,6 +1,6 @@
 import { Suspense, lazy, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import type { EstadoGlobal } from "@pys/shared"
+import type { EstadoGlobal, RolUsuario } from "@pys/shared"
 import {
   agregarPorEstado,
   agruparPorCampo,
@@ -40,7 +40,7 @@ const AGING_FILAS = [
   { key: "atrasados", label: "Atrasados", tone: "bg-estado-rechazo" },
   { key: "proximos", label: "Próximos (≤ 7 días)", tone: "bg-gold-400" },
   { key: "masAdelante", label: "Más adelante", tone: "bg-navy-500" },
-  { key: "sinFecha", label: "Sin fecha", tone: "bg-silver-400" },
+  { key: "sinFecha", label: "Sin fecha", tone: "bg-faint" },
 ] as const
 
 function ChartFallback({ height = "h-56" }: { height?: string }) {
@@ -61,9 +61,9 @@ function AgingRow({
   return (
     <li className="flex items-center gap-3">
       <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${tone}`} />
-      <span className="flex-1 text-sm text-navy-700">{label}</span>
-      <span className="font-mono text-xs text-silver-600">{pct(value, total)}</span>
-      <span className="w-8 text-right text-sm font-semibold tabular-nums text-navy-900">
+      <span className="flex-1 text-sm text-foreground">{label}</span>
+      <span className="font-mono text-xs text-muted">{pct(value, total)}</span>
+      <span className="w-8 text-right text-sm font-semibold tabular-nums text-foreground">
         {fmt(value)}
       </span>
     </li>
@@ -88,18 +88,18 @@ function ResolverHoy({
       <Panel icon="grid" title="Qué resolver hoy">
         <Link
           to={hrefCon(oficina, { estado: "PENDIENTE" })}
-          className="group flex items-center gap-4 rounded-xl border border-silver-200 bg-gradient-to-r from-gold-50 to-white px-4 py-3 ring-1 ring-gold-300/50 transition hover:shadow-luxe"
+          className="group flex items-center gap-4 rounded-xl border border-border bg-gradient-to-r from-estado-listoBg to-card px-4 py-3 ring-1 ring-gold-300/50 transition hover:shadow-luxe"
         >
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gold-sheen text-navy-900">
             <Icon name="clock" className="h-5 w-5" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold text-navy-900">
+            <span className="block text-sm font-semibold text-foreground">
               {atrasados === 0
                 ? "Sin retiros atrasados"
                 : `${fmt(atrasados)} retiro${atrasados === 1 ? "" : "s"} atrasado${atrasados === 1 ? "" : "s"}`}
             </span>
-            <span className="block text-xs text-silver-600">
+            <span className="block text-xs text-muted">
               {atrasados === 0
                 ? "El proceso está al día con las fechas de retiro."
                 : "Su fecha de retiro ya pasó y el trámite sigue pendiente."}
@@ -107,7 +107,7 @@ function ResolverHoy({
           </span>
           <Icon
             name="arrow"
-            className="h-4 w-4 shrink-0 text-silver-400 transition-colors group-hover:text-gold-600"
+            className="h-4 w-4 shrink-0 text-faint transition-colors group-hover:text-gold-600"
           />
         </Link>
       </Panel>
@@ -118,18 +118,18 @@ function ResolverHoy({
     <Panel icon="check" title="Qué resolver hoy">
       <Link
         to={hrefCon(oficina, { estado: "LISTO_PARA_LIQUIDAR" })}
-        className="group flex items-center gap-4 rounded-xl border border-silver-200 bg-gradient-to-r from-gold-50 to-white px-4 py-3 ring-1 ring-gold-300/50 transition hover:shadow-luxe"
+        className="group flex items-center gap-4 rounded-xl border border-border bg-gradient-to-r from-estado-listoBg to-card px-4 py-3 ring-1 ring-gold-300/50 transition hover:shadow-luxe"
       >
         <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gold-sheen text-lg font-bold tabular-nums text-navy-900">
           {fmt(listosParaLiquidar)}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-navy-900">
+          <span className="block text-sm font-semibold text-foreground">
             {listosParaLiquidar === 0
               ? "Nada por liquidar por ahora"
               : `Listo${listosParaLiquidar === 1 ? "" : "s"} para generar liquidación`}
           </span>
-          <span className="block text-xs text-silver-600">
+          <span className="block text-xs text-muted">
             {listosParaLiquidar === 0
               ? "Ningún colaborador tiene todas sus áreas en visto bueno."
               : `${fmt(listosParaLiquidar)} colaborador${listosParaLiquidar === 1 ? "" : "es"} con todas las áreas OK.`}
@@ -137,7 +137,7 @@ function ResolverHoy({
         </span>
         <Icon
           name="arrow"
-          className="h-4 w-4 shrink-0 text-silver-400 transition-colors group-hover:text-gold-600"
+          className="h-4 w-4 shrink-0 text-faint transition-colors group-hover:text-gold-600"
         />
       </Link>
     </Panel>
@@ -159,13 +159,13 @@ function PanelHeader({
   return (
     <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="min-w-0">
-        <p className="mb-1.5 font-mono text-[10.5px] uppercase tracking-[0.18em] text-silver-600">
+        <p className="mb-1.5 font-mono text-[10.5px] uppercase tracking-[0.18em] text-muted">
           {formatDate()}
         </p>
-        <h1 className="font-display text-3xl font-bold leading-tight tracking-tight text-navy-900">
+        <h1 className="font-display text-3xl font-bold leading-tight tracking-tight text-foreground">
           {getGreeting()}, <span className="text-gold-600">{firstName}</span>
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-silver-600">
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
           Panel de control · Corporación Universitaria Americana. Módulos, métricas del
           trámite y lo urgente del día en una sola vista.
         </p>
@@ -189,11 +189,13 @@ function PanelHeader({
 
 function ErrorPanel({
   firstName,
+  rol,
   esSuperadmin,
   oficina,
   onRefetch,
 }: {
   firstName: string
+  rol: RolUsuario
   esSuperadmin: boolean
   oficina: string
   onRefetch: () => void
@@ -206,8 +208,8 @@ function ErrorPanel({
         oficina={oficina}
         onRefetch={onRefetch}
       />
-      <ModuleLauncher esSuperadmin={esSuperadmin} oficina={oficina} />
-      <div className="rounded-xl border border-estado-rechazo/30 bg-red-50 px-4 py-3 text-sm text-estado-rechazo">
+      <ModuleLauncher rol={rol} />
+      <div className="rounded-xl border border-estado-rechazo/30 bg-estado-rechazoBg px-4 py-3 text-sm text-estado-rechazo">
         No se pudieron cargar las métricas del trámite.
       </div>
     </div>
@@ -251,7 +253,8 @@ export function PanelControlPage() {
   const firstName = usuario?.nombre?.split(/\s+/)[0] ?? "Usuario"
   // Oficina del rol (el Panel solo lo ven SA y TH): los enlaces nunca apuntan a
   // /paz-y-salvo/funcionarios (SA-only) para que TH no caiga en /no-access.
-  const oficina = rutaOficinaPorRol(rol ?? "SUPERADMIN")
+  const rolEfectivo: RolUsuario = rol ?? "SUPERADMIN"
+  const oficina = rutaOficinaPorRol(rolEfectivo)
   const refetchAll = () => {
     void metricasQ.refetch()
     void todosQ.refetch()
@@ -274,6 +277,7 @@ export function PanelControlPage() {
     return (
       <ErrorPanel
         firstName={firstName}
+        rol={rolEfectivo}
         esSuperadmin={esSuperadmin}
         oficina={oficina}
         onRefetch={refetchAll}
@@ -308,13 +312,13 @@ export function PanelControlPage() {
         onRefetch={refetchAll}
       />
 
-      <ModuleLauncher esSuperadmin={esSuperadmin} oficina={oficina} />
+      <ModuleLauncher rol={rolEfectivo} />
 
       {/* Controles: filtro por fecha de retiro (lente sobre la población). */}
-      <div className="flex flex-col gap-3 rounded-xl border border-silver-200 bg-white/75 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card/75 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <FiltroFecha rango={rango} onChange={setRango} />
         {hayFiltro && (
-          <span className="inline-flex w-fit items-center gap-2 rounded-full bg-navy-50 px-3 py-1 text-[11px] font-semibold text-navy-700 ring-1 ring-navy-200">
+          <span className="inline-flex w-fit items-center gap-2 rounded-full bg-surface-2 px-3 py-1 text-[11px] font-semibold text-foreground ring-1 ring-border">
             <span className="h-1.5 w-1.5 rounded-full bg-gold-400" />
             Retiro: {rango.desde ? formatFecha(rango.desde) : "inicio"} a{" "}
             {rango.hasta ? formatFecha(rango.hasta) : "hoy"} · {fmt(total)} funcionario
@@ -395,7 +399,7 @@ export function PanelControlPage() {
       <Panel
         icon="clock"
         title="Antigüedad del proceso"
-        right={<span className="font-mono text-[10px] text-silver-600">{fmt(agingTotal)} casos</span>}
+        right={<span className="font-mono text-[10px] text-muted">{fmt(agingTotal)} casos</span>}
       >
         <div className="mb-4">
           <Suspense fallback={<ChartFallback height="h-14" />}>
@@ -425,18 +429,18 @@ export function PanelControlPage() {
           className="xl:col-span-3"
           right={
             m.pendientesPorArea.length > 7 ? (
-              <span className="font-mono text-[10px] text-silver-600">
+              <span className="font-mono text-[10px] text-muted">
                 Top 7 de {m.pendientesPorArea.length}
               </span>
             ) : undefined
           }
         >
-          <p className="mb-3 text-xs text-silver-600">
+          <p className="mb-3 text-xs text-muted">
             Vistos buenos aún sin resolver por dependencia (vista global, no afectada por el
             filtro de fecha).
           </p>
           {topAreas.length === 0 ? (
-            <div className="rounded-lg bg-silver-50 px-4 py-8 text-center text-sm text-silver-600">
+            <div className="rounded-lg bg-surface-2 px-4 py-8 text-center text-sm text-muted">
               Sin pendientes por área.
             </div>
           ) : (

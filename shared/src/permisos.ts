@@ -39,6 +39,9 @@ export function rutaInicialPorRol(
       return "/paz-y-salvo/control-interno";
     case "AREA":
       return "/paz-y-salvo/mi-area";
+    case "SST":
+      // Rol acotado al módulo de Capacitaciones (no opera Paz y Salvo).
+      return "/capacitaciones";
   }
 }
 
@@ -60,6 +63,9 @@ export function rutaOficinaPorRol(rol: RolUsuario): string {
       return "/paz-y-salvo/control-interno";
     case "AREA":
       return "/paz-y-salvo/mi-area";
+    case "SST":
+      // SST no tiene oficina en Paz y Salvo; su módulo es Capacitaciones.
+      return "/capacitaciones";
   }
 }
 

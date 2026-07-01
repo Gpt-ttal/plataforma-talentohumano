@@ -46,10 +46,10 @@ const ESTADO_STYLE: Record<
   { dot: string; soft: string; line: string; text: string }
 > = {
   PENDIENTE: {
-    dot: "bg-silver-400",
-    soft: "bg-silver-50",
-    line: "from-silver-300 to-silver-100",
-    text: "text-silver-600",
+    dot: "bg-faint",
+    soft: "bg-surface-2",
+    line: "from-hairline to-border",
+    text: "text-muted",
   },
   LISTO_PARA_LIQUIDAR: {
     dot: "bg-gold-400",
@@ -88,19 +88,19 @@ function WorkflowStep({
 }) {
   const style = ESTADO_STYLE[estado]
   const content = (
-    <div className="flex h-full flex-col justify-between gap-4 rounded-xl border border-silver-200 bg-white p-4 transition duration-150 group-hover:border-gold-300/70 group-hover:shadow-luxe">
+    <div className="flex h-full flex-col justify-between gap-4 rounded-xl border border-border bg-card p-4 transition duration-150 group-hover:border-gold-300/70 group-hover:shadow-luxe">
       <div className="flex items-start justify-between gap-3">
         <span className={`grid h-9 w-9 place-items-center rounded-lg ${style.soft} ${style.text}`}>
           <Icon name={icon} className="h-4 w-4" />
         </span>
-        <span className="text-2xl font-bold tabular-nums text-navy-900">{fmt(value)}</span>
+        <span className="text-2xl font-bold tabular-nums text-foreground">{fmt(value)}</span>
       </div>
       <div>
         <div className="flex items-center gap-2">
           <span className={`h-2 w-2 rounded-full ${style.dot}`} />
-          <h3 className="text-sm font-semibold text-navy-900">{label}</h3>
+          <h3 className="text-sm font-semibold text-foreground">{label}</h3>
         </div>
-        <p className="mt-1 text-xs text-silver-600">{sub}</p>
+        <p className="mt-1 text-xs text-muted">{sub}</p>
       </div>
     </div>
   )
@@ -128,7 +128,7 @@ export function FlujoTramite({
       right={
         <Link
           to={oficina}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-silver-600 transition hover:text-navy-800"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted transition hover:text-foreground"
         >
           Ver catálogo
           <Icon name="arrow" className="h-3.5 w-3.5" />

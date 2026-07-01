@@ -24,7 +24,7 @@ export function Segmented({
     <div
       role="tablist"
       aria-label={etiqueta}
-      className="inline-flex items-center gap-1 rounded-lg border border-silver-200 bg-white/70 p-1 shadow-luxe"
+      className="inline-flex items-center gap-1 rounded-lg border border-border bg-card/70 p-1 shadow-luxe"
     >
       {opciones.map((o) => {
         const sel = o.value === activo
@@ -37,7 +37,7 @@ export function Segmented({
             className={`rounded-md px-4 py-1.5 text-xs font-semibold transition-all duration-200 ${
               sel
                 ? "bg-navy-deep text-white shadow-luxe ring-1 ring-gold/35"
-                : "text-silver-600 hover:bg-white hover:text-navy-800"
+                : "text-muted hover:bg-card hover:text-foreground"
             }`}
           >
             {o.label}

@@ -23,12 +23,12 @@ export function ChipFiltro({
       className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
         activo
           ? "bg-navy-deep text-white shadow-luxe ring-1 ring-gold/45"
-          : "bg-white/82 text-silver-600 ring-1 ring-silver-200 hover:bg-white hover:text-navy-800 hover:ring-gold-300"
+          : "bg-card/82 text-muted ring-1 ring-border hover:bg-card hover:text-foreground hover:ring-gold-300"
       }`}
     >
       {label}
       {contador !== undefined && (
-        <span className={`tabular-nums ${activo ? "text-gold-200" : "text-silver-600"}`}>
+        <span className={`tabular-nums ${activo ? "text-gold-200" : "text-muted"}`}>
           {contador}
         </span>
       )}

@@ -12,6 +12,7 @@ export { cambiarEstadoArea } from "./funcionarios/cambiarEstadoArea.js"
 export { generarLiquidacion } from "./funcionarios/generarLiquidacion.js"
 export { registrarLiquidacion } from "./funcionarios/registrarLiquidacion.js"
 export { listarFuncionarios } from "./funcionarios/listarFuncionarios.js"
+export { obtenerMatriz } from "./funcionarios/obtenerMatriz.js"
 export { obtenerDetalle } from "./funcionarios/obtenerDetalle.js"
 export { obtenerMetricas } from "./funcionarios/obtenerMetricas.js"
 
@@ -30,7 +31,22 @@ export { listarUsuarios } from "./usuarios/listarUsuarios.js"
 
 // Áreas
 export { listarAreas } from "./areas/listarAreas.js"
+export { crearArea } from "./areas/crearArea.js"
+export { renombrarArea } from "./areas/renombrarArea.js"
+export { moverArea } from "./areas/moverArea.js"
+export { cambiarActivaArea } from "./areas/cambiarActivaArea.js"
 
 // Auth
 export { asegurarUsuario } from "./auth/asegurarUsuario.js"
 export type { ResultadoAlta } from "./auth/asegurarUsuario.js"
+
+// Capacitaciones
+export { crearCapacitacion } from "./capacitaciones/crearCapacitacion.js"
+export { listarCapacitaciones } from "./capacitaciones/listarCapacitaciones.js"
+export { obtenerDetalleCapacitacion } from "./capacitaciones/obtenerDetalleCapacitacion.js"
+export { obtenerCapacitacionPublica } from "./capacitaciones/obtenerCapacitacionPublica.js"
+export { editarCapacitacion } from "./capacitaciones/editarCapacitacion.js"
+export { abrirRegistro } from "./capacitaciones/abrirRegistro.js"
+export { cerrarRegistro } from "./capacitaciones/cerrarRegistro.js"
+export { exportarAsistencias } from "./capacitaciones/exportarAsistencias.js"
+export { registrarAsistenciaPublica } from "./capacitaciones/registrarAsistenciaPublica.js"

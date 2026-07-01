@@ -9,7 +9,9 @@ import { authRouter } from "./routes/auth.routes.js"
 import { funcionariosRouter } from "./routes/funcionarios.routes.js"
 import { usuariosRouter } from "./routes/usuarios.routes.js"
 import { catalogoRouter } from "./routes/catalogo.routes.js"
+import { areasRouter } from "./routes/areas.routes.js"
 import { archivoRouter } from "./routes/archivo.routes.js"
+import { capacitacionesRouter } from "./routes/capacitaciones.routes.js"
 
 /**
  * Ensambla la app Express: hardening (helmet), CORS al origen del frontend,
@@ -42,7 +44,9 @@ export function crearApp() {
   app.use("/api/auth", authRouter)
   app.use("/api/funcionarios", funcionariosRouter)
   app.use("/api/usuarios", usuariosRouter)
+  app.use("/api/areas", areasRouter)
   app.use("/api/archivo", archivoRouter)
+  app.use("/api/capacitaciones", capacitacionesRouter)
   app.use("/api", catalogoRouter)
 
   app.use(errorHandler)

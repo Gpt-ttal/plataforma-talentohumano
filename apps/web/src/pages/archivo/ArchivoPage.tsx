@@ -20,6 +20,7 @@ import { FilaDesplegable } from "../../components/ui/FilaDesplegable"
 import { EmptyState } from "../../components/ui/EmptyState"
 import { ListaSkeleton } from "../../components/ui/ListaSkeleton"
 import { HeaderMetaDot, PageHeader } from "../../components/ui/PageHeader"
+import { SpotArchivoVacio } from "../../components/ui/spot/Spots"
 
 const BASE = "/archivo"
 
@@ -64,7 +65,7 @@ export function ArchivoPage() {
         <div className="space-y-7">
           {data.items.length === 0 ? (
             <EmptyState
-              icono="🗂️"
+              ilustracion={<SpotArchivoVacio />}
               titulo="Sin trámites archivados"
               mensaje="No hay colaboradores finalizados que coincidan con la búsqueda o el rango de fechas."
             />

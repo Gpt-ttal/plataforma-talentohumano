@@ -39,7 +39,7 @@ export function GenerarLiquidacionButton({
       <div className="flex flex-col items-start gap-1">
         <div className="flex flex-wrap items-center gap-2">
           <span
-            className={`font-medium text-navy-700 ${compact ? "text-xs" : "text-sm"}`}
+            className={`font-medium text-foreground ${compact ? "text-xs" : "text-sm"}`}
           >
             {compact ? "¿Confirmar?" : "¿Generar la liquidación?"}
           </span>
@@ -58,7 +58,7 @@ export function GenerarLiquidacionButton({
               setError(null);
             }}
             disabled={pending}
-            className={`rounded-md ${sizing} font-medium text-navy-600 ring-1 ring-silver-300 transition-colors hover:bg-silver-50 disabled:opacity-50`}
+            className={`rounded-md ${sizing} font-medium text-muted ring-1 ring-border transition-colors hover:bg-surface-2 disabled:opacity-50`}
           >
             Cancelar
           </button>

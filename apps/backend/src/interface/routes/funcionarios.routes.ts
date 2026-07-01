@@ -22,6 +22,13 @@ funcionariosRouter.get(
   requireRol("SUPERADMIN", "TALENTO_HUMANO", "CONTROL_INTERNO"),
   asyncHandler(c.listar),
 )
+// Matriz consolidada funcionario × área. DEBE ir antes de `/:id` para que el
+// literal "matriz" no se capture como un id de funcionario.
+funcionariosRouter.get(
+  "/matriz",
+  requireRol("SUPERADMIN", "TALENTO_HUMANO", "CONTROL_INTERNO"),
+  asyncHandler(c.matriz),
+)
 funcionariosRouter.get(
   "/:id",
   requireRol("SUPERADMIN", "TALENTO_HUMANO", "CONTROL_INTERNO"),

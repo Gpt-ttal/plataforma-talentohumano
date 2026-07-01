@@ -2,7 +2,8 @@ import type { Request, Response } from "express"
 import {
   cambiarEstadoAreaSchema,
   filtroFuncionariosSchema,
-  normalizarPagina,
+  filtroMatrizSchema,
+  filtroMiAreaSchema,
 } from "@pys/shared"
 import { ErrorValidacion } from "../../application/errors.js"
 import type { Casos } from "../container.js"
@@ -12,12 +13,6 @@ function mensajeZod(error: { issues: { path: (string | number)[]; message: strin
   return error.issues
     .map((i) => `${i.path.join(".") || "(raíz)"}: ${i.message}`)
     .join("; ")
-}
-
-/** Parsea un query param a entero, o `undefined` si no es un número válido. */
-function numQuery(v: unknown): number | undefined {
-  const n = Number(v)
-  return Number.isFinite(n) ? n : undefined
 }
 
 /**
@@ -31,6 +26,12 @@ export function funcionariosController(casos: Casos) {
       const parsed = filtroFuncionariosSchema.safeParse(req.query)
       if (!parsed.success) throw new ErrorValidacion(mensajeZod(parsed.error))
       res.json(await casos.listarFuncionarios(req.usuario!, parsed.data))
+    },
+
+    matriz: async (req: Request, res: Response) => {
+      const parsed = filtroMatrizSchema.safeParse(req.query)
+      if (!parsed.success) throw new ErrorValidacion(mensajeZod(parsed.error))
+      res.json(await casos.obtenerMatriz(req.usuario!, parsed.data))
     },
 
     detalle: async (req: Request, res: Response) => {
@@ -56,20 +57,14 @@ export function funcionariosController(casos: Casos) {
     },
 
     miArea: async (req: Request, res: Response) => {
-      const areaId = String(req.query.areaId ?? "")
-      const pagina = normalizarPagina({
-        pagina: numQuery(req.query.pagina),
-        porPagina: numQuery(req.query.porPagina),
-      })
-      res.json(await casos.listarGestionArea(req.usuario!, areaId, pagina))
+      const parsed = filtroMiAreaSchema.safeParse(req.query)
+      if (!parsed.success) throw new ErrorValidacion(mensajeZod(parsed.error))
+      const { areaId, ...filtro } = parsed.data
+      res.json(await casos.listarGestionArea(req.usuario!, areaId, filtro))
     },
 
     metricas: async (req: Request, res: Response) => {
       res.json(await casos.obtenerMetricas(req.usuario!))
-    },
-
-    areas: async (req: Request, res: Response) => {
-      res.json(await casos.listarAreas(req.usuario!))
     },
   }
 }

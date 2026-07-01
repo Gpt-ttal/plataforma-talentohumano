@@ -9,8 +9,8 @@ import { hrefCon } from "@pys/shared"
 const BTN =
   "inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold ring-1 transition-all"
 const BTN_ON =
-  "bg-white/85 text-navy-700 ring-silver-200 hover:bg-white hover:text-navy-900 hover:ring-gold-300 hover:shadow-luxe"
-const BTN_OFF = "cursor-not-allowed bg-silver-50/80 text-silver-300 ring-silver-200"
+  "bg-card/85 text-foreground ring-border hover:bg-card hover:text-foreground hover:ring-gold-300 hover:shadow-luxe"
+const BTN_OFF = "cursor-not-allowed bg-surface-2/80 text-faint ring-border"
 
 export function Paginacion({
   basePath,
@@ -27,7 +27,7 @@ export function Paginacion({
 }) {
   const resultados = `${total} resultado${total === 1 ? "" : "s"}`
   if (totalPaginas <= 1) {
-    return <p className="text-xs text-silver-600">{resultados}</p>
+    return <p className="text-xs text-muted">{resultados}</p>
   }
 
   const hrefPagina = (n: number) =>
@@ -38,11 +38,11 @@ export function Paginacion({
 
   return (
     <nav
-      className="flex items-center justify-between gap-3 rounded-xl border border-silver-200 bg-white/55 px-3 py-2"
+      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card/55 px-3 py-2"
       aria-label="Paginación"
     >
-      <p className="text-xs text-silver-600">
-        Página <span className="font-semibold text-navy-700">{pagina}</span> de{" "}
+      <p className="text-xs text-muted">
+        Página <span className="font-semibold text-foreground">{pagina}</span> de{" "}
         {totalPaginas} · {resultados}
       </p>
       <div className="flex items-center gap-1.5">

@@ -14,6 +14,22 @@ interface PayloadItem {
   payload?: { label?: string; clave?: string; color?: string }
 }
 
+export function coloresChart(esDark: boolean) {
+  return esDark
+    ? {
+        ejeTexto: "#9AA6B6",
+        grid: "#27313F",
+        cursor: "rgba(182,141,64,0.12)",
+        barra: "#7EA6F5",
+      }
+    : {
+        ejeTexto: "#697080",
+        grid: "#E0E4EC",
+        cursor: "rgba(34,64,107,0.06)",
+        barra: "#22406B",
+      }
+}
+
 export function ChartTooltip({
   active,
   payload,
@@ -34,7 +50,7 @@ export function ChartTooltip({
       : ""
 
   return (
-    <div className="rounded-lg border border-silver-200 bg-white px-3 py-2 shadow-luxe">
+    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-luxe">
       <div className="flex items-center gap-2">
         {color && (
           <span
@@ -42,9 +58,9 @@ export function ChartTooltip({
             style={{ background: color }}
           />
         )}
-        <span className="text-xs font-semibold text-navy-900">{nombre}</span>
+        <span className="text-xs font-semibold text-foreground">{nombre}</span>
       </div>
-      <div className="mt-0.5 font-mono text-xs tabular-nums text-silver-600">
+      <div className="mt-0.5 font-mono text-xs tabular-nums text-muted">
         {valor.toLocaleString("es-CO")}
         {porcentaje}
       </div>
@@ -55,7 +71,7 @@ export function ChartTooltip({
 /** Marcador de gráfica sin datos, con la misma altura visual de un panel. */
 export function VacioChart({ children }: { children: ReactNode }) {
   return (
-    <div className="grid h-40 place-items-center rounded-lg bg-silver-50 px-4 text-center text-sm text-silver-600">
+    <div className="grid h-40 place-items-center rounded-lg bg-surface-2 px-4 text-center text-sm text-muted">
       {children}
     </div>
   )

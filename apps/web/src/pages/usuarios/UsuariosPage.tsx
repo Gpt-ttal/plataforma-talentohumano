@@ -36,14 +36,14 @@ export function UsuariosPage() {
         meta={
           <>
             <span>Control de acceso</span>
-            <span className="hidden text-silver-300 sm:inline">/</span>
+            <span className="hidden text-faint sm:inline">/</span>
             <HeaderMetaDot tone="info">Roles por operación</HeaderMetaDot>
           </>
         }
       />
 
       {isError ? (
-        <div className="rounded-xl border border-estado-rechazo/30 bg-red-50 px-4 py-3 text-sm text-estado-rechazo">
+        <div className="rounded-xl border border-estado-rechazo/30 bg-estado-rechazoBg px-4 py-3 text-sm text-estado-rechazo">
           No se pudieron cargar los usuarios. Vuelve a intentarlo.
         </div>
       ) : cargando ? (
@@ -59,15 +59,15 @@ export function UsuariosPage() {
                   <span className="flex min-w-0 items-center gap-3">
                     <Avatar nombre={usr.nombre} size="md" />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium text-navy-900">
+                      <span className="block truncate font-medium text-foreground">
                         {usr.nombre}
                       </span>
-                      <span className="block truncate text-xs text-silver-600">
+                      <span className="block truncate text-xs text-muted">
                         {usr.email}
                       </span>
                     </span>
                     <span className="hidden items-center gap-2 sm:flex">
-                      <span className="text-xs text-silver-600">
+                      <span className="text-xs text-muted">
                         {ROL_LABEL[usr.rol]}
                         {usr.areaId
                           ? ` · ${areaNombrePorId.get(usr.areaId) ?? "—"}`
@@ -82,7 +82,7 @@ export function UsuariosPage() {
               >
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-center gap-2 sm:hidden">
-                    <span className="text-xs text-silver-600">
+                    <span className="text-xs text-muted">
                       {ROL_LABEL[usr.rol]}
                     </span>
                     <span className={estadoUsuarioPill(usr.estado).className}>

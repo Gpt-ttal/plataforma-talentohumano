@@ -29,16 +29,16 @@ export function ProtectedRoute({
     return (
       <div className="mx-auto grid min-h-[100dvh] max-w-md place-items-center px-4 text-center">
         <div className="space-y-4">
-          <h1 className="font-display text-xl font-semibold text-navy-900">
+          <h1 className="font-display text-xl font-semibold text-foreground">
             No pudimos conectar con el servidor
           </h1>
-          <p className="text-sm text-silver-600">
+          <p className="text-sm text-muted">
             Revisa tu conexión e inténtalo de nuevo. Tu sesión sigue activa.
           </p>
           <button
             type="button"
             onClick={() => void refrescar()}
-            className="inline-flex items-center justify-center rounded-xl border border-silver-300 bg-white px-5 py-2.5 text-sm font-semibold text-navy-800 shadow-luxe transition hover:border-gold/50 hover:shadow-luxe-lg"
+            className="inline-flex items-center justify-center rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-luxe transition hover:border-gold/50 hover:shadow-luxe-lg"
           >
             Reintentar
           </button>

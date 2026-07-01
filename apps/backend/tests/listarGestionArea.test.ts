@@ -42,4 +42,13 @@ describe("listarGestionArea (cola de trabajo de un área)", () => {
     const r = await uc(hacerUsuario({ rol: "SUPERADMIN" }), "cualquiera")
     expect(r).toBe(paginaVacia)
   })
+
+  it("propaga el corte por bucket hasta el repo", async () => {
+    const repo = {
+      listarGestionAreaPaginado: vi.fn().mockResolvedValue(paginaVacia),
+    } as any
+    const uc = listarGestionArea({ repo })
+    await uc(hacerUsuario({ rol: "AREA", areaId: "a1" }), "a1", { bucket: "pendientes" })
+    expect(repo.listarGestionAreaPaginado).toHaveBeenCalledWith("a1", { bucket: "pendientes" })
+  })
 })

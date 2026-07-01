@@ -69,7 +69,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-navy-950/45 px-4 py-8 backdrop-blur-sm animate-ps-fade sm:py-12"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-overlay/45 px-4 py-8 backdrop-blur-sm animate-ps-fade sm:py-12"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) cerrar()
       }}
@@ -80,7 +80,7 @@ export function Modal({
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-silver-200 bg-silver-50 shadow-luxe-lg outline-none animate-ps-modal"
+        className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-border bg-surface shadow-luxe-lg outline-none animate-ps-modal"
       >
         <span className="absolute inset-x-0 top-0 z-10 h-1 bg-gold-sheen" />
 
@@ -88,7 +88,7 @@ export function Modal({
           type="button"
           onClick={cerrar}
           aria-label="Cerrar"
-          className="absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/80 text-silver-600 shadow-luxe ring-1 ring-silver-200 transition-colors hover:text-navy-700 hover:ring-gold-300"
+          className="absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full bg-card/80 text-muted shadow-luxe ring-1 ring-border transition-colors hover:text-foreground hover:ring-gold-300"
         >
           <span aria-hidden className="text-lg leading-none">
             ×

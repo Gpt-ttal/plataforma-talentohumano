@@ -36,7 +36,7 @@ export function Buscador({
   return (
     <div className="relative w-full sm:max-w-sm">
       <span
-        className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-silver-600"
+        className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted"
         aria-hidden
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -50,7 +50,7 @@ export function Buscador({
         onChange={(e) => setValor(e.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="w-full rounded-lg border border-silver-200 bg-white/88 py-2.5 pl-10 pr-4 text-sm text-navy-800 shadow-luxe placeholder:text-silver-600 transition focus:border-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-300/45"
+        className="w-full rounded-lg border border-border bg-card/88 py-2.5 pl-10 pr-4 text-sm text-foreground shadow-luxe placeholder:text-muted transition focus:border-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-300/45"
       />
     </div>
   )

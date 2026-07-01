@@ -1,6 +1,9 @@
+import { useState } from "react"
 import { Navigate, useLocation } from "react-router-dom"
 import { rutaInicialPorRol } from "@pys/shared"
 import { useAuth } from "../../context/AuthContext"
+import { AuthShell } from "../../components/auth/AuthShell"
+import { GoogleIcon } from "../../components/auth/GoogleIcon"
 
 /**
  * Entrada al sistema. Login institucional con Google (Supabase Auth). Si ya hay
@@ -11,44 +14,69 @@ export function LoginPage() {
   const { usuario, isLoading, loginGoogle } = useAuth()
   const location = useLocation()
   const errorOAuth = (location.state as { error?: string } | null)?.error ?? null
+  const [cargando, setCargando] = useState(false)
 
   if (!isLoading && usuario && usuario.estado === "ACTIVO") {
     return <Navigate to={rutaInicialPorRol(usuario.rol, usuario.estado)} replace />
   }
 
   return (
-    <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center gap-8 px-4 text-center">
-      <img
-        src="/logo-americana-completo.png"
-        alt="Corporación Universitaria Americana — Vigilada Mineducación"
-        className="h-auto w-72 max-w-[82%] drop-shadow-[0_4px_14px_rgba(182,141,64,0.28)]"
-      />
-
+    <AuthShell
+      brand={
+        <img
+          src="/logo-americana-completo.png"
+          alt="Corporación Universitaria Americana — Vigilada Mineducación"
+          width={748}
+          height={333}
+          className="h-auto w-64 max-w-[82%] object-contain drop-shadow-[0_6px_16px_rgba(182,141,64,0.20)]"
+        />
+      }
+      title="Gestión Humana"
+      subtitle="Acceso a la plataforma integral de talento humano."
+    >
       {errorOAuth && (
         <p
           role="alert"
-          className="w-full rounded-xl border border-estado-rechazo/30 bg-estado-rechazo/5 px-4 py-3 text-sm text-estado-rechazo"
+          className="rounded-xl border border-estado-rechazo/30 bg-estado-rechazo/5 px-4 py-3 text-sm text-estado-rechazo"
         >
           No se pudo iniciar sesión: {errorOAuth}
         </p>
       )}
 
-      <div className="space-y-2">
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-navy-900">
-          Sistema de Paz y Salvo
-        </h1>
-        <p className="text-sm text-silver-600">
-          Acceso institucional para la gestión del retiro de funcionarios.
-        </p>
-      </div>
-
       <button
         type="button"
-        onClick={() => void loginGoogle()}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-silver-300 bg-white px-5 py-3 text-sm font-semibold text-navy-800 shadow-luxe transition hover:border-gold/50 hover:shadow-luxe-lg"
+        onClick={() => {
+          setCargando(true)
+          void loginGoogle()
+        }}
+        disabled={cargando || isLoading}
+        aria-busy={cargando}
+        className="inline-flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl border border-border bg-card px-5 py-3 text-sm font-semibold text-foreground shadow-luxe transition hover:border-gold/50 hover:shadow-luxe-lg disabled:cursor-not-allowed disabled:opacity-60"
       >
-        Continuar con Google
+        {cargando ? (
+          <>
+            <svg
+              aria-hidden
+              viewBox="0 0 24 24"
+              fill="none"
+              className="h-5 w-5 animate-spin text-muted motion-reduce:hidden"
+            >
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity="0.25" />
+              <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            Conectando…
+          </>
+        ) : (
+          <>
+            <GoogleIcon className="h-5 w-5" />
+            Continuar con Google
+          </>
+        )}
       </button>
-    </div>
+
+      <p className="text-xs text-muted">
+        Acceso exclusivo · dominio <strong className="text-foreground">@americana.edu.co</strong>
+      </p>
+    </AuthShell>
   )
 }

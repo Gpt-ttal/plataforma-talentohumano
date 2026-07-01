@@ -10,7 +10,7 @@ interface OpcionArea {
 }
 
 const INPUT =
-  "rounded-lg border border-silver-300 bg-white px-3 py-2 text-sm text-navy-800 focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400 disabled:opacity-50"
+  "rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400 disabled:opacity-50"
 
 /**
  * Asignación de rol/área y (des)activación de un usuario. El backend valida el
@@ -76,7 +76,7 @@ export function GestionUsuario({
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-silver-600">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
             Rol
           </span>
           <select
@@ -95,7 +95,7 @@ export function GestionUsuario({
 
         {rolSel === "AREA" && (
           <label className="flex flex-col gap-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-silver-600">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
               Área
             </span>
             <select
@@ -128,7 +128,7 @@ export function GestionUsuario({
             type="button"
             disabled={pending}
             onClick={() => void cambiarEstado("INACTIVO")}
-            className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-estado-rechazo ring-1 ring-estado-rechazo/30 transition hover:bg-red-50 disabled:opacity-50"
+            className="rounded-lg bg-card px-4 py-2 text-sm font-medium text-estado-rechazo ring-1 ring-estado-rechazo/30 transition hover:bg-estado-rechazoBg disabled:opacity-50"
           >
             Inactivar
           </button>
@@ -138,7 +138,7 @@ export function GestionUsuario({
             type="button"
             disabled={pending}
             onClick={() => void cambiarEstado("ACTIVO")}
-            className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-estado-ok ring-1 ring-estado-ok/30 transition hover:bg-estado-okBg disabled:opacity-50"
+            className="rounded-lg bg-card px-4 py-2 text-sm font-medium text-estado-ok ring-1 ring-estado-ok/30 transition hover:bg-estado-okBg disabled:opacity-50"
           >
             Reactivar
           </button>

@@ -39,13 +39,15 @@ export type RolUsuario =
   | "SUPERADMIN"
   | "TALENTO_HUMANO"
   | "CONTROL_INTERNO"
-  | "AREA";
+  | "AREA"
+  | "SST";
 
 export const ROLES_USUARIO: readonly RolUsuario[] = [
   "SUPERADMIN",
   "TALENTO_HUMANO",
   "CONTROL_INTERNO",
   "AREA",
+  "SST",
 ] as const;
 
 /** Ciclo de vida de un usuario: autoregistro → asignación → (des)activación. */
@@ -173,6 +175,50 @@ export interface FiltroFuncionarios {
   estado?: EstadoGlobal;
   pagina?: number;
   porPagina?: number;
+}
+
+/**
+ * Corte de la cola de un área: lo que falta gestionar vs. lo ya gestionado.
+ * "gestionados" = APROBADO | NO_APLICA | NO_APROBADO (todo lo que no es PENDIENTE).
+ */
+export type BucketGestion = "pendientes" | "gestionados" | "todos";
+
+export const BUCKETS_GESTION: readonly BucketGestion[] = [
+  "pendientes",
+  "gestionados",
+  "todos",
+] as const;
+
+/** Filtro de la cola de un área: paginación + corte por bucket. */
+export interface FiltroGestionArea {
+  pagina?: number;
+  porPagina?: number;
+  bucket?: BucketGestion;
+}
+
+/**
+ * Cola de un área ya paginada, con los contadores de cada bucket sobre el TOTAL
+ * del área (no de la página). Alimenta los chips "Por gestionar (n) / Gestionados (n)".
+ */
+export interface ColaGestionArea extends ResultadoPaginado<FilaGestionArea> {
+  conteos: { pendientes: number; gestionados: number; total: number };
+}
+
+/**
+ * Una fila de la matriz consolidada: un funcionario y el estado de cada área
+ * activa, indexado por `areaId`. Las áreas inactivas no participan (D2).
+ */
+export interface FilaMatriz {
+  funcionario: Funcionario;
+  estados: Record<string, EstadoArea>;
+}
+
+/**
+ * Matriz funcionario × área paginada para los supervisores (SA/TH/CI). Las
+ * columnas son las áreas activas en orden; cada fila trae el estado por área.
+ */
+export interface MatrizGestion extends ResultadoPaginado<FilaMatriz> {
+  areas: AreaVistoBueno[];
 }
 
 /** Métricas agregadas para el dashboard. */

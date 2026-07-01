@@ -19,7 +19,7 @@ export function Avatar({
 }) {
   return (
     <span
-      className={`grid shrink-0 place-items-center rounded-lg bg-gradient-to-br from-navy-50 to-white font-semibold text-navy-700 shadow-sm ring-1 ring-gold-200/60 ${TAMANOS[size]}`}
+      className={`grid shrink-0 place-items-center rounded-lg bg-gradient-to-br from-navy-50 to-card font-semibold text-navy-700 shadow-sm ring-1 ring-gold-200/60 dark:from-surface-2 dark:to-card dark:text-foreground ${TAMANOS[size]}`}
       aria-hidden
     >
       {iniciales(nombre)}

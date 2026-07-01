@@ -1,13 +1,15 @@
 import {
   BarChart,
   Bar,
+  CartesianGrid,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
 } from "recharts"
-import { ChartTooltip, VacioChart } from "./chartTheme"
+import { ChartTooltip, VacioChart, coloresChart } from "./chartTheme"
 import { usePrefersReducedMotion } from "../../../hooks/usePrefersReducedMotion"
+import { useTheme } from "../../../context/ThemeContext"
 
 export interface BarraDato {
   clave: string
@@ -32,6 +34,8 @@ export default function BarrasDimension({
   max?: number
 }) {
   const reduce = usePrefersReducedMotion()
+  const { esDark } = useTheme()
+  const colores = coloresChart(esDark)
   if (data.length === 0)
     return <VacioChart>Sin datos para esta dimensión.</VacioChart>
 
@@ -45,23 +49,24 @@ export default function BarrasDimension({
         layout="vertical"
         margin={{ top: 4, right: 20, bottom: 4, left: 4 }}
       >
+        <CartesianGrid horizontal={false} stroke={colores.grid} strokeDasharray="3 3" />
         <XAxis type="number" hide />
         <YAxis
           type="category"
           dataKey="clave"
           width={148}
-          tick={{ fontSize: 12, fill: "#697080" }}
+          tick={{ fontSize: 12, fill: colores.ejeTexto }}
           tickFormatter={truncar}
           tickLine={false}
           axisLine={false}
         />
         <Tooltip
-          cursor={{ fill: "rgba(34,64,107,0.06)" }}
+          cursor={{ fill: colores.cursor }}
           content={<ChartTooltip />}
         />
         <Bar
           dataKey="valor"
-          fill="#22406B"
+          fill={colores.barra}
           radius={[0, 6, 6, 0]}
           barSize={16}
           isAnimationActive={!reduce}

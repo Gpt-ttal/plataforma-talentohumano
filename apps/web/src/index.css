@@ -13,6 +13,71 @@
 
   --gold: #b68d40;
   --navy: #142943;
+  --gold-rgb: 182 141 64;
+  --navy-rgb: 20 41 67;
+
+  --bg: 244 247 251;
+  --surface: 244 247 251;
+  --card: 254 252 248;
+  --surface-2: 238 240 245;
+  --elevated: 255 255 255;
+  --overlay: 10 24 48;
+  --foreground: 10 24 48;
+  --muted: 105 112 128;
+  --faint: 174 182 198;
+  --border: 224 228 236;
+  --hairline: 204 210 222;
+  --plaqueta: 120 88 36;
+
+  --estado-pendiente: 139 147 166;
+  --estado-rechazo: 164 35 31;
+  --estado-rechazoBg: 253 232 232;
+  --estado-listo: 182 141 64;
+  --estado-listoBg: 244 232 198;
+  --estado-ok: 22 147 106;
+  --estado-okBg: 228 245 238;
+  --estado-info: 59 111 212;
+  --estado-infoBg: 232 239 252;
+  --estado-paz: 30 122 82;
+  --estado-pazBg: 227 242 234;
+
+  --chart-axis: 105 112 128;
+  --chart-grid: 224 228 236;
+  --chart-cursor: 34 64 107;
+  --chart-bar: 34 64 107;
+}
+
+html.dark {
+  color-scheme: dark;
+  --bg: 12 17 24;
+  --surface: 15 21 30;
+  --card: 22 29 39;
+  --surface-2: 28 37 48;
+  --elevated: 18 24 33;
+  --overlay: 0 0 0;
+  --foreground: 232 236 243;
+  --muted: 154 166 182;
+  --faint: 94 106 122;
+  --border: 39 49 63;
+  --hairline: 31 39 51;
+  --plaqueta: 233 209 150;
+
+  --estado-pendiente: 174 182 198;
+  --estado-rechazo: 248 113 113;
+  --estado-rechazoBg: 57 24 28;
+  --estado-listo: 233 209 150;
+  --estado-listoBg: 48 40 24;
+  --estado-ok: 77 206 161;
+  --estado-okBg: 16 42 37;
+  --estado-info: 126 166 245;
+  --estado-infoBg: 21 35 56;
+  --estado-paz: 101 218 160;
+  --estado-pazBg: 16 40 30;
+
+  --chart-axis: 154 166 182;
+  --chart-grid: 39 49 63;
+  --chart-cursor: 182 141 64;
+  --chart-bar: 126 166 245;
 }
 
 html,
@@ -23,19 +88,22 @@ body {
 
 body {
   position: relative;
-  color: #16202e;
+  color: rgb(var(--foreground));
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   /* Sistema "C": fondo perla frío y plano (token `bg`). Una sola veladura
      cálida casi imperceptible arriba-izquierda mantiene el aire "delux" sin
      ensuciar la lectura de tablas y tarjetas. */
-  background-color: #f4f7fb;
+  background-color: rgb(var(--bg));
   background-image: radial-gradient(
     1100px 520px at 8% -10%,
-    rgba(182, 141, 64, 0.045),
+    rgb(var(--gold-rgb) / 0.045),
     transparent 60%
   );
   background-attachment: fixed;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 body::before {
@@ -44,7 +112,7 @@ body::before {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image: radial-gradient(circle, rgba(20, 41, 67, 0.045) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgb(var(--navy-rgb) / 0.045) 1px, transparent 1px);
   background-size: 28px 28px;
   mask-image: linear-gradient(to bottom, black 0%, black 58%, transparent 100%);
 }
@@ -56,13 +124,102 @@ body::after {
   z-index: 0;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 260px),
-    radial-gradient(900px 280px at 50% -120px, rgba(182, 141, 64, 0.12), transparent 72%);
+    linear-gradient(180deg, rgb(255 255 255 / 0.22), transparent 260px),
+    radial-gradient(900px 280px at 50% -120px, rgb(var(--gold-rgb) / 0.12), transparent 72%);
+}
+
+html.dark body {
+  background-image: radial-gradient(
+    1100px 520px at 8% -10%,
+    rgb(var(--gold-rgb) / 0.035),
+    transparent 60%
+  );
+}
+
+html.dark body::before {
+  background-image: radial-gradient(circle, rgb(232 236 243 / 0.035) 1px, transparent 1px);
+  opacity: 0.7;
+}
+
+html.dark body::after {
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.035), transparent 260px),
+    radial-gradient(900px 280px at 50% -120px, rgb(var(--gold-rgb) / 0.08), transparent 72%);
 }
 
 body > * {
   position: relative;
   z-index: 1;
+}
+
+/* Compatibilidad dark para utilidades heredadas mientras las superficies migran a tokens semanticos. */
+html.dark .bg-white {
+  background-color: rgb(var(--card)) !important;
+}
+html.dark .bg-white\/55 {
+  background-color: rgb(var(--card) / 0.55) !important;
+}
+html.dark .bg-white\/70 {
+  background-color: rgb(var(--card) / 0.7) !important;
+}
+html.dark .bg-white\/75 {
+  background-color: rgb(var(--card) / 0.75) !important;
+}
+html.dark .bg-white\/80 {
+  background-color: rgb(var(--card) / 0.8) !important;
+}
+html.dark .bg-white\/82 {
+  background-color: rgb(var(--card) / 0.82) !important;
+}
+html.dark .bg-white\/85 {
+  background-color: rgb(var(--card) / 0.85) !important;
+}
+html.dark .bg-white\/88 {
+  background-color: rgb(var(--card) / 0.88) !important;
+}
+html.dark .bg-white\/92 {
+  background-color: rgb(var(--card) / 0.92) !important;
+}
+html.dark .hover\:bg-white:hover {
+  background-color: rgb(var(--card)) !important;
+}
+html.dark .text-navy-900,
+html.dark .text-navy-800,
+html.dark .text-navy-700 {
+  color: rgb(var(--foreground)) !important;
+}
+html.dark .text-navy-600 {
+  color: rgb(var(--muted)) !important;
+}
+html.dark .hover\:text-navy-900:hover,
+html.dark .hover\:text-navy-800:hover,
+html.dark .hover\:text-navy-700:hover {
+  color: rgb(var(--foreground)) !important;
+}
+html.dark .bg-navy-50 {
+  background-color: rgb(var(--surface-2)) !important;
+}
+html.dark .border-navy-200 {
+  border-color: rgb(var(--border)) !important;
+}
+html.dark .ring-navy-200 {
+  --tw-ring-color: rgb(var(--border)) !important;
+}
+html.dark .bg-red-50 {
+  background-color: rgb(var(--estado-rechazoBg)) !important;
+}
+html.dark .to-white {
+  --tw-gradient-to: rgb(var(--card)) var(--tw-gradient-to-position) !important;
+}
+html.dark .from-gold-50 {
+  --tw-gradient-from: rgb(var(--estado-listoBg)) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(var(--estado-listoBg) / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+html.dark .bg-gold-sheen.text-navy-900,
+html.dark .bg-gold-sheen.text-navy-800,
+html.dark .bg-gold-sheen.text-navy-700 {
+  color: #0a1830 !important;
 }
 
 /* Animaciones del modal de detalle (backdrop + tarjeta). */
@@ -134,6 +291,41 @@ body > * {
   }
 }
 
+/* "El Sello Lacrado" — entrada coreografiada de Login/Pendiente. */
+@keyframes ps-rule-draw {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+@keyframes ps-seal-glint {
+  0% {
+    box-shadow: 0 0 0 0 rgba(182, 141, 64, 0);
+  }
+  45% {
+    box-shadow:
+      0 0 0 5px rgba(182, 141, 64, 0.16),
+      0 0 22px 4px rgba(182, 141, 64, 0.34);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(182, 141, 64, 0);
+  }
+}
+@keyframes ps-auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .animate-card-in {
   animation: ps-card-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -168,30 +360,53 @@ body > * {
 }
 
 .premium-card {
-  background: rgba(254, 252, 248, 0.94);
-  border: 1px solid rgba(20, 41, 67, 0.08);
+  background: rgb(var(--card) / 0.94);
+  border: 1px solid rgb(var(--border) / 0.78);
   box-shadow:
-    0 1px 3px rgba(16, 28, 51, 0.055),
-    0 14px 38px -26px rgba(16, 28, 51, 0.35);
+    0 1px 3px rgb(16 28 51 / 0.055),
+    0 14px 38px -26px rgb(16 28 51 / 0.35);
   backdrop-filter: blur(10px);
   transition:
+    background-color 0.3s ease,
     border-color 0.18s ease,
     box-shadow 0.18s ease,
     transform 0.18s ease;
 }
 
 .premium-card:hover {
-  border-color: rgba(182, 141, 64, 0.24);
+  border-color: rgb(var(--gold-rgb) / 0.24);
   box-shadow:
-    0 4px 14px rgba(16, 28, 51, 0.08),
-    0 22px 46px -26px rgba(16, 28, 51, 0.42);
+    0 4px 14px rgb(16 28 51 / 0.08),
+    0 22px 46px -26px rgb(16 28 51 / 0.42);
+}
+
+html.dark .premium-card {
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.28),
+    0 24px 54px -28px rgb(0 0 0 / 0.72);
+}
+
+html.dark .premium-card:hover {
+  border-color: rgb(var(--gold-rgb) / 0.3);
+  box-shadow:
+    0 8px 20px rgb(0 0 0 / 0.24),
+    0 28px 62px -30px rgb(0 0 0 / 0.82);
 }
 
 .premium-hairline {
   background: linear-gradient(
     90deg,
-    rgba(182, 141, 64, 0.26),
-    rgba(20, 41, 67, 0.07),
+    rgb(var(--gold-rgb) / 0.26),
+    rgb(var(--foreground) / 0.07),
+    transparent
+  );
+}
+
+html.dark .premium-hairline {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--gold-rgb) / 0.28),
+    rgb(255 255 255 / 0.06),
     transparent
   );
 }
@@ -200,12 +415,22 @@ body > * {
   border-radius: 6px;
   background: linear-gradient(
     90deg,
-    rgba(20, 41, 67, 0.045) 25%,
-    rgba(182, 141, 64, 0.11) 50%,
-    rgba(20, 41, 67, 0.045) 75%
+    rgb(var(--foreground) / 0.045) 25%,
+    rgb(var(--gold-rgb) / 0.11) 50%,
+    rgb(var(--foreground) / 0.045) 75%
   );
   background-size: 200% 100%;
   animation: ps-shimmer 1.6s ease-in-out infinite;
+}
+
+html.dark .premium-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgb(255 255 255 / 0.045) 25%,
+    rgb(var(--gold-rgb) / 0.16) 50%,
+    rgb(255 255 255 / 0.045) 75%
+  );
+  background-size: 200% 100%;
 }
 
 .plaqueta {
@@ -213,9 +438,9 @@ body > * {
   align-items: center;
   gap: 6px;
   border-radius: 6px;
-  border: 1px solid rgba(182, 141, 64, 0.24);
-  background: rgba(182, 141, 64, 0.07);
-  color: #785824;
+  border: 1px solid rgb(var(--gold-rgb) / 0.24);
+  background: rgb(var(--gold-rgb) / 0.07);
+  color: rgb(var(--plaqueta));
   padding: 3px 9px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 11px;
@@ -239,9 +464,34 @@ body > * {
   width: 6px;
   height: 6px;
   border-radius: 9999px;
-  background: #16936a;
-  box-shadow: 0 0 7px rgba(22, 147, 106, 0.62);
+  background: rgb(var(--estado-ok));
+  box-shadow: 0 0 7px rgb(var(--estado-ok) / 0.62);
   animation: ps-live-pulse 2s ease-in-out infinite;
+}
+
+/* "El Sello Lacrado" — entrada coreografiada, en tiempos de producto
+   (contenido visible en ~0.5s; ease-out exponencial, sin demoras de intro). */
+.auth-rule {
+  transform-origin: center;
+  animation: ps-rule-draw 0.32s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+}
+.auth-seal {
+  animation: ps-seal-glint 0.7s ease 0.15s 1;
+}
+.auth-stagger > * {
+  animation: ps-auth-rise 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.auth-stagger > *:nth-child(1) {
+  animation-delay: 0.06s;
+}
+.auth-stagger > *:nth-child(2) {
+  animation-delay: 0.12s;
+}
+.auth-stagger > *:nth-child(3) {
+  animation-delay: 0.18s;
+}
+.auth-stagger > *:nth-child(4) {
+  animation-delay: 0.24s;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -250,7 +500,10 @@ body > * {
   .premium-skeleton,
   .live-dot,
   .animate-ps-fade,
-  .animate-ps-modal {
+  .animate-ps-modal,
+  .auth-rule,
+  .auth-seal,
+  .auth-stagger > * {
     animation: none;
   }
 }
@@ -269,20 +522,20 @@ body > * {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(182, 141, 64, 0.55),
+    rgb(var(--gold-rgb) / 0.55),
     transparent
   );
 }
 
 /* Selección en tono oro suave. */
 ::selection {
-  background: rgba(182, 141, 64, 0.22);
-  color: #0e1f35;
+  background: rgb(var(--gold-rgb) / 0.22);
+  color: rgb(var(--foreground));
 }
 
 /* Anillo de foco accesible y elegante (oro). */
 :where(a, button, [role="button"], select, input, textarea):focus-visible {
-  outline: 2px solid rgba(182, 141, 64, 0.65);
+  outline: 2px solid rgb(var(--gold-rgb) / 0.65);
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -290,20 +543,20 @@ body > * {
 /* Scrollbar discreto en plata. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #ccd2de transparent;
+  scrollbar-color: rgb(var(--hairline)) transparent;
 }
 *::-webkit-scrollbar {
   width: 9px;
   height: 9px;
 }
 *::-webkit-scrollbar-thumb {
-  background: #ccd2de;
+  background: rgb(var(--hairline));
   border: 2px solid transparent;
   background-clip: padding-box;
   border-radius: 9999px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: #aeb6c6;
+  background: rgb(var(--faint));
   border: 2px solid transparent;
   background-clip: padding-box;
 }

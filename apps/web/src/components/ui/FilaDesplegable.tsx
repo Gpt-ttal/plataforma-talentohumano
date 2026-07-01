@@ -29,13 +29,13 @@ export function FilaDesplegable({
           onClick={() => setAbierto((o) => !o)}
           aria-expanded={abierto}
           aria-controls={panelId}
-          className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1 text-left transition-colors hover:bg-gold-50/55"
+          className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1 text-left transition-colors hover:bg-estado-listoBg"
         >
           <span
             className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border transition-all duration-200 ${
               abierto
                 ? "border-gold-300 bg-gold-50 text-gold-700"
-                : "border-silver-200 bg-white/70 text-silver-400 group-hover:border-gold-200 group-hover:text-gold-600"
+                : "border-border bg-card/70 text-faint group-hover:border-gold-200 group-hover:text-gold-600"
             }`}
             aria-hidden
           >
@@ -64,7 +64,7 @@ export function FilaDesplegable({
         <div
           id={panelId}
           role="region"
-          className="border-t border-silver-100 bg-gradient-to-b from-silver-50/75 to-white/70 px-4 py-4 sm:px-5"
+          className="border-t border-hairline bg-gradient-to-b from-surface-2/75 to-card/70 px-4 py-4 sm:px-5"
         >
           <div className="premium-hairline mb-4 h-px" />
           {children}

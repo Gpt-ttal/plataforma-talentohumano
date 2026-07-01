@@ -1,15 +1,21 @@
 import type { AreaVistoBueno, Usuario } from "@pys/shared"
 import type { AreaRepo } from "../../domain/ports/AreaRepo.js"
+import { exigirRol } from "../guards.js"
 
 /**
- * Catálogo de áreas (datos de referencia). Disponible para cualquier usuario
- * autenticado (lo consume el dropdown de asignación de área y la UI en general);
- * no hay autorización fina sobre datos de referencia, solo requiere sesión —
- * garantizada por `requireAuth` en la capa HTTP. Por eso recibe el `Usuario` pero
- * no aplica guarda de rol.
+ * Catálogo de áreas. La lectura de áreas activas es dato de referencia para
+ * cualquier usuario autenticado (dropdowns, colas). Pedir las inactivas
+ * (`incluirInactivas`) es vista de administración → exige SUPERADMIN.
  */
 export function listarAreas(deps: { repo: AreaRepo }) {
-  return async (_actor: Usuario): Promise<AreaVistoBueno[]> => {
-    return deps.repo.listarAreas()
+  return async (
+    actor: Usuario,
+    opts?: { incluirInactivas?: boolean },
+  ): Promise<AreaVistoBueno[]> => {
+    if (opts?.incluirInactivas) {
+      exigirRol(actor, ["SUPERADMIN"], "Solo el superadministrador administra el catálogo de áreas.")
+      return deps.repo.listarAreas(true)
+    }
+    return deps.repo.listarAreas(false)
   }
 }

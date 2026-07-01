@@ -1,18 +1,21 @@
-import { and, asc, desc, eq, gte, ilike, lte, or, sql } from "drizzle-orm"
+import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm"
 import type {
   AprobacionConArea,
+  ColaGestionArea,
   EstadoArea,
   FilaGestionArea,
+  FilaMatriz,
   FiltroArchivo,
   FiltroFuncionarios,
+  FiltroGestionArea,
   Funcionario,
   FuncionarioDetalle,
+  MatrizGestion,
   MetricasDashboard,
   Observacion,
-  Pagina,
   ResultadoPaginado,
 } from "@pys/shared"
-import { calcularEstadoGlobal, normalizarPagina, paginar, ESTADOS_GLOBAL } from "@pys/shared"
+import { normalizarPagina, particionarCola, ESTADOS_GLOBAL } from "@pys/shared"
 import type {
   CambiarEstadoAreaArgs,
   FuncionarioRepo,
@@ -20,20 +23,12 @@ import type {
 } from "../../domain/ports/FuncionarioRepo.js"
 import { db } from "./client.js"
 import { aprobaciones, areas, funcionarios, observaciones } from "./schema.js"
+import { recomputarEstado } from "./recomputarEstado.js"
 import { ErrorValidacion } from "../../application/errors.js"
-
-/**
- * Ejecutor de consultas: o el `db` normal o una transacción (`tx`). Permite que
- * `recomputar` corra dentro de la misma transacción que la mutación que lo
- * dispara, garantizando atomicidad (la escritura del hito y el recálculo del
- * estado global se confirman juntos o no se confirman).
- */
-type Ejecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0]
 
 // ── Row types ───────────────────────────────────────────────────────────────
 
 type FuncionarioRow = typeof funcionarios.$inferSelect
-type AprobacionRow = typeof aprobaciones.$inferSelect
 type ObservacionRow = typeof observaciones.$inferSelect
 
 // ── Mappers (snake_case DB → camelCase domain) ──────────────────────────────
@@ -72,69 +67,6 @@ const RANGO_ESTADO_AREA: Record<EstadoArea, number> = {
   NO_APLICA: 3,
 }
 
-// ── Private helper: recomputar estado global ─────────────────────────────────
-
-async function recomputar(
-  funcionarioId: string,
-  ex: Ejecutor = db,
-): Promise<ResultadoMutacion> {
-  // Load all aprobacion estados for this funcionario
-  const apRows = await ex
-    .select({ estado: aprobaciones.estado })
-    .from(aprobaciones)
-    .where(eq(aprobaciones.funcionarioId, funcionarioId))
-
-  const estadosAreas = apRows.map((r) => r.estado as EstadoArea)
-
-  // Load current milestone columns
-  const fRows = await ex
-    .select({
-      fechaLiquidacionGenerada: funcionarios.fechaLiquidacionGenerada,
-      fechaLiquidacion: funcionarios.fechaLiquidacion,
-    })
-    .from(funcionarios)
-    .where(eq(funcionarios.id, funcionarioId))
-    .limit(1)
-
-  const fRow = fRows[0]
-  if (!fRow) throw new Error(`recomputar: funcionario ${funcionarioId} no encontrado`)
-
-  const esOk = (e: EstadoArea) => e === "APROBADO" || e === "NO_APLICA"
-  const todasOk = estadosAreas.length > 0 && estadosAreas.every(esOk)
-
-  let fechaLiquidacionGenerada = fRow.fechaLiquidacionGenerada
-  let fechaLiquidacion = fRow.fechaLiquidacion
-
-  // Build update payload
-  const update: Partial<FuncionarioRow> & { updatedAt: Date } = {
-    updatedAt: new Date(),
-  }
-
-  if (!todasOk) {
-    // Clear milestones when areas are no longer all OK, so TH→CI relay restarts
-    fechaLiquidacionGenerada = null
-    fechaLiquidacion = null
-    update.fechaLiquidacionGenerada = null
-    update.liquidacionGeneradaPor = null
-    update.fechaLiquidacion = null
-    update.liquidadoPor = null
-  }
-
-  const { estadoGlobal, hayRechazo } = calcularEstadoGlobal({
-    estadosAreas,
-    liquidacionGenerada: fechaLiquidacionGenerada !== null,
-    liquidado: fechaLiquidacion !== null,
-  })
-  update.estadoGlobal = estadoGlobal
-
-  await ex
-    .update(funcionarios)
-    .set(update)
-    .where(eq(funcionarios.id, funcionarioId))
-
-  return { estadoGlobal, hayRechazo }
-}
-
 // ── Repository implementation ────────────────────────────────────────────────
 
 export const funcionarioRepository: FuncionarioRepo = {
@@ -147,6 +79,8 @@ export const funcionarioRepository: FuncionarioRepo = {
   },
 
   async listarGestionArea(areaId: string): Promise<FilaGestionArea[]> {
+    // D2: una dependencia inactiva no tiene cola (el join con `areas` filtrando
+    // `activa = true` deja la lista vacía si el área dejó de exigirse).
     const rows = await db
       .select({
         estado: aprobaciones.estado,
@@ -154,7 +88,8 @@ export const funcionarioRepository: FuncionarioRepo = {
       })
       .from(aprobaciones)
       .innerJoin(funcionarios, eq(aprobaciones.funcionarioId, funcionarios.id))
-      .where(eq(aprobaciones.areaId, areaId))
+      .innerJoin(areas, eq(aprobaciones.areaId, areas.id))
+      .where(and(eq(aprobaciones.areaId, areaId), eq(areas.activa, true)))
 
     const filas: FilaGestionArea[] = rows.map((r) => ({
       funcionario: mapFuncionario(r.funcionario),
@@ -243,7 +178,7 @@ export const funcionarioRepository: FuncionarioRepo = {
     // global se confirman como una sola unidad atómica.
     return db.transaction(async (tx) => {
       // Lock pesimista sobre la fila del funcionario: serializa dos cambios de área
-      // concurrentes del MISMO funcionario. Sin esto, bajo READ COMMITTED cada `recomputar`
+      // concurrentes del MISMO funcionario. Sin esto, bajo READ COMMITTED cada `recomputarEstado`
       // no ve la escritura no confirmada de la otra transacción y ambas concluirían
       // "no todas OK", dejando el estado global desincronizado (nunca sube a
       // LISTO_PARA_LIQUIDAR). La 2ª tx espera aquí y luego recomputa contra lo ya confirmado.
@@ -275,7 +210,7 @@ export const funcionarioRepository: FuncionarioRepo = {
         })
       }
 
-      return recomputar(funcionarioId, tx)
+      return recomputarEstado(funcionarioId, tx)
     })
   },
 
@@ -306,7 +241,7 @@ export const funcionarioRepository: FuncionarioRepo = {
           "El trámite cambió de estado; recargue e intente de nuevo.",
         )
       }
-      return recomputar(funcionarioId, tx)
+      return recomputarEstado(funcionarioId, tx)
     })
   },
 
@@ -334,7 +269,7 @@ export const funcionarioRepository: FuncionarioRepo = {
           "El trámite cambió de estado; recargue e intente de nuevo.",
         )
       }
-      return recomputar(funcionarioId, tx)
+      return recomputarEstado(funcionarioId, tx)
     })
   },
 
@@ -347,7 +282,8 @@ export const funcionarioRepository: FuncionarioRepo = {
           fechaRetiro: funcionarios.fechaRetiro,
         })
         .from(funcionarios),
-      db.select({ id: areas.id, nombre: areas.nombre }).from(areas),
+      // D2: el conteo de pendientes por área solo cubre dependencias activas.
+      db.select({ id: areas.id, nombre: areas.nombre }).from(areas).where(eq(areas.activa, true)),
       db
         .select({
           funcionarioId: aprobaciones.funcionarioId,
@@ -476,14 +412,69 @@ export const funcionarioRepository: FuncionarioRepo = {
     }
   },
 
+  async listarMatrizPaginado(
+    filtro?: FiltroFuncionarios,
+  ): Promise<MatrizGestion> {
+    // (1) La página de funcionarios reusa la lógica de filtro/orden/paginación
+    // del catálogo: misma fuente de verdad, sin duplicar el SQL.
+    const pagina = await this.listarFuncionariosPaginado(filtro)
+
+    // Columnas = áreas activas en orden (D2: las inactivas no participan).
+    const areasActivas = await db
+      .select()
+      .from(areas)
+      .where(eq(areas.activa, true))
+      .orderBy(asc(areas.orden))
+
+    // (2) Estados de las áreas activas, solo para los funcionarios de la página.
+    const ids = pagina.items.map((f) => f.id)
+    const apRows = ids.length
+      ? await db
+          .select({
+            funcionarioId: aprobaciones.funcionarioId,
+            areaId: aprobaciones.areaId,
+            estado: aprobaciones.estado,
+          })
+          .from(aprobaciones)
+          .innerJoin(areas, eq(aprobaciones.areaId, areas.id))
+          .where(and(inArray(aprobaciones.funcionarioId, ids), eq(areas.activa, true)))
+      : []
+
+    const estadosPorFunc = new Map<string, Record<string, EstadoArea>>(
+      ids.map((id) => [id, {}]),
+    )
+    for (const r of apRows) {
+      estadosPorFunc.get(r.funcionarioId)![r.areaId] = r.estado as EstadoArea
+    }
+
+    const items: FilaMatriz[] = pagina.items.map((funcionario) => ({
+      funcionario,
+      estados: estadosPorFunc.get(funcionario.id) ?? {},
+    }))
+
+    return {
+      items,
+      total: pagina.total,
+      pagina: pagina.pagina,
+      porPagina: pagina.porPagina,
+      totalPaginas: pagina.totalPaginas,
+      areas: areasActivas.map((a) => ({
+        id: a.id,
+        nombre: a.nombre,
+        orden: a.orden,
+        activa: a.activa,
+      })),
+    }
+  },
+
   async listarGestionAreaPaginado(
     areaId: string,
-    pagina?: Pagina,
-  ): Promise<ResultadoPaginado<FilaGestionArea>> {
-    // Mirror supabase.ts: paginate in-memory over the already-sorted list
-    // (volume is bounded per area)
+    filtro?: FiltroGestionArea,
+  ): Promise<ColaGestionArea> {
+    // La cola del área (ya filtrada por área activa + ordenada) se parte por
+    // bucket y se pagina en memoria; el volumen por área está acotado.
     const filas = await this.listarGestionArea(areaId)
-    return paginar(filas, pagina)
+    return particionarCola(filas, filtro)
   },
 
   async listarArchivo(

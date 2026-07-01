@@ -1,12 +1,14 @@
 import type {
+  ColaGestionArea,
   EstadoArea,
   FilaGestionArea,
   FiltroArchivo,
   FiltroFuncionarios,
+  FiltroGestionArea,
   Funcionario,
   FuncionarioDetalle,
+  MatrizGestion,
   MetricasDashboard,
-  Pagina,
   ResultadoPaginado,
 } from "@pys/shared"
 
@@ -44,11 +46,16 @@ export interface FuncionarioRepo {
   listarFuncionariosPaginado(
     filtro?: FiltroFuncionarios,
   ): Promise<ResultadoPaginado<Funcionario>>
-  /** Cola de trabajo de un área, paginada. */
+  /**
+   * Matriz funcionario × área activa (visibilidad consolidada para supervisores):
+   * la página de funcionarios + el estado de cada área activa + las columnas.
+   */
+  listarMatrizPaginado(filtro?: FiltroFuncionarios): Promise<MatrizGestion>
+  /** Cola de trabajo de un área, paginada y partida por bucket + contadores. */
   listarGestionAreaPaginado(
     areaId: string,
-    pagina?: Pagina,
-  ): Promise<ResultadoPaginado<FilaGestionArea>>
+    filtro?: FiltroGestionArea,
+  ): Promise<ColaGestionArea>
   /**
    * Archivo institucional: funcionarios en estado terminal `PAZ_Y_SALVO`, con
    * búsqueda + rango de fecha de retiro + paginación. Solo lectura.

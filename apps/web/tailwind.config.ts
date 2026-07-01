@@ -8,7 +8,8 @@ import type { Config } from "tailwindcss"
  *  · Perla / plata  → superficies claras, hairlines, fondos.
  */
 const config: Config = {
-  content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  darkMode: "class",
+  content: ["./index.html", "./src/**/*.{ts,tsx}", "../../shared/src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
@@ -39,17 +40,27 @@ const config: Config = {
           DEFAULT: "#B68D40",
         },
         silver: {
-          50: "#F6F7FA",
-          100: "#EEF0F5",
-          200: "#E0E4EC",
-          300: "#CCD2DE",
-          400: "#AEB6C6",
-          500: "#8B93A6",
-          600: "#697080",
+          50: "rgb(var(--surface-2) / <alpha-value>)",
+          100: "rgb(var(--surface-2) / <alpha-value>)",
+          200: "rgb(var(--border) / <alpha-value>)",
+          300: "rgb(var(--hairline) / <alpha-value>)",
+          400: "rgb(var(--faint) / <alpha-value>)",
+          500: "rgb(var(--muted) / <alpha-value>)",
+          600: "rgb(var(--muted) / <alpha-value>)",
         },
-        ink: "#16202E",
+        ink: "rgb(var(--foreground) / <alpha-value>)",
         // Fondo base del sistema "C" — perla fría, plano y nítido.
-        bg: "#F4F7FB",
+        bg: "rgb(var(--bg) / <alpha-value>)",
+        surface: "rgb(var(--surface) / <alpha-value>)",
+        card: "rgb(var(--card) / <alpha-value>)",
+        "surface-2": "rgb(var(--surface-2) / <alpha-value>)",
+        elevated: "rgb(var(--elevated) / <alpha-value>)",
+        overlay: "rgb(var(--overlay) / <alpha-value>)",
+        foreground: "rgb(var(--foreground) / <alpha-value>)",
+        muted: "rgb(var(--muted) / <alpha-value>)",
+        faint: "rgb(var(--faint) / <alpha-value>)",
+        border: "rgb(var(--border) / <alpha-value>)",
+        hairline: "rgb(var(--hairline) / <alpha-value>)",
         // Alias de compatibilidad con el branding anterior.
         institucional: {
           DEFAULT: "#142943",
@@ -58,16 +69,17 @@ const config: Config = {
         },
         // Semáforo de estados Paz y Salvo (armonizado con la paleta).
         estado: {
-          pendiente: "#8B93A6",
-          rechazo: "#A4231F",
-          listo: "#B68D40",
-          listoBg: "#F4E8C6",
-          ok: "#16936A",
-          okBg: "#E4F5EE",
-          info: "#3B6FD4",
-          infoBg: "#E8EFFC",
-          paz: "#1E7A52",
-          pazBg: "#E3F2EA",
+          pendiente: "rgb(var(--estado-pendiente) / <alpha-value>)",
+          rechazo: "rgb(var(--estado-rechazo) / <alpha-value>)",
+          rechazoBg: "rgb(var(--estado-rechazoBg) / <alpha-value>)",
+          listo: "rgb(var(--estado-listo) / <alpha-value>)",
+          listoBg: "rgb(var(--estado-listoBg) / <alpha-value>)",
+          ok: "rgb(var(--estado-ok) / <alpha-value>)",
+          okBg: "rgb(var(--estado-okBg) / <alpha-value>)",
+          info: "rgb(var(--estado-info) / <alpha-value>)",
+          infoBg: "rgb(var(--estado-infoBg) / <alpha-value>)",
+          paz: "rgb(var(--estado-paz) / <alpha-value>)",
+          pazBg: "rgb(var(--estado-pazBg) / <alpha-value>)",
         },
       },
       fontFamily: {

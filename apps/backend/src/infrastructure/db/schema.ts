@@ -4,6 +4,7 @@ import {
   uuid,
   text,
   integer,
+  numeric,
   boolean,
   date,
   timestamp,
@@ -31,6 +32,21 @@ export const rolUsuarioEnum = pgEnum("rol_usuario", [
   "TALENTO_HUMANO",
   "CONTROL_INTERNO",
   "AREA",
+  "SST",
+])
+
+export const ambitoCapacitacionEnum = pgEnum("ambito_capacitacion", ["TH", "SST"])
+
+export const estadoRegistroEnum = pgEnum("estado_registro_capacitacion", [
+  "BORRADOR",
+  "ABIERTO",
+  "CERRADO",
+])
+
+export const tipoVinculoEnum = pgEnum("tipo_vinculo", [
+  "PLANTA",
+  "CONTRATISTA",
+  "EXTERNO",
 ])
 
 export const estadoUsuarioEnum = pgEnum("estado_usuario", [
@@ -112,3 +128,45 @@ export const usuarios = pgTable("usuarios", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })
+
+// ── capacitaciones ────────────────────────────────────────────────────────────
+
+export const capacitaciones = pgTable("capacitaciones", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  titulo: text("titulo").notNull(),
+  descripcion: text("descripcion"),
+  ambito: ambitoCapacitacionEnum("ambito").notNull(),
+  lugar: text("lugar"),
+  instructor: text("instructor"),
+  iniciaEn: timestamp("inicia_en", { withTimezone: true }).notNull(),
+  terminaEn: timestamp("termina_en", { withTimezone: true }).notNull(),
+  horas: numeric("horas", { precision: 5, scale: 2 }),
+  token: text("token").notNull().unique(),
+  estadoRegistro: estadoRegistroEnum("estado_registro").notNull().default("BORRADOR"),
+  creadaPor: text("creada_por"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
+// ── asistencias ───────────────────────────────────────────────────────────────
+// Identidad capturada de forma autónoma (no se enlaza a `funcionarios`).
+// `usuario_id` enlaza a la cuenta solo si el asistente estaba logueado. El UNIQUE
+// (capacitación × documento) da idempotencia ante doble escaneo/submit.
+
+export const asistencias = pgTable(
+  "asistencias",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    capacitacionId: uuid("capacitacion_id")
+      .notNull()
+      .references(() => capacitaciones.id, { onDelete: "cascade" }),
+    nombre: text("nombre").notNull(),
+    documento: text("documento").notNull(),
+    correo: text("correo"),
+    dependencia: text("dependencia"),
+    tipoVinculo: tipoVinculoEnum("tipo_vinculo").notNull(),
+    usuarioId: uuid("usuario_id").references(() => usuarios.id),
+    registradaEn: timestamp("registrada_en", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.capacitacionId, t.documento)],
+)

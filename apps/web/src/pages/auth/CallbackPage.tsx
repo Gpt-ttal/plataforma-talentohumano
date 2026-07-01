@@ -49,7 +49,7 @@ export function CallbackPage() {
   }, [isLoading, session, usuario, navigate])
 
   return (
-    <div className="grid min-h-[100dvh] place-items-center text-silver-600">
+    <div className="grid min-h-[100dvh] place-items-center text-muted">
       <p className="text-sm">Verificando tu acceso…</p>
     </div>
   )

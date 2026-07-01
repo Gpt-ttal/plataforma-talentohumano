@@ -44,6 +44,11 @@ describe("rutaInicialPorRol", () => {
   it("lleva a un usuario de área directo a su cola en el módulo", () => {
     expect(rutaInicialPorRol("AREA", "ACTIVO")).toBe("/paz-y-salvo/mi-area");
   });
+
+  it("lleva a SST directo a su módulo de Capacitaciones (rol acotado)", () => {
+    expect(rutaInicialPorRol("SST", "ACTIVO")).toBe("/capacitaciones");
+    expect(rutaInicialPorRol("SST", "PENDIENTE")).toBe("/pendiente");
+  });
 });
 
 describe("rutaOficinaPorRol", () => {
@@ -61,6 +66,10 @@ describe("rutaOficinaPorRol", () => {
 
   it("AREA entra a su cola de trabajo", () => {
     expect(rutaOficinaPorRol("AREA")).toBe("/paz-y-salvo/mi-area");
+  });
+
+  it("SST no tiene oficina en Paz y Salvo; va a Capacitaciones", () => {
+    expect(rutaOficinaPorRol("SST")).toBe("/capacitaciones");
   });
 });
 
@@ -131,5 +140,9 @@ describe("rolVePlataforma", () => {
 
   it("AREA no ve la plataforma", () => {
     expect(rolVePlataforma("AREA")).toBe(false);
+  });
+
+  it("SST no ve la plataforma (rol acotado a Capacitaciones)", () => {
+    expect(rolVePlataforma("SST")).toBe(false);
   });
 });
