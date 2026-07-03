@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { ESTADOS_AREA, ESTADOS_GLOBAL, ROLES_USUARIO } from "../src/domain";
 import { ESTADOS_REGISTRO } from "../src/capacitaciones";
+import { ESTADOS_CAPACITACION_PLANEADA } from "../src/planificador";
 import {
   ESTADO_AREA_LABEL,
+  ESTADO_CAP_PLANEADA_LABEL,
   ESTADO_GLOBAL_LABEL,
   ESTADO_REGISTRO_LABEL,
   ROL_LABEL,
   estadoAreaPill,
+  estadoCapacitacionPlaneadaPill,
   estadoGlobalPill,
   estadoRegistroPill,
 } from "../src/ui";
@@ -63,6 +66,26 @@ describe("estadoRegistroPill", () => {
   it("ABIERTO usa el verde 'ok'; CERRADO el azul 'info'", () => {
     expect(estadoRegistroPill("ABIERTO").className).toContain("estado-ok");
     expect(estadoRegistroPill("CERRADO").className).toContain("estado-info");
+  });
+});
+
+describe("estadoCapacitacionPlaneadaPill", () => {
+  it("cubre todos los estados con className, dot y etiqueta", () => {
+    for (const e of ESTADOS_CAPACITACION_PLANEADA) {
+      const pill = estadoCapacitacionPlaneadaPill(e);
+      expect(pill.className.length).toBeGreaterThan(0);
+      expect(pill.dot.length).toBeGreaterThan(0);
+      expect(pill.label).toBe(ESTADO_CAP_PLANEADA_LABEL[e]);
+    }
+  });
+
+  it("EN_CURSO usa el verde 'ok'; COMPLETADA el azul 'info'", () => {
+    expect(estadoCapacitacionPlaneadaPill("EN_CURSO").className).toContain(
+      "estado-ok",
+    );
+    expect(estadoCapacitacionPlaneadaPill("COMPLETADA").className).toContain(
+      "estado-info",
+    );
   });
 });
 

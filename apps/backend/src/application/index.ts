@@ -40,6 +40,29 @@ export { cambiarActivaArea } from "./areas/cambiarActivaArea.js"
 export { asegurarUsuario } from "./auth/asegurarUsuario.js"
 export type { ResultadoAlta } from "./auth/asegurarUsuario.js"
 
+// Administración de Personal
+export { crearEmpleado } from "./personal/crearEmpleado.js"
+export { editarEmpleado } from "./personal/editarEmpleado.js"
+export { finalizarContrato } from "./personal/finalizarContrato.js"
+export { registrarNovedad } from "./personal/registrarNovedad.js"
+export { listarEmpleados } from "./personal/listarEmpleados.js"
+export { obtenerEmpleado } from "./personal/obtenerEmpleado.js"
+export { obtenerExpedientePersonal, veSalarial } from "./personal/obtenerExpedientePersonal.js"
+
+// Hoja de vida 360° — captura por bloque satélite (Sprint 2)
+export { guardarPersonales } from "./personal/guardarPersonales.js"
+export { crearFamiliar } from "./personal/crearFamiliar.js"
+export { eliminarFamiliar } from "./personal/eliminarFamiliar.js"
+export { crearFormacion } from "./personal/crearFormacion.js"
+export { eliminarFormacion } from "./personal/eliminarFormacion.js"
+export { crearExperiencia } from "./personal/crearExperiencia.js"
+export { eliminarExperiencia } from "./personal/eliminarExperiencia.js"
+export { guardarSalarial } from "./personal/guardarSalarial.js"
+export { editarContractual } from "./personal/editarContractual.js"
+export { crearUrlSubidaFoto } from "./personal/crearUrlSubidaFoto.js"
+export { guardarFoto } from "./personal/guardarFoto.js"
+export { obtenerUrlFoto } from "./personal/obtenerUrlFoto.js"
+
 // Capacitaciones
 export { crearCapacitacion } from "./capacitaciones/crearCapacitacion.js"
 export { listarCapacitaciones } from "./capacitaciones/listarCapacitaciones.js"

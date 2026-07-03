@@ -25,6 +25,8 @@ import { ExpedienteModal } from "./pages/archivo/ExpedienteModal"
 import { CapacitacionesPage } from "./pages/capacitaciones/CapacitacionesPage"
 import { CapacitacionModal } from "./pages/capacitaciones/CapacitacionModal"
 import { RegistroAsistenciaPage } from "./pages/asistencia/RegistroAsistenciaPage"
+import { PersonalPage } from "./pages/personal/PersonalPage"
+import { ExpedientePage } from "./pages/personal/ExpedientePage"
 
 function NoAccess() {
   return (
@@ -172,6 +174,25 @@ export function App() {
               >
                 <Route path=":id" element={<CapacitacionModal />} />
               </Route>
+
+              {/* Administración de Personal — maestro de empleados (SA + TH) */}
+              <Route
+                path="/personal"
+                element={
+                  <ProtectedRoute roles={["SUPERADMIN", "TALENTO_HUMANO"]}>
+                    <PersonalPage />
+                  </ProtectedRoute>
+                }
+              />
+              {/* Expediente 360° (hoja de vida completa) — ruta propia */}
+              <Route
+                path="/personal/:id"
+                element={
+                  <ProtectedRoute roles={["SUPERADMIN", "TALENTO_HUMANO"]}>
+                    <ExpedientePage />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Gestión de usuarios — solo SA */}
               <Route

@@ -10,6 +10,10 @@ const schema = z
     // Opcional: el proyecto migró a JWT Signing Keys asimétricas (ES256, vía JWKS).
     // El secreto HS256 legacy solo se usa como fallback para tokens viejos/tests.
     SUPABASE_JWT_SECRET: z.string().min(1).optional(),
+    // Opcional: solo requerido para el bucket privado de fotos de empleados
+    // (Storage). Sin este secreto, `crearUrlSubidaFoto` falla con un mensaje claro
+    // en vez de bloquear el arranque — el resto del módulo funciona sin fotos.
+    SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
     SUPERADMIN_EMAIL: z.string().email().default("leonardoreales@americana.edu.co"),
     CONTROL_INTERNO_EMAIL: z.string().email().default("leonardoreales@americana.edu.co"),
     DOMINIO_PERMITIDO: z.string().default("americana.edu.co").transform((v) => v.toLowerCase()),

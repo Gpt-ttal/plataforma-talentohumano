@@ -39,6 +39,15 @@ export const MODULOS: Modulo[] = [
     estado: "ACTIVO",
   },
   {
+    id: "personal",
+    nombre: "Administración de Personal",
+    icono: "users",
+    rutaBase: "/personal",
+    nota: "Maestro de empleados y vinculación",
+    rolesQueVen: ["SUPERADMIN", "TALENTO_HUMANO"],
+    estado: "ACTIVO",
+  },
+  {
     id: "reportes",
     nombre: "Reportes",
     icono: "briefcase",

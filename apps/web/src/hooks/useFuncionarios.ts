@@ -15,7 +15,7 @@ import { apiFuncionarios } from "../lib/api"
  * lista de cerrados). Invalidar de más es barato (solo marca *stale*); garantiza
  * sincronización 100% y elimina la deriva entre mutaciones que dejaba vistas viejas.
  */
-function invalidarVistasTramite(qc: QueryClient) {
+export function invalidarVistasTramite(qc: QueryClient) {
   for (const key of [
     "funcionarios",
     "funcionario",

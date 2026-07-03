@@ -5,12 +5,27 @@
  * tiempo de ejecución), por eso se mapean explícitamente por estado.
  */
 
-import type { EstadoArea, EstadoGlobal, EstadoUsuario, Rol } from "./domain.js";
+import type {
+  EstadoArea,
+  EstadoGlobal,
+  EstadoUsuario,
+  EstadoVinculacion,
+  Genero,
+  Modalidad,
+  NivelFormacion,
+  NovedadTipo,
+  Parentesco,
+  Rol,
+  TipoContrato,
+  TipoVinculacion,
+} from "./domain.js";
 import type {
   AmbitoCapacitacion,
   EstadoRegistro,
   TipoVinculo,
 } from "./capacitaciones.js";
+import type { TipoContenidoLeccion } from "./cursos.js";
+import type { EstadoCapacitacionPlaneada } from "./planificador.js";
 
 export const ESTADO_GLOBAL_LABEL: Record<EstadoGlobal, string> = {
   PENDIENTE: "Pendiente",
@@ -153,6 +168,121 @@ export function estadoUsuarioPill(estado: EstadoUsuario): {
   };
 }
 
+// ── Administración de Personal ───────────────────────────────────────────────
+
+/** Etiqueta del estado de vinculación (derivado en `personal.ts`). */
+export const ESTADO_VINCULACION_LABEL: Record<EstadoVinculacion, string> = {
+  ACTIVO: "Activo",
+  EN_RETIRO: "En retiro",
+  RETIRADO: "Retirado",
+};
+
+/**
+ * Color del estado de vinculación (Regla del Semáforo Único, tokens del Sello):
+ * ACTIVO = ok/verde (vínculo vigente); EN_RETIRO = oro (trámite en curso, hito);
+ * RETIRADO = neutro (histórico).
+ */
+export const ESTADO_VINCULACION_BADGE: Record<EstadoVinculacion, string> = {
+  ACTIVO: "bg-estado-okBg text-estado-ok ring-1 ring-estado-ok/30",
+  EN_RETIRO: "bg-gold-50 text-gold-700 ring-1 ring-gold-300/60",
+  RETIRADO: "bg-surface-2 text-muted ring-1 ring-border",
+};
+
+export const ESTADO_VINCULACION_DOT: Record<EstadoVinculacion, string> = {
+  ACTIVO: "bg-estado-ok",
+  EN_RETIRO: "bg-estado-listo",
+  RETIRADO: "bg-estado-pendiente",
+};
+
+/** Pill de estado de vinculación ya resuelta: className + punto + etiqueta. */
+export function estadoVinculacionPill(estado: EstadoVinculacion): {
+  className: string;
+  dot: string;
+  label: string;
+} {
+  return {
+    className: `${PILL_BASE} ${ESTADO_VINCULACION_BADGE[estado]}`,
+    dot: ESTADO_VINCULACION_DOT[estado],
+    label: ESTADO_VINCULACION_LABEL[estado],
+  };
+}
+
+/** Etiqueta del tipo de vinculación del empleado. */
+export const TIPO_VINCULACION_LABEL: Record<TipoVinculacion, string> = {
+  ADMINISTRATIVO: "Administrativo",
+  DOCENTE: "Docente",
+  OPS: "Prestación de servicios",
+};
+
+/** Badge neutro del tipo de vinculación (no es un estado; solo clasifica). */
+export const TIPO_VINCULACION_BADGE: Record<TipoVinculacion, string> = {
+  ADMINISTRATIVO: "bg-surface-2 text-muted ring-1 ring-border",
+  DOCENTE: "bg-estado-infoBg text-estado-info ring-1 ring-estado-info/30",
+  OPS: "bg-surface-2 text-muted ring-1 ring-border",
+};
+
+/** Badge de tipo de vinculación ya resuelto: className + etiqueta. */
+export function tipoVinculacionBadge(tipo: TipoVinculacion): {
+  className: string;
+  label: string;
+} {
+  return {
+    className: `${PILL_BASE} ${TIPO_VINCULACION_BADGE[tipo]}`,
+    label: TIPO_VINCULACION_LABEL[tipo],
+  };
+}
+
+/** Etiqueta del tipo de novedad laboral ("Otro sí"). */
+export const NOVEDAD_TIPO_LABEL: Record<NovedadTipo, string> = {
+  CAMBIO_CARGO: "Cambio de cargo",
+  EXTENSION_CONTRATO: "Extensión de contrato",
+};
+
+// ── Hoja de vida 360° ────────────────────────────────────────────────────────
+
+/** Etiqueta legible del tipo de contrato (eje distinto a `tipoVinculacion`). */
+export const TIPO_CONTRATO_LABEL: Record<TipoContrato, string> = {
+  TERMINO_FIJO: "Término fijo",
+  TERMINO_INDEFINIDO: "Término indefinido",
+  OBRA_LABOR: "Obra o labor",
+  PRESTACION_SERVICIOS: "Prestación de servicios",
+};
+
+/** Etiqueta legible de la modalidad de trabajo. */
+export const MODALIDAD_LABEL: Record<Modalidad, string> = {
+  PRESENCIAL: "Presencial",
+  HIBRIDO: "Híbrido",
+  VIRTUAL: "Virtual",
+};
+
+/** Etiqueta legible del género. */
+export const GENERO_LABEL: Record<Genero, string> = {
+  MASCULINO: "Masculino",
+  FEMENINO: "Femenino",
+  OTRO: "Otro",
+};
+
+/** Etiqueta legible del parentesco de un familiar. */
+export const PARENTESCO_LABEL: Record<Parentesco, string> = {
+  CONYUGE: "Cónyuge",
+  HIJO: "Hijo(a)",
+  PADRE: "Padre",
+  MADRE: "Madre",
+  OTRO: "Otro",
+};
+
+/** Etiqueta legible del nivel de formación académica. */
+export const NIVEL_FORMACION_LABEL: Record<NivelFormacion, string> = {
+  BACHILLER: "Bachiller",
+  TECNICO: "Técnico",
+  TECNOLOGO: "Tecnólogo",
+  PROFESIONAL: "Profesional",
+  ESPECIALIZACION: "Especialización",
+  MAESTRIA: "Maestría",
+  DOCTORADO: "Doctorado",
+  POSTDOCTORADO: "Postdoctorado",
+};
+
 // ── Capacitaciones ───────────────────────────────────────────────────────────
 
 /** Etiqueta legible del ámbito de una capacitación. */
@@ -206,6 +336,63 @@ export function estadoRegistroPill(estado: EstadoRegistro): {
   };
 }
 
+// ── Cursos ────────────────────────────────────────────────────────────────────
+// `Curso.estadoRegistro` reutiliza tal cual `ESTADO_REGISTRO_LABEL/BADGE/DOT` de
+// arriba (Semáforo Único) — no se crea un mapa nuevo para eso.
+
+/** Etiqueta legible del tipo de contenido de una lección. */
+export const TIPO_CONTENIDO_LABEL: Record<TipoContenidoLeccion, string> = {
+  TEXTO: "Texto",
+  VIDEO: "Video",
+};
+
+// ── Planificador ──────────────────────────────────────────────────────────────
+
+/** Etiqueta del estado de una capacitación planeada. */
+export const ESTADO_CAP_PLANEADA_LABEL: Record<
+  EstadoCapacitacionPlaneada,
+  string
+> = {
+  PLANEADA: "Planeada",
+  EN_CURSO: "En curso",
+  COMPLETADA: "Completada",
+};
+
+/**
+ * Color del estado de una capacitación planeada. Vive aquí (Regla del
+ * Semáforo Único). PLANEADA = neutro (como BORRADOR); EN_CURSO = ok/verde
+ * (como ABIERTO); COMPLETADA = info/navy (como CERRADO).
+ */
+export const ESTADO_CAP_PLANEADA_BADGE: Record<
+  EstadoCapacitacionPlaneada,
+  string
+> = {
+  PLANEADA: "bg-surface-2 text-muted ring-1 ring-border",
+  EN_CURSO: "bg-estado-okBg text-estado-ok ring-1 ring-estado-ok/30",
+  COMPLETADA: "bg-estado-infoBg text-estado-info ring-1 ring-estado-info/30",
+};
+
+/** Punto de color del estado de una capacitación planeada, para listas compactas. */
+export const ESTADO_CAP_PLANEADA_DOT: Record<
+  EstadoCapacitacionPlaneada,
+  string
+> = {
+  PLANEADA: "bg-estado-pendiente",
+  EN_CURSO: "bg-estado-ok",
+  COMPLETADA: "bg-estado-info",
+};
+
+/** Pill de estado de capacitación planeada ya resuelta: className + punto + etiqueta. */
+export function estadoCapacitacionPlaneadaPill(
+  estado: EstadoCapacitacionPlaneada,
+): { className: string; dot: string; label: string } {
+  return {
+    className: `${PILL_BASE} ${ESTADO_CAP_PLANEADA_BADGE[estado]}`,
+    dot: ESTADO_CAP_PLANEADA_DOT[estado],
+    label: ESTADO_CAP_PLANEADA_LABEL[estado],
+  };
+}
+
 export function formatFecha(iso: string | null | undefined): string {
   if (!iso) return "—";
   const d = new Date(iso.length <= 10 ? `${iso}T00:00:00` : iso);
@@ -227,6 +414,16 @@ export function formatFechaHora(iso: string | null | undefined): string {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+  });
+}
+
+/** Formatea un valor en pesos colombianos (COP, sin decimales). `—` si no aplica. */
+export function formatMoneda(valor: number | null | undefined): string {
+  if (valor === null || valor === undefined || Number.isNaN(valor)) return "—";
+  return valor.toLocaleString("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
   });
 }
 

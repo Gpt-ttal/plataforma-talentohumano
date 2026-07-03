@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@pys/shared": "*",
+    "@supabase/supabase-js": "^2.47.10",
     "compression": "^1.7.5",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

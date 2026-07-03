@@ -63,3 +63,15 @@ export function SpotBandejaAlDia() {
     </Lienzo>
   )
 }
+
+/** Carné/gafete con más — para el maestro de personal sin empleados registrados. */
+export function SpotSinEmpleados() {
+  return (
+    <Lienzo>
+      <rect x="34" y="30" width="52" height="66" rx="8" />
+      <circle cx="60" cy="54" r="10" stroke={SILVER} />
+      <path d="M44 82c2-9 8-13 16-13s14 4 16 13" stroke={SILVER} />
+      <path d="M60 12v14M53 19h14" stroke={ORO} />
+    </Lienzo>
+  )
+}

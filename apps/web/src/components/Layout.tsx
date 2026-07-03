@@ -17,6 +17,7 @@ import { ThemeToggle } from "./ThemeToggle"
 type IconName =
   | "archive"
   | "area"
+  | "badge"
   | "chevronLeft"
   | "chevronRight"
   | "close"
@@ -49,6 +50,7 @@ const routeLabels: { path: string; title: string; section: string }[] = [
   { path: "/paz-y-salvo/avance", title: "Avance por area", section: "Paz y Salvo" },
   { path: "/paz-y-salvo/funcionarios", title: "Funcionarios", section: "Gestion" },
   { path: "/archivo", title: "Archivo institucional", section: "Administracion" },
+  { path: "/personal", title: "Administracion de personal", section: "Administracion" },
   { path: "/capacitaciones", title: "Capacitaciones", section: "Formacion" },
   { path: "/inicio", title: "Panel de control", section: "Plataforma" },
 ]
@@ -57,6 +59,7 @@ function iconPath(name: IconName): string {
   return {
     archive: "M3 7h18M5 7v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7M3 7l1.5-3h15L21 7M9 12h6",
     area: "M3 21h18M5 21V5a2 2 0 0 1 2-2h7v18M14 8h5a2 2 0 0 1 2 2v11M8 7h2M8 11h2M8 15h2M17 12h1M17 16h1",
+    badge: "M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1ZM8 10m-2 0a2 2 0 1 0 4 0 2 2 0 1 0-4 0M5 16c.5-1.5 1.7-2 3-2s2.5.5 3 2M14 9h5M14 13h5",
     chevronLeft: "M15 18l-6-6 6-6",
     chevronRight: "M9 18l6-6-6-6",
     close: "M18 6 6 18M6 6l12 12",
@@ -149,6 +152,13 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
         title: "Administracion",
         items: [
           {
+            href: "/personal",
+            label: "Administracion de personal",
+            icon: "badge",
+            active: (p) => p.startsWith("/personal"),
+            status: "live",
+          },
+          {
             href: "/areas",
             label: "Catalogo de areas",
             icon: "area",
@@ -226,6 +236,13 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
         id: "administracion",
         title: "Administracion",
         items: [
+          {
+            href: "/personal",
+            label: "Administracion de personal",
+            icon: "badge",
+            active: (p) => p.startsWith("/personal"),
+            status: "live",
+          },
           {
             href: "/archivo",
             label: "Archivo",

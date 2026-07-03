@@ -278,6 +278,116 @@ Comando: cmd /c npx -y @supabase/mcp-server-supabase@latest --project-ref=...
 
 ### Estado general
 
+> ✅ **PERSONAL v2 (HOJA DE VIDA 360°) — Sprint 2 + Sprint 3 COMPLETOS (Sesión 33). Migraciones `0011` y ETL v2
+> APLICADOS A PRODUCCIÓN.** Continuación directa de la Sesión 32 (Sprint 0+1 ya cerrados: tablas satélite + expediente
+> de solo lectura `/personal/:id`). Esta sesión cerró **captura** (Sprint 2, backend+frontend) y **ETL v2** (Sprint 3).
+> Detalle completo en §10 (Sesión 33). Plan: `C:\Users\Leonardo\.claude\plans\synthetic-wibbling-stroustrup.md`.
+>
+> **✅ Sprint 2 backend** (heredado de la sesión anterior, verificado de nuevo esta sesión): 12 endpoints nuevos bajo
+> `/api/personal/*` — CRUD de los 5 bloques satélite (`guardarPersonales`, `crearFamiliar`/`eliminarFamiliar`,
+> `crearFormacion`/`eliminarFormacion`, `crearExperiencia`/`eliminarExperiencia`, `guardarSalarial` con doble guarda
+> rol+`veSalarial`, `editarContractual`) + infraestructura de **Supabase Storage** para la foto del expediente
+> (`StoragePort`/`supabaseStorage`, flujo de URL firmada de subida/lectura, el backend nunca toca los bytes). Migración
+> `0011_storage_fotos_empleados.sql` (bucket privado `fotos-empleados`, deny-directo, sin políticas RLS).
+>
+> **✅ Sprint 2 frontend (nuevo esta sesión)** — `apiPersonal` extendido con los 12 endpoints + `usePersonal.ts` con
+> los hooks de mutación correspondientes (incl. `useSubirFoto`: orquesta los 3 pasos de la subida — pide URL firmada,
+> `PUT` directo del navegador al bucket vía `supabase.storage.uploadToSignedUrl`, confirma la ruta con `guardarFoto`).
+> `pages/personal/BloquesEditables.tsx` (nuevo): un editor autocontenido por bloque con el patrón de confirmación
+> inline ya establecido (`AccionesEmpleado`) — `PersonalesEditor`/`ContractualEditor`/`SalarialEditor` (1-1, editan
+> aparte del bloque de lectura porque cubren campos distintos a "Actualizar datos") y `FamiliaEditor`/`FormacionEditor`/
+> `ExperienciaEditor` (1-N: listan+agregan+eliminan en un solo componente, con confirmación de 1 clic para eliminar,
+> reemplazan el bloque de solo-lectura) + `FotoEditor` (sube/quita, sustituye el `Avatar` fijo del header). Wireados en
+> `ExpedientePage.tsx`. **Verificación:** shared 199/199 · backend 223+2 skip · web 10/10 · build raíz exit 0 sin warnings.
+>
+> **✅ Sprint 3 (ETL v2) — `scripts/importarEmpleados.ts` extendido y CORRIDO CONTRA PRODUCCIÓN.** Lee las mismas 4
+> hojas del Excel para poblar personales/contractual extendido/salarial/formación, con **COALESCE en cada campo**
+> (el Excel solo rellena huecos; si un humano ya editó un campo desde la UI, el ETL NUNCA lo pisa con null) y
+> formación **insert-once por empleado** (si ya tiene algún registro, se salta — sin clave natural para upsert 1-N).
+> **Fuera de alcance, documentado explícitamente:** familiares (el Excel solo trae un conteo `HIJOS` sin nombre, dato
+> insuficiente para un registro real) y experiencia laboral previa (sin ninguna columna de historial en las 4 hojas) —
+> ambos quedan para captura manual vía la UI nueva.
+> **Bug real atrapado en el dry-run antes de tocar producción:** la hoja `ACD` (377 empleados) usa **punto** como
+> separador de miles (`"1.750.905"`) mientras las otras 3 hojas usan **coma** (`"1,750,905"`) — confirmado
+> inspeccionando filas reales del archivo, no un error de captura aislado. El parser original solo despojaba comas →
+> silenciosamente dejaba en `null` o mal-escalaba (`249.095` interpretado como pesos en vez de $249.095) los montos de
+> ACD. Corregido: `normalizarDinero` ahora despoja tanto `,` como `.` sin condicionar por hoja (ningún salario en estas
+> 4 hojas usa decimales). Re-verificado contra el archivo real tras el fix: montos coinciden exactamente con el Excel.
+> **Migración `0011` aplicada a PROD vía MCP** (autorización explícita del usuario vía `AskUserQuestion`, verificado
+> `list_migrations` antes/después + advisors limpios — solo los 3 `rls_enabled_no_policy` INFO esperados en
+> `asistencias`/`capacitaciones`/`novedades` [deny-directo] + el WARN moot de leaked-password de siempre).
+> **Corrida real del ETL:** la primera ejecución se cayó a mitad de camino por un `Connection terminated unexpectedly`
+> de `pg` (red/pool, no un bug del script) tras cubrir ~184/534 empleados — verificado con una consulta directa antes
+> de decidir el siguiente paso. Como todas las escrituras satélite son idempotentes (COALESCE + insert-once), se
+> **re-corrió el mismo comando sin cambios** y esta vez completó los 534 sin caerse. **Resultado final verificado en
+> BD:** 534 activos + 9 protegidos en trámite = 543 total (intacto) · `empleado_personales` 532/534 · `empleado_salarial`
+> 534/534 · `empleado_formacion` 74 filas en 52/53 empleados esperados · `funcionarios.tipo_contrato` (u otro campo
+> contractual) poblado en 91/534 (esperado — escalafón/modalidad son columnas dispersas, solo presentes en algunas hojas).
+> **0 fallidos** en ambas corridas.
+>
+> **Verificación final (todo verde):** shared **199/199** · backend **223 pass + 2 skip** · web typecheck limpio +
+> **10/10** · `npm run build` raíz **exit 0 SIN warnings**. **Working tree SIN commitear** (constraint respetado; la BD
+> de prod sí quedó modificada — migración 0011 + datos de 543 empleados — con autorización explícita en cada paso).
+>
+> **Pendiente = ACCIÓN HUMANA:** smoke E2E de captura — abrir un expediente `/personal/:id`, editar cada bloque (incl.
+> subir/quitar foto), confirmar que los datos importados por el ETL aparecen correctamente y que editar desde la UI
+> persiste tras recargar. **Próxima sesión (Sprint 4, si se retoma):** export PDF del expediente + micro-interacciones
+> del puente "Finalizar contrato". Encargos abiertos del usuario siguen sin iniciar: diccionario de datos en `docs/`,
+> auditoría de código muerto.
+
+> ✅ **MÓDULO "ADMINISTRACIÓN DE PERSONAL" v1 — COMPLETO (Sesión 31, Fases 0–7 cerradas).** Cuarto módulo pedido por la
+> Jefa de TH (Laura Armenta): el `funcionario` evoluciona a **maestro de empleados** — **"una tabla, dos proyecciones"**:
+> la misma tabla `funcionarios` sirve `Funcionario` (trámite, `fecha_retiro NOT NULL` en la práctica) y `Empleado`
+> (maestro, todas las filas). Un empleado nace **ACTIVO** (`fechaRetiro=null`, sin aprobaciones, invisible a Paz y Salvo);
+> **"Finalizar contrato" es el PUENTE**: fija `fecha_retiro` → backfill de aprobaciones por área activa →
+> `recomputarEstado` → entra a la máquina de estados **intacta**. Ciclo de vida DERIVADO: `estadoVinculacion` = ACTIVO /
+> EN_RETIRO / RETIRADO. Alcance v1 = **Núcleo + Puente** ("Otro sí" ligero: cargo/extensión; el 360° salarial/familia/
+> formación/escalafón → fase 2, requiere RLS). Plan ejecutado íntegro:
+> `C:\Users\Leonardo\.claude\plans\replicated-churning-dahl.md`.
+>
+> **✅ Fase 6 (pulido de páginas) COMPLETA** — `apps/web/src/pages/personal/` se dividió en archivos dedicados (mismo
+> patrón que el resto de módulos): `PersonalPage.tsx` (wrapper delgado, `PageHeader`+`<CatalogoPersonal/>`) ·
+> `CatalogoPersonal.tsx` (listado URL-driven: Buscador+ChipFiltro+FilaDesplegable+Paginación+`<Outlet/>`) ·
+> `RegistrarEmpleadoForm.tsx` (alta manual, extraído tal cual) · `EmpleadoModal.tsx` (wrapper `Modal`+`<FichaEmpleado/>`) ·
+> `FichaEmpleado.tsx` (núcleo+historial de novedades+`<AccionesEmpleado/>`) · `AccionesEmpleado.tsx` (Finalizar contrato +
+> Otro sí extraídos **+ acción nueva "Actualizar datos"**: edición inline del núcleo vía `useEditarEmpleado`, mismo patrón
+> de confirmación inline toggle-abierto/cerrado que las otras dos). **Spot illustration propia** `SpotSinEmpleados` en
+> `components/ui/spot/Spots.tsx` (carné/gafete con "+", línea navy + acento oro, mismo lenguaje que `SpotArchivoVacio`/
+> `SpotBandejaAlDia`), reemplaza el `SpotSinResultados` prestado. Sin imports huérfanos tras los splits.
+>
+> **✅ Fase 7 (ETL) COMPLETA y APLICADA A PRODUCCIÓN** — migración `0009_administracion_personal.sql` **aplicada a prod
+> vía MCP** (autorización explícita del usuario, verificado con `list_migrations` antes y después; advisors limpios:
+> solo el `rls_enabled_no_policy` esperado en `novedades` [deny-directo, mismo patrón que `capacitaciones`/`asistencias`]
+> y el WARN moot de leaked-password de siempre). `scripts/importarEmpleados.ts` (nuevo, raíz del repo, con `--aplicar`
+> opcional y modo DRY-RUN por defecto): lee las 4 hojas de `Base de datos 2026 th - copia.xlsx`
+> (`C:\Users\Leonardo\Downloads\`), parseo de fechas robusto (prosa ES/EN con mapa de meses bilingüe, serial de Excel,
+> slash-date D/M/Y vs M/D/Y según la hoja de origen), dedup por documento normalizado (gana la hoja consolidada),
+> mapeo de `tipoVinculacion` por hoja (ADM→ADMINISTRATIVO, ACD→DOCENTE, ops→OPS, consolidada→por `PROGRAMA`), upsert
+> idempotente `ON CONFLICT (documento) ... WHERE fecha_retiro IS NULL` (nunca sobrescribe un empleado ya en trámite).
+> **Resultado real de la corrida supervisada:** 543 filas únicas tras dedup (18 omitidas por duplicado/inválidas) →
+> **534 insertadas, 0 actualizados, 0 fallidos**; 9 filas protegidas correctamente por el guard (`ya en trámite de Paz y
+> Salvo, no se sobrescribe` — eran el seed original). Verificado en BD: `534 ACTIVO + 9 en trámite = 543 total`. 49
+> avisos no bloqueantes (fechas de ingreso/fin no reconocidas por datos sucios del Excel — guiones, `#REF!`, columnas
+> desalineadas — la fila se importó igual con esos campos en `null`). Dependencias `xlsx`/`tsx`/`pg` añadidas como
+> devDependencies en la raíz para correr el script.
+>
+> **✅ Verificación final (todo verde):** shared **186/186** · backend **169 pass + 2 skip** · web typecheck limpio +
+> **10/10** · `npm run build` raíz **exit 0 SIN warnings** · `npm test` raíz (3 workspaces encadenados) sin fallos.
+> **Working tree SIN commitear** (constraint respetado — BD de prod sí quedó modificada con autorización explícita).
+>
+> **Smoke E2E humano pendiente (no lo puede verificar el agente):** entrar como SA/TH → ver "Administracion de personal"
+> en el sidebar → catálogo muestra los 534 ACTIVO importados + filtros funcionando → abrir un empleado → probar
+> "Actualizar datos" (nuevo) → Finalizar contrato de un ACTIVO real de prueba (¡irreversible, no probar con datos
+> reales sin plan!) → Otro sí registra novedad en el historial.
+>
+> **Decisiones/encargos abiertos del usuario (recordar, no asumir respuesta):**
+> - Consolidar/oficializar el **diccionario de datos** (columnas/formatos/estructura/esquema) en `docs/` — aún sin iniciar.
+> - **Auditar/limpiar** código muerto y columnas sin uso en BD y sistema, con evidencia — aún sin iniciar.
+>
+> **Próxima sesión:** módulo funcionalmente completo y en producción; lo que sigue es trabajo nuevo (rediseño visual v2
+> del Sello, fase 2 del producto [360° con RLS], o los encargos abiertos de arriba) — no hay checklist pendiente de
+> Personal v1.
+>
 > **🟢 POST-MIGRACIÓN — features sobre el monorepo Vite+Express.** Sesión 13: Panel de control (SA+TH).
 > Sesión 14: **Spec 1 — TH y CI en oficinas dedicadas** (`/paz-y-salvo/talento-humano` y `/control-interno`;
 > `/funcionarios` ahora SA-only; helper `rutaOficinaPorRol`).
@@ -1269,3 +1379,282 @@ CSP ya incluye `wss://*.supabase.co`). Cold starts mitigables con ping gratuito 
 - **Retrofit:** componentes UI base, auth, panel/charts, matriz, areas y usuarios migrados a tokens semanticos donde el cambio era seguro; chrome navy de sidebar/RoleSwitcher se conserva por identidad de marca.
 - **Limpieza prudente:** no se borro codigo sin evidencia de desuso; se evitaron cambios en backend/BD y no se tocaron transacciones ni dominio.
 - **Verificacion:** se hizo RED/GREEN acotado de `ThemeContext.test.tsx` antes de la pausa. Los gates finales quedaron bloqueados porque el aprobador rechazo la escalacion por falta de creditos del workspace. Repetir cuando haya creditos: `npm run build --workspace=shared`, `npm run typecheck --workspace=apps/web`, `npm run test --workspace=apps/web`, `npm run test --workspace=shared`, `npm run build`.
+
+### 2026-07-01 — Sesión 28: Módulo "Administración de Personal" v1 — backend Fases 0–2 (pausa)
+
+- **Origen:** correo de la Jefa de TH (Laura Andrea Armenta Vásquez, "PROPUESTA VISUALIZACIÓN APP") → llevar el ciclo de
+  vida del empleado a la plataforma (hoy la app solo resuelve la SALIDA vía Paz y Salvo). Sesión de brainstorming +
+  `writing-plans` previa dejó el plan aprobado `C:\Users\Leonardo\.claude\plans\replicated-churning-dahl.md`. Esta sesión =
+  ejecución de las Fases 0–2 (backend/datos), luego **pausa pedida por el usuario**. Skills activas: `engineering-architecture-pro`
+  (modo DESIGN), `ui-ux-pro-max` (referencia, no se tocó web). Política lean. **Sin commits** (constraint).
+- **Decisión de arquitectura (la clave):** **"una tabla, dos proyecciones"**. `funcionarios` deja de ser solo "personas en
+  trámite" y pasa a ser el **maestro de empleados**. `Funcionario` (trámite, `fecha_retiro NOT NULL`) **NO se modifica**; se
+  añade `Empleado` (maestro, todas las filas, `fechaRetiro` nullable). Un empleado nace **ACTIVO** (`fechaRetiro=null`, sin
+  aprobaciones → invisible a Paz y Salvo); **"Finalizar contrato" es el PUENTE** que lo entrega a la máquina de estados
+  intacta. El riesgo de integración se cierra con un **SCOPING aditivo** `fecha_retiro IS NOT NULL` en las lecturas de
+  supervisión. Alcance v1 = Núcleo + Puente; "Otro sí" ligero (cargo/extensión); 360° (salarial/familia/formación/escalafón)
+  → **fase 2** (requiere RLS de datos sensibles). Rediseño visual v2 = spec aparte (datos primero, misma paleta/ADN).
+- **✅ Fase 0 (shared) COMPLETA:** `domain.ts` +`Empleado`/`Novedad`/`EmpleadoDetalle`/`FiltroEmpleados` + enums
+  `TipoVinculacion`/`EstadoVinculacion`/`NovedadTipo` (`Funcionario` intacto). `personal.ts` (nuevo, puro):
+  `estadoVinculacion(f)` (ACTIVO⟺fechaRetiro null · RETIRADO⟺PAZ_Y_SALVO · si no EN_RETIRO). `ui.ts`: `estadoVinculacionPill`/
+  `tipoVinculacionBadge`/labels (Semáforo Único, tokens del Sello). `schemas.ts`: `crearEmpleadoSchema` (`.strict`,
+  tipoVinculacion requerido, fechas ISO `yyyy-mm-dd` por regex), `editarEmpleadoSchema` (`.strict`+refine no-vacío, nullable
+  para borrar), `finalizarContratoSchema`, `registrarNovedadSchema` (`z.discriminatedUnion` por tipo), `filtroEmpleadosSchema`.
+  Barrel + `personal.test.ts` **+16 tests → shared 186/186**.
+- **✅ Fase 1 (BD) COMPLETA en código:** migración `supabase/migrations/0009_administracion_personal.sql` (**escrita, NO
+  aplicada a prod**): enums `tipo_vinculacion`/`novedad_tipo`, `alter fecha_retiro drop not null`, +5 columnas núcleo
+  (`tipo_vinculacion`, `fecha_ingreso` date, `fecha_fin_contrato` date, `correo_institucional`, `telefono`), índice
+  `funcionarios_fecha_retiro_idx`, tabla `novedades` (append-only, FK cascade + índice) con RLS deny-directo. Schema Drizzle
+  `schema.ts` reflejado 1:1 (`fechaRetiro` sin `.notNull()`, 2 enums, 5 columnas, tabla `novedades`).
+- **✅ Fase 2 (puerto + repo + scoping) COMPLETA y verificada:** `FuncionarioRepo` +6 métodos. `funcionarioRepository.ts`:
+  `mapEmpleado`/`mapNovedad`; `crearEmpleado` (pre-chequeo de documento único → `ErrorValidacion`; inserta ACTIVO);
+  `editarEmpleado` (patch parcial, `null` borra opcional); **`finalizarContrato`** (en `db.transaction`: UPDATE condicionado a
+  `fecha_retiro IS NULL` = guarda TOCTOU → 400 si ya estaba en trámite / 404 si no existe; backfill de aprobaciones PENDIENTE
+  para áreas ACTIVAS con `onConflictDoNothing`; `recomputarEstado` — reusa la máquina de estados sin tocarla);
+  `registrarNovedad` (tx: aplica cargo/fechaFin + inserta novedad append-only + devuelve `EmpleadoDetalle`);
+  `listarEmpleadosPaginado` (q ILIKE nombre/documento + `tipoVinculacion` + `vinculoEstado` traducido a predicado sobre
+  `fecha_retiro`/`estado_global`, orden alfabético); `obtenerEmpleado` (empleado + novedades DESC). **SCOPING crítico:**
+  `isNotNull(funcionarios.fechaRetiro)` añadido a `listarFuncionariosPaginado` (la matriz lo hereda por reuso) y a
+  `obtenerMetricas` → un empleado ACTIVO no aparece en la supervisión ni infla el panel. `listarFuncionarios()` sin paginar =
+  sin llamadores (no requirió scoping).
+- **Verificación:** shared **186/186** · backend `tsc` **limpio** + **142 pass + 2 skip** (los 2 skip = integración con BD,
+  gated). **Working tree SIN commitear.**
+- **🔵 PRÓXIMA SESIÓN — retomar en Fase 3:** casos de uso `application/personal/*` (crear/editar/finalizarContrato/
+  registrarNovedad/listarEmpleados/obtenerEmpleado, guarda `exigirRol("SUPERADMIN","TALENTO_HUMANO")`) + barrel +
+  `container.ts` (cablear los 6 con `funcionarioRepository`) + `personalController` (Zod→400, patrón `funcionariosController`) +
+  `personal.routes.ts` bajo `requireAuth,requireActivo,requireRol(SA,TH)` montado en `/api/personal` en `app.ts` + tests de
+  frontera (403 CI/AREA/SST, puente feliz ACTIVO→trámite con backfill+estadoGlobal, TOCTOU 2º intento→400, scoping). Luego
+  **Fases 4–7** (web + ETL import del Excel real). **Encargos del usuario abiertos:** (1) consolidar/oficializar el
+  **diccionario de datos** (columnas/formatos/estructura/esquema) en `docs/`; (2) **auditar/limpiar** código muerto/columnas
+  sin uso en BD y sistema (con evidencia, sin borrar a ciegas). **Decisión humana:** aplicar `0009` a prod vía MCP (requiere
+  OK explícito). Arranque: `npm run build --workspace=shared` primero.
+
+### 2026-07-01 — Sesión 29: Módulo "Administración de Personal" v1 — backend Fase 3 completa (casos de uso + HTTP)
+
+- **Continuación de la Sesión 28**, retomando exactamente en Fase 3 según lo dejado en §8/§10. Skills activas:
+  `engineering-skills:senior-backend`, `senior-frontend`, `senior-fullstack`, `design-taste-frontend` (las 3 primeras
+  aplicadas; la de frontend/diseño queda lista para las Fases 4–7). Estudio previo del plan + patrón `areas` (más simple que
+  `capacitaciones`) antes de tocar código, confirmado con el usuario. Política lean. **Sin commits** (constraint).
+- **`application/personal/` (6 casos de uso nuevos), patrón idéntico a `areas`:** `crearEmpleado`, `editarEmpleado`,
+  `finalizarContrato` (recibe `fechaRetiro` + delega `actor.nombre ?? actor.email` como autor al repo),
+  `registrarNovedad` (mismo patrón de autor), `listarEmpleados`, `obtenerEmpleado` (404 vía `ErrorNoEncontrado` si el repo
+  devuelve `null`, espejo de `obtenerDetalle`). Los 6 con `exigirRol(actor, ["SUPERADMIN","TALENTO_HUMANO"])`. Barrel
+  `application/index.ts` +6 exports.
+- **Capa HTTP:** `interface/container.ts` cablea los 6 con `funcionarioRepository`. `interface/controllers/
+  personalController.ts` (nuevo, Zod→400 vía `safeParse`+`ErrorValidacion`, `String(req.params.id)` — mismo patrón que
+  `capacitacionesController`/`funcionariosController`). `interface/routes/personal.routes.ts` (nuevo): todo el router bajo
+  `requireAuth, requireActivo, requireRol("SUPERADMIN","TALENTO_HUMANO")` (guarda de ruta + guarda del caso de uso,
+  defensa en profundidad). Rutas: `GET /` listar · `POST /` crear (201) · `GET /:id` detalle · `POST /:id` editar ·
+  `POST /:id/finalizar-contrato` puente · `POST /:id/novedad` otro sí. Montado en `app.ts` como `/api/personal`.
+- **`tests/personal.test.ts` (nuevo, +27 tests, política lean — solo frontera):** 403 para CI/AREA/SST en los 6 casos de uso
+  (`it.each`, patrón de `areas.test.ts`); delegación exacta de argumentos al repo (incl. `finalizarContrato`/
+  `registrarNovedad` pasando el `autor` correcto desde `actor.nombre`); transición feliz de `finalizarContrato`
+  (ACTIVO→`{estadoGlobal:"PENDIENTE", hayRechazo:false}`); **TOCTOU**: el repo mockeado rechaza con `ErrorValidacion` en un
+  segundo intento y el caso de uso la propaga sin envolverla; `obtenerEmpleado` 404 si el repo devuelve `null`. No se
+  reprobó el scoping de Fase 2 (ya cubierto por sus propios tests de repo, sigue verde).
+- **Fricción menor resuelta:** 4 errores de tipos en `personalController.ts` (`req.params.id` es `string | undefined` en
+  este `tsconfig`) — mismo fix que el resto de controllers: `String(req.params.id)`.
+- **Verificación (todo verde):** `npm run build --workspace=shared` OK · `npx tsc --noEmit` backend limpio ·
+  `npm run test --workspace=shared` **186/186** (sin cambios, Fase 3 es solo backend) · `npm run test --workspace=apps/
+  backend` **169 pass + 2 skip** (142 previos + 27 nuevos) · `npm run build --workspace=apps/backend` exit 0 ·
+  `node apps/backend/dist/interface/serverless.js` carga el bundle y falla únicamente por `.env` ausente en esta sesión
+  (`DATABASE_URL`/`SUPABASE_URL` requeridas) — confirma que el ESM/build de Fase 3 está sano. **Working tree SIN
+  commitear** (constraint respetado). No se tocó `estado.ts`, `recomputarEstado.ts`, la migración `0009` (sigue sin
+  aplicar a prod) ni `apps/web`.
+- **Backend de "Administración de Personal" queda funcionalmente completo y testeable por HTTP** (falta solo `.env` real +
+  aplicar la migración `0009` para probarlo end-to-end contra la BD).
+- **🔵 PRÓXIMA SESIÓN — retomar en Fase 4 (web):** ver el bloque §8 actualizado — `apiPersonal`+`usePersonal.ts` (exportar
+  `invalidarVistasTramite` desde `useFuncionarios.ts`) → Fase 5 (registro de módulo + rutas + nav) → Fase 6 (páginas) →
+  Fase 7 (ETL). Mismos encargos abiertos del usuario (diccionario de datos, auditoría de código muerto) y misma decisión
+  pendiente (aplicar `0009` a prod vía MCP, requiere OK explícito). Arranque: `npm run build --workspace=shared` primero.
+
+### 2026-07-01 — Sesión 30: Módulo "Administración de Personal" v1 — Fases 4 y 5 (web: datos + registro/rutas/nav)
+
+- **Continuación de la Sesión 29**, retomando en Fase 4 según §8/§10. El usuario pidió Fase 4 + Fase 5 "en circuito
+  sincronizado, completo y limpio" (sin rutas rotas ni piezas a medias) y reporte al cierre de Fase 5. Estudio previo de
+  `lib/api.ts`, `useFuncionarios.ts`, `hooks/useCapacitaciones.ts`, `shared/src/modulos.ts`, `Icon.tsx` (dash y Layout),
+  `App.tsx`, `Layout.tsx` y `useRole.ts` antes de tocar código. **Sin commits** (constraint).
+- **Fase 4 (datos):** `apiPersonal` nuevo en `lib/api.ts` (listar/detalle/crear/editar/finalizarContrato/registrarNovedad,
+  mismo patrón que `apiFuncionarios`/`apiCapacitaciones`). `invalidarVistasTramite` en `useFuncionarios.ts` pasó de privado
+  a **exportado**. `hooks/usePersonal.ts` nuevo: `usePersonal`/`useEmpleadoDetalle`/`useCrearEmpleado`/`useEditarEmpleado`/
+  `useRegistrarNovedad` (invalidan `"personal"`) y **`useFinalizarContrato`** (invalida `"personal"` **+** llama
+  `invalidarVistasTramite` — el puente crea un trámite, así que también deben refrescar catálogo/mi-área/matriz/métricas/
+  archivo, igual que las 3 mutaciones del trámite en Paz y Salvo).
+- **Fase 5 (registro + rutas + nav):** fila `{id:"personal", nombre:"Administración de Personal", icono:"users",
+  rutaBase:"/personal", rolesQueVen:[SA,TH], estado:"ACTIVO"}` en `shared/src/modulos.ts` insertada tras `capacitaciones`
+  (orden preservado, tests `modulos.test.ts` siguen en **8/8** sin tocarlos — el ícono `users` **ya existía** en
+  `dash/Icon.tsx`, no hizo falta añadirlo). `App.tsx`: ruta `/personal` (`ProtectedRoute` SA+TH) con hija `:id`→
+  `EmpleadoModal` (hereda la guarda vía `Outlet`, mismo patrón que `/archivo` y `/capacitaciones`). `Layout.tsx`: ícono
+  nuevo `badge` (tarjeta con foto, misma familia 24×24/`currentColor` que el resto) + ítem "Administracion de personal" en
+  la sección Administración para **SA y TH** + `routeLabels`.
+- **Desviación deliberada (justificada por "circuito completo y limpio"):** el plan reservaba las páginas para Fase 6, pero
+  la ruta `/personal` de Fase 5 exige un elemento real — un stub tipo "en construcción" habría violado el patrón ya
+  abandonado en Sesión 11. Se adelantó una porción **lean** de Fase 6: `pages/personal/PersonalPage.tsx` (catálogo
+  URL-driven en un solo archivo, mismo patrón que `CapacitacionesPage`: `Buscador` + `ChipFiltro` de tipo/estado de
+  vinculación + `FilaDesplegable` con `Avatar`+`estadoVinculacionPill` + `Paginación` + formulario "Registrar empleado"
+  inline + `Outlet`) y `pages/personal/EmpleadoModal.tsx` (ficha núcleo + historial de novedades + **Finalizar contrato**
+  con confirmación inline irreversible [puente a Paz y Salvo, enlaza a la oficina del rol vía `rutaOficinaPorRol`] +
+  **Otro sí** con confirmación inline [`CAMBIO_CARGO`/`EXTENSION_CONTRATO`]). Ambas reusan `estadoVinculacion`/
+  `estadoVinculacionPill`/`TIPO_VINCULACION_LABEL`/`NOVEDAD_TIPO_LABEL` de `@pys/shared` sin duplicar lógica. **Queda
+  fuera** (Fase 6 real, próxima sesión): separar `RegistrarEmpleadoForm`/`AccionesEmpleado`/`FichaEmpleado` en archivos
+  propios si el archivo crece, UI de `useEditarEmpleado` (edición inline del núcleo — el hook existe, sin consumidor
+  todavía), spot illustration propia del estado vacío (hoy reusa `SpotSinResultados` de capacitaciones).
+- **Verificación final (todo verde):** shared **186/186** (incl. `modulos.test.ts` 8/8 intactos) · backend sin tocar
+  (169 pass + 2 skip) · web typecheck limpio + **10/10** (9 previos + `ThemeContext.test.tsx` de Sesión 27, ya existente)
+  · `npm run build` raíz **exit 0 SIN warnings** (bundle en chunks lazy, el inicial no creció). **Working tree SIN
+  commitear** (constraint respetado). No se tocó backend, BD, `estado.ts`, `recomputarEstado.ts` ni la migración `0009`.
+- **Pendiente = ACCIÓN HUMANA:** smoke E2E — registrar empleado (aparece ACTIVO) → Finalizar contrato (aparece en Paz y
+  Salvo, oficina TH/CI según rol) → Otro sí registra la novedad en el historial → nav "Administracion de personal"
+  visible solo para SA/TH. **Próxima sesión:** cerrar Fase 6 (pulido de las páginas ya adelantadas) → Fase 7 (ETL del
+  Excel real). Encargos abiertos: diccionario de datos, auditoría de código muerto. Decisión pendiente: aplicar `0009` a
+  prod vía MCP (requiere OK explícito).
+
+### 2026-07-01 — Sesión 31: Módulo "Administración de Personal" v1 — Fases 6 y 7 CERRADAS, migración 0009 y ETL en PRODUCCIÓN
+
+- **Cierre completo del módulo** (continuación directa de la Sesión 30, ejecutando el checklist exacto de CLAUDE.md §8 +
+  `administracion-personal.md`). Skills activas: `design-taste-frontend`, `ui-ux-pro-max`, `senior-frontend`. **Sin
+  commits** (constraint del proyecto); la BD de producción sí quedó modificada, con autorización explícita del usuario
+  vía `AskUserQuestion` antes de tocarla (el clasificador de seguridad bloqueó el primer intento por ser una autorización
+  genérica "aplica todo para producción" — se repreguntó nombrando la migración exacta y se procedió tras el sí explícito).
+- **Fase 6 (pulido de páginas) COMPLETA** — los 6 puntos del checklist, en orden: `CatalogoPersonal.tsx` extraído de
+  `PersonalPage.tsx` (que quedó wrapper delgado, patrón `FuncionariosPage`→`CatalogoFuncionarios`) · `RegistrarEmpleadoForm.tsx`
+  extraído tal cual · `FichaEmpleado.tsx` extraído de `EmpleadoModal.tsx` (que quedó wrapper `Modal`+`<FichaEmpleado/>`,
+  patrón `ExpedienteModal`) · `AccionesEmpleado.tsx` con `FinalizarContrato`+`OtroSi` extraídos **+ acción nueva
+  "Actualizar datos"** (`useEditarEmpleado`, ya existía sin consumidor desde la Sesión 30 — mismo patrón de confirmación
+  inline toggle que las otras dos: campos núcleo editables, `null` para borrar opcionales, `ApiError`→mensaje,
+  `toast.success`) · `SpotSinEmpleados` nuevo en `Spots.tsx` (carné con "+", mismo lenguaje SVG 120px navy+oro que los
+  3 spots existentes) reemplaza el `SpotSinResultados` prestado de Capacitaciones · sin imports huérfanos tras los splits.
+- **Fase 7 (ETL) COMPLETA** — `scripts/importarEmpleados.ts` (nuevo, raíz del repo, con dry-run por defecto y flag
+  `--aplicar`): lee las 4 hojas reales de `Base de datos 2026 th - copia.xlsx` (confirmado que seguía en `Downloads`).
+  **Hallazgos de la inspección real del Excel** (no asumidos del plan): hoja consolidada se llama `"Base de datos "`
+  (con espacio trailing) y usa fechas en formato US M/D/Y, mientras ADM/ACD/ops usan D/M/Y o prosa española/inglesa
+  mezclada (`"30 de November de 2026"`) — el parser de fechas soporta ambos formatos por hoja + serial de Excel. Mapeo
+  `tipoVinculacion` implementado exactamente como especificaba el plan (ADM/ACD/ops fijo, consolidada por columna
+  `PROGRAMA`). Dedup por documento normalizado a solo dígitos, consolidada gana. Upsert `ON CONFLICT (documento) ...
+  WHERE fecha_retiro IS NULL` — protege a cualquier empleado que ya esté en trámite de Paz y Salvo (no lo sobrescribe).
+  Se separaron explícitamente "omitidas" (fila excluida: duplicado/documento inválido/ya en trámite) de "avisos no
+  bloqueantes" (fecha no reconocida pero la fila se importa igual) para no ocultar información en el log de supervisión.
+  Dependencias `xlsx`, `tsx`, `pg` instaladas como devDependencies en la raíz.
+- **Migración `0009_administracion_personal.sql` APLICADA A PRODUCCIÓN vía MCP** — verificado antes (`list_migrations`
+  no la listaba) y después (aparece como `20260701204323`). Advisors de seguridad re-corridos tras aplicar: **limpios**
+  salvo el `rls_enabled_no_policy` esperado en `novedades` (deny-directo, mismo patrón intencional que `capacitaciones`/
+  `asistencias` desde la Sesión 23) y el WARN moot de leaked-password de siempre (OAuth, sin passwords).
+- **ETL corrido en modo supervisado contra producción** (`--aplicar`): 543 filas únicas tras dedup (18 omitidas por
+  duplicado o documento inválido) → **534 insertadas, 0 actualizados, 0 fallidos** · 9 filas protegidas por el guard
+  TOCTOU (`ya en trámite de Paz y Salvo, no se sobrescribe` — eran las 9 del seed original con `fecha_retiro` ya
+  poblado) · 49 avisos no bloqueantes de fechas no reconocidas (datos genuinamente sucios del Excel: guiones, celdas
+  `#REF!`, columnas desalineadas en algunas filas de ACD — no bugs de parseo, verificado con una query de conteo
+  directa: `534 ACTIVO + 9 en trámite = 543 total` en la BD real).
+- **Verificación final (todo verde):** shared **186/186** · backend **169 pass + 2 skip** (sin tocar) · web typecheck
+  limpio + **10/10** · `npm run build` raíz **exit 0 SIN warnings** · `npm test` raíz (3 workspaces encadenados) sin
+  fallos, corrido después de instalar las nuevas devDependencies para confirmar que no rompieron nada. **Working tree
+  SIN commitear** (constraint respetado).
+- **Módulo "Administración de Personal" v1 queda funcionalmente COMPLETO y en producción** (Fases 0–7 cerradas). Lo que
+  sigue ya no es parte de este plan: rediseño visual v2 del Sello (spec aparte), fase 2 del producto (360° con RLS), o
+  los encargos abiertos del usuario (diccionario de datos en `docs/`, auditoría de código muerto — ninguno iniciado,
+  ninguno asumido).
+- **Pendiente = ACCIÓN HUMANA:** smoke E2E con los 534 empleados reales ya en el catálogo — entrar como SA/TH, filtrar,
+  abrir una ficha, probar "Actualizar datos", y (con cautela, es irreversible) probar "Finalizar contrato" en un
+  registro de prueba, no en un empleado real sin planearlo primero.
+
+### 2026-07-01 — Sesión 32: Personal v2 (Hoja de Vida 360°) — Sprint 0 + Sprint 1 + migración 0010 a PROD
+
+- **Origen:** correo de la Jefa de TH (Laura Armenta, "PROPUESTA VISUALIZACIÓN APP") → llevar el módulo de Personal al
+  **expediente 360°** del trabajador. Sesión de análisis (4 tareas + investigación web de HRIS reales) → plan consolidado
+  aprobado `C:\Users\Leonardo\.claude\plans\synthetic-wibbling-stroustrup.md` (5 sprints). Skills usadas:
+  `design-taste-frontend` (frontend, activada a pedido) + patrón hexagonal existente. Política lean. **Sin commits.**
+- **Arquitectura de datos:** núcleo + **tablas satélite** (rompe "una tabla, dos proyecciones" solo para el 360°). El bloque
+  **salarial es tabla aparte** (`empleado_salarial`) con **RLS estricta** (SELECT solo SA/TH vía `ve_salarial()`), defensa en
+  profundidad de 3 capas (RLS de BD + decisión en caso de uso + UI "restringido"). Campos derivados (edad/antigüedad/grupo
+  etario/rango salarial) = funciones puras, nunca columnas.
+- **✅ SPRINT 0 (cimientos de datos):** migración `0010_hoja_de_vida_360.sql` (5 enums, +9 columnas contractuales en
+  `funcionarios` incl. FK `area_id` con backfill, `foto_path`, 5 tablas satélite). Espejo Drizzle en `schema.ts`. shared:
+  tipos (`EmpleadoContractual`/`DatosPersonales`/`Familiar`/`Formacion`/`Experiencia`/`DatosSalariales`/`ExpedienteCompleto`
+  con `salarialVisible`) + 5 enums + 6 schemas Zod + 4 derivadas puras en `personal.ts`. **shared 186→199** (+13).
+- **✅ SPRINT 1 (expediente en lectura, el salto visual):**
+  - **backend:** `FuncionarioRepo.obtenerExpediente(id, incluyeSalarial)` (lee empleado + 5 satélites en paralelo, salarial
+    solo si procede, mappers dedicados numeric→number). Caso de uso `obtenerExpedientePersonal` (nombre distinto para no
+    chocar con el `obtenerExpediente` del archivo) + helper `veSalarial(rol)`, guarda SA/TH, 404. Ruta
+    `GET /api/personal/:id/expediente` (antes de `/:id`). **+6 tests** → backend **169→175 pass + 2 skip**.
+  - **shared `ui.ts`:** labels de los 5 enums nuevos + `formatMoneda` (COP).
+  - **web:** `apiPersonal.expediente` + `useExpediente`. **`ExpedientePage`** (ruta propia `/personal/:id`): header pegajoso
+    (Avatar lg + nombre display + pills estado/tipo vínculo) + navegación por secciones (anclas `scroll-mt`) + 7 secciones
+    (Personales·Familia·Formación·Experiencia·Contractual·**Salarial acordonado**·Historial) + Acciones (reusa
+    `AccionesEmpleado`). Estados skeleton/error/vacío-por-bloque/**restringido** (candado si el rol no ve salario). Reemplaza
+    el modal: se **borraron** `EmpleadoModal.tsx` y `FichaEmpleado.tsx` (huérfanos). `App.tsx` ruta top-level `/personal/:id`;
+    `CatalogoPersonal` sin `<Outlet/>`. web **10/10** typecheck limpio.
+  - **Decisión abierta marcada:** el router `/api/personal` es SA/TH, así que el expediente NO se expuso a CI/AREA/SST (no se
+    ampliaron datos personales/familia a esos roles sin confirmación). La maquinaria de `salarialVisible` quedó completa para
+    ampliarlo sin refactor si se decide.
+- **✅ MIGRACIÓN `0010` APLICADA A PRODUCCIÓN vía MCP** (autorización explícita del usuario vía `AskUserQuestion` — el
+  clasificador bloqueó el primer intento por autorización implícita; se repreguntó nombrando la migración exacta y se procedió
+  tras el sí). Verificado antes (`list_migrations` sin 0010, `es_usuario_activo` presente) y después
+  (`20260701220829` registrada · 5 tablas satélite · `ve_salarial` · 5 policies · backfill `area_id` = 17/543 por match
+  exacto de nombre, resto conserva `area_origen`). **Advisors limpios:** solo el `rls_enabled_no_policy` INFO esperado
+  (`asistencias`/`capacitaciones`/`novedades`, deny-directo) + WARN moot leaked-password. **Ningún hallazgo nuevo de 0010.**
+- **Verificación final (todo verde):** shared build OK + **199/199** · backend typecheck limpio + **175 pass + 2 skip** ·
+  web typecheck limpio + **10/10** · `npm run build` raíz **exit 0 SIN warnings**. **Working tree SIN commitear** (BD de prod
+  sí modificada, con autorización). `estado.ts`/`recomputarEstado.ts`/puente `finalizarContrato` **intactos**.
+- **🔵 PRÓXIMA SESIÓN — Sprint 2:** captura por bloque (formularios de alta/edición de personales/familia/formación/
+  experiencia/salarial, casos de uso CRUD con guarda SA/TH + `ve_salarial` para el salarial) + foto en **Supabase Storage**
+  (bucket privado + signed URL, `foto_path`). Luego Sprint 3 (ETL v2 de los 36 campos) + Sprint 4 (export PDF + micro-
+  interacciones del puente). Encargos abiertos del usuario siguen: diccionario de datos en `docs/`, auditoría de código muerto.
+
+### 2026-07-02 — Sesión 33: Personal v2 — Sprint 2 (frontend) + Sprint 3 (ETL v2) COMPLETOS, migración 0011 y ETL v2 en PRODUCCIÓN
+
+- **Continuación directa de la Sesión 32.** El backend de Sprint 2 (12 endpoints `/api/personal/*` de captura por
+  bloque + infraestructura de Supabase Storage para la foto) ya estaba hecho al retomar (heredado de contexto previo
+  a la compactación de esta sesión); se re-verificó verde (tsc limpio + 223 pass + 2 skip) y se construyó el resto:
+  **frontend de Sprint 2 completo** + **Sprint 3 (ETL v2) completo y corrido contra producción**. Pausa intermedia
+  solicitada por el usuario ("realiza una pausa por favor, segura") honrada en el checkpoint de backend-only; retomada
+  con "retoma el hilo y continua". **Sin commits** (constraint); la BD de prod sí quedó modificada esta sesión —
+  migración `0011` + datos de 543 empleados — con autorización explícita en cada paso vía `AskUserQuestion`.
+- **Sprint 2 frontend:** `apiPersonal` (`lib/api.ts`) extendido con los 12 endpoints nuevos (incl. `UrlSubidaFoto` local
+  y `BUCKET_FOTOS_EMPLEADOS`). `usePersonal.ts`: helper `useMutacionBloque` (invalida `["personal"]`, cubre la
+  invalidación del expediente por prefijo) + un hook por endpoint + `useSubirFoto` (orquesta pedir URL firmada → `PUT`
+  directo del navegador vía `supabase.storage.from(bucket).uploadToSignedUrl` → confirmar con `guardarFoto`, el backend
+  nunca ve los bytes) + `useEliminarFoto` + `useFotoUrl` (URL firmada de lectura, `staleTime` 50min < TTL 1h del backend).
+  `pages/personal/BloquesEditables.tsx` (nuevo): 7 editores autocontenidos con el patrón de confirmación inline de
+  `AccionesEmpleado` — `PersonalesEditor`/`ContractualEditor`/`SalarialEditor` (1-1, se renderizan junto al bloque de
+  solo-lectura existente porque cubren campos distintos) y `FamiliaEditor`/`FormacionEditor`/`ExperienciaEditor` (1-N,
+  **reemplazan** el bloque de lectura — listan+agregan+eliminan en un solo componente con confirmación de 1 clic para
+  eliminar) + `FotoEditor` (reemplaza el `Avatar` fijo del header). `ExpedientePage.tsx`: bloques `BloqueFamilia`/
+  `BloqueFormacion`/`BloqueExperiencia` de solo-lectura **eliminados** (dead code tras el reemplazo) + imports podados.
+- **Sprint 3 (ETL v2):** `scripts/importarEmpleados.ts` extendido con `leerHojaExtendida`/`dedupExtendido` (mismas 4
+  hojas, columnas nuevas) + `aplicarBloquesExtendidos` (escribe con **COALESCE en cada campo** — el Excel solo rellena
+  huecos, nunca pisa una edición manual ya hecha desde la UI — y formación **insert-once por empleado**, sin clave
+  natural para upsert 1-N). **Fuera de alcance, documentado en el propio script:** familiares (el Excel solo trae un
+  conteo `HIJOS` sin nombre — dato insuficiente para un registro real) y experiencia laboral previa (cero columnas de
+  historial en las 4 hojas). Ambos quedan para captura manual vía la UI nueva.
+- **Bug real atrapado en dry-run, antes de tocar producción:** inspección directa de las 4 hojas (`npx tsx` ad-hoc,
+  archivos descartados después) reveló que `ACD` (377 empleados) usa **punto** como separador de miles (`"1.750.905"`)
+  mientras `ADM`/consolidada/`ops` usan **coma** (`"1,750,905"`) — confirmado con filas reales, no un error de captura
+  aislado. El parser original solo despojaba comas → en ACD, montos con un solo punto se mal-escalaban (`"249.095"` →
+  interpretado como `$249.095` en vez de `$249.095` → en realidad `$249,095`... el valor real era **249095 pesos**,
+  quedaba mal-escalado ~1000x) y montos con dos puntos (`"1.750.905"`) daban `NaN`→`null` (salario perdido por completo).
+  **Fix:** `normalizarDinero` despoja `,` y `.` sin condicionar por hoja (ningún salario en estas 4 hojas usa decimales
+  — son pesos colombianos enteros). Re-verificado contra el archivo real: los montos coinciden exactamente con el Excel.
+- **Migración `0011_storage_fotos_empleados.sql` aplicada a PROD vía MCP** (bucket privado `fotos-empleados`,
+  deny-directo, cero políticas RLS — mismo patrón que `novedades`/`capacitaciones`; solo el backend con service role
+  accede). Autorización explícita del usuario vía `AskUserQuestion` nombrando la migración exacta. Verificado
+  `list_migrations` antes/después (`20260702135115`) + `get_advisors` limpios (solo los 3 `rls_enabled_no_policy` INFO
+  esperados + el WARN moot de leaked-password de siempre — ningún hallazgo nuevo).
+- **Corrida real del ETL contra producción:** la primera ejecución (`--aplicar`) se cayó a mitad de camino con
+  `Error: Connection terminated unexpectedly` de `pg` (red/pool de Supabase, no un bug del script) tras cubrir
+  ~184/534 empleados — se verificó el estado exacto con una consulta directa (`empleado_personales`/`empleado_salarial`/
+  `empleado_formacion` counts) antes de decidir el siguiente paso. Como todas las escrituras satélite son idempotentes
+  por diseño (COALESCE + insert-once), se **re-corrió el mismo comando sin cambios** y esta vez completó los 534 sin
+  caerse, con **0 fallidos** en ambas corridas. **Resultado final verificado en BD:** 534 activos + 9 protegidos en
+  trámite (guard `WHERE fecha_retiro IS NULL` intacto) = 543 total · `empleado_personales` 532/534 · `empleado_salarial`
+  534/534 · `empleado_formacion` 74 filas en 52/53 empleados esperados (1 corto, severidad baja — bloque suplementario
+  editable desde la UI) · campo contractual poblado en 91/534 (esperado — escalafón/modalidad son columnas dispersas,
+  solo presentes en algunas hojas del Excel).
+- **Verificación final (todo verde):** shared **199/199** · backend **223 pass + 2 skip** · web typecheck limpio +
+  **10/10** · `npm run build` raíz **exit 0 SIN warnings**. **Working tree SIN commitear** (constraint respetado).
+  `estado.ts`/`recomputarEstado.ts`/puente `finalizarContrato` **intactos** — nada de esto tocó la máquina de estados.
+- **Pendiente = ACCIÓN HUMANA:** smoke E2E de captura — abrir `/personal/:id` para un empleado real ya importado,
+  confirmar que los datos del ETL se ven correctos en cada bloque, editar un campo desde cada editor (incl. subir/quitar
+  foto) y confirmar que persiste tras recargar; confirmar que el bloque salarial sigue oculto para roles ≠ SA/TH.
+- **Próxima sesión (si se retoma):** Sprint 4 del plan — export PDF del expediente + micro-interacciones del puente
+  "Finalizar contrato". Encargos abiertos del usuario, aún sin iniciar: diccionario de datos en `docs/`, auditoría de
+  código muerto en BD y sistema (con evidencia).

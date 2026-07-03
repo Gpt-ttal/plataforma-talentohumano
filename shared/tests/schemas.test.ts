@@ -6,10 +6,19 @@ import {
   cambiarEstadoUsuarioSchema,
   crearAreaSchema,
   crearCapacitacionSchema,
+  crearCapacitacionPlaneadaSchema,
+  crearCursoSchema,
+  crearLeccionSchema,
   editarCapacitacionSchema,
+  editarCapacitacionPlaneadaSchema,
+  editarCursoSchema,
+  editarLeccionSchema,
   filtroCapacitacionesSchema,
+  filtroCapacitacionesPlaneadasSchema,
+  filtroCursosSchema,
   filtroFuncionariosSchema,
   filtroMiAreaSchema,
+  ingresarCursoSchema,
   moverAreaSchema,
   registrarAsistenciaSchema,
   renombrarAreaSchema,
@@ -244,5 +253,178 @@ describe("filtroMiAreaSchema (cola por área con bucket)", () => {
   })
   it("rechaza bucket inválido", () => {
     expect(filtroMiAreaSchema.safeParse({ areaId: UUID_A, bucket: "otros" }).success).toBe(false)
+  })
+})
+
+describe("crearCursoSchema", () => {
+  it("acepta título válido sin ámbito (TH/SST lo derivan del rol)", () => {
+    expect(crearCursoSchema.safeParse({ titulo: "Inducción digital" }).success).toBe(true)
+  })
+  it("acepta ámbito explícito (ruta del SA)", () => {
+    expect(crearCursoSchema.safeParse({ titulo: "Inducción digital", ambito: "SST" }).success).toBe(true)
+  })
+  it("rechaza ámbito inválido", () => {
+    expect(
+      crearCursoSchema.safeParse({ titulo: "Inducción digital", ambito: "RRHH" }).success,
+    ).toBe(false)
+  })
+  it("rechaza título demasiado corto", () => {
+    expect(crearCursoSchema.safeParse({ titulo: "ab" }).success).toBe(false)
+  })
+  it("rechaza claves extra (.strict)", () => {
+    expect(
+      crearCursoSchema.safeParse({ titulo: "Inducción digital", token: "x" }).success,
+    ).toBe(false)
+  })
+})
+
+describe("editarCursoSchema", () => {
+  it("acepta un patch de un solo campo", () => {
+    expect(editarCursoSchema.safeParse({ titulo: "Nuevo título" }).success).toBe(true)
+  })
+  it("rechaza cuerpo vacío (PATCH no-op)", () => {
+    expect(editarCursoSchema.safeParse({}).success).toBe(false)
+  })
+})
+
+describe("filtroCursosSchema", () => {
+  it("acepta ámbito y estado válidos + coacciona paginación", () => {
+    const r = filtroCursosSchema.safeParse({ ambito: "TH", estado: "ABIERTO", pagina: "2" })
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.pagina).toBe(2)
+  })
+  it("rechaza estado de registro inválido", () => {
+    expect(filtroCursosSchema.safeParse({ estado: "PUBLICADO" }).success).toBe(false)
+  })
+})
+
+describe("crearLeccionSchema (refine cruzado tipoContenido↔contenido)", () => {
+  it("acepta una lección de TEXTO con contenidoTexto", () => {
+    expect(
+      crearLeccionSchema.safeParse({
+        titulo: "Lección 1",
+        tipoContenido: "TEXTO",
+        contenidoTexto: "<p>Hola</p>",
+      }).success,
+    ).toBe(true)
+  })
+  it("acepta una lección de VIDEO con urlVideo", () => {
+    expect(
+      crearLeccionSchema.safeParse({
+        titulo: "Lección 1",
+        tipoContenido: "VIDEO",
+        urlVideo: "https://youtube.com/watch?v=x",
+      }).success,
+    ).toBe(true)
+  })
+  it("rechaza una lección de VIDEO sin urlVideo", () => {
+    expect(
+      crearLeccionSchema.safeParse({ titulo: "Lección 1", tipoContenido: "VIDEO" }).success,
+    ).toBe(false)
+  })
+  it("rechaza una lección de TEXTO sin contenidoTexto", () => {
+    expect(
+      crearLeccionSchema.safeParse({ titulo: "Lección 1", tipoContenido: "TEXTO" }).success,
+    ).toBe(false)
+  })
+  it("rechaza una urlVideo malformada", () => {
+    expect(
+      crearLeccionSchema.safeParse({
+        titulo: "Lección 1",
+        tipoContenido: "VIDEO",
+        urlVideo: "no-es-url",
+      }).success,
+    ).toBe(false)
+  })
+})
+
+describe("editarLeccionSchema", () => {
+  it("rechaza cuerpo vacío (PATCH no-op)", () => {
+    expect(editarLeccionSchema.safeParse({}).success).toBe(false)
+  })
+  it("acepta editar solo el título sin forzar el refine cruzado", () => {
+    expect(editarLeccionSchema.safeParse({ titulo: "Nuevo título" }).success).toBe(true)
+  })
+  it("si tipoContenido viene en el patch, exige el campo de contenido correspondiente", () => {
+    expect(
+      editarLeccionSchema.safeParse({ tipoContenido: "VIDEO", urlVideo: "https://vimeo.com/1" })
+        .success,
+    ).toBe(true)
+    expect(editarLeccionSchema.safeParse({ tipoContenido: "VIDEO" }).success).toBe(false)
+  })
+})
+
+describe("ingresarCursoSchema (input público)", () => {
+  it("acepta nombre y documento válidos", () => {
+    expect(
+      ingresarCursoSchema.safeParse({ nombre: "Ana Pérez", documento: "12345" }).success,
+    ).toBe(true)
+  })
+  it("normaliza el documento (quita puntos/guiones/espacios + mayúsculas)", () => {
+    const r = ingresarCursoSchema.safeParse({ nombre: "Ana Pérez", documento: "1.234.567" })
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.documento).toBe("1234567")
+  })
+  it("rechaza claves extra (.strict, defensa anti-inyección)", () => {
+    expect(
+      ingresarCursoSchema.safeParse({ nombre: "Ana Pérez", documento: "12345", tipoVinculo: "PLANTA" })
+        .success,
+    ).toBe(false)
+  })
+})
+
+describe("crearCapacitacionPlaneadaSchema", () => {
+  const base = { titulo: "Plan de inducción", anio: 2026, mes: 7 }
+  it("acepta el payload mínimo válido", () => {
+    expect(crearCapacitacionPlaneadaSchema.safeParse(base).success).toBe(true)
+  })
+  it("coacciona anio/mes desde string", () => {
+    const r = crearCapacitacionPlaneadaSchema.safeParse({
+      ...base,
+      anio: "2026",
+      mes: "7",
+    })
+    expect(r.success).toBe(true)
+    if (r.success) {
+      expect(r.data.anio).toBe(2026)
+      expect(r.data.mes).toBe(7)
+    }
+  })
+  it("rechaza mes fuera de rango", () => {
+    expect(crearCapacitacionPlaneadaSchema.safeParse({ ...base, mes: 13 }).success).toBe(false)
+  })
+  it("rechaza año fuera de rango", () => {
+    expect(crearCapacitacionPlaneadaSchema.safeParse({ ...base, anio: 1999 }).success).toBe(false)
+  })
+})
+
+describe("editarCapacitacionPlaneadaSchema", () => {
+  it("acepta un patch de un solo campo (estado)", () => {
+    expect(editarCapacitacionPlaneadaSchema.safeParse({ estado: "EN_CURSO" }).success).toBe(true)
+  })
+  it("rechaza cuerpo vacío (PATCH no-op)", () => {
+    expect(editarCapacitacionPlaneadaSchema.safeParse({}).success).toBe(false)
+  })
+  it("rechaza estado inválido", () => {
+    expect(editarCapacitacionPlaneadaSchema.safeParse({ estado: "FINALIZADA" }).success).toBe(false)
+  })
+})
+
+describe("filtroCapacitacionesPlaneadasSchema", () => {
+  it("acepta filtros válidos + coacciona año/mes/paginación", () => {
+    const r = filtroCapacitacionesPlaneadasSchema.safeParse({
+      anio: "2026",
+      mes: "7",
+      estado: "PLANEADA",
+      pagina: "1",
+    })
+    expect(r.success).toBe(true)
+    if (r.success) {
+      expect(r.data.anio).toBe(2026)
+      expect(r.data.mes).toBe(7)
+    }
+  })
+  it("rechaza estado inválido", () => {
+    expect(filtroCapacitacionesPlaneadasSchema.safeParse({ estado: "PAUSADA" }).success).toBe(false)
   })
 })

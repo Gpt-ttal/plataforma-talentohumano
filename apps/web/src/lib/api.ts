@@ -8,14 +8,33 @@ import type {
   CapacitacionDetalle,
   CapacitacionPublica,
   ColaGestionArea,
+  CrearEmpleadoInput,
+  CrearExperienciaInput,
+  CrearFamiliarInput,
+  CrearFormacionInput,
+  DatosPersonales,
+  DatosSalariales,
+  EditarContractualInput,
+  EditarEmpleadoInput,
+  Empleado,
+  EmpleadoContractual,
+  EmpleadoDetalle,
+  Experiencia,
+  ExpedienteCompleto,
+  Familiar,
   FiltroArchivo,
   FiltroCapacitaciones,
+  FiltroEmpleados,
   FiltroFuncionarios,
+  Formacion,
   Funcionario,
   FuncionarioDetalle,
+  GuardarPersonalesInput,
+  GuardarSalarialInput,
   MatrizGestion,
   MetricasDashboard,
   RegistrarAsistenciaInput,
+  RegistrarNovedadInput,
   ResultadoMutacion,
   ResultadoPaginado,
   ResultadoRegistro,
@@ -235,6 +254,65 @@ export const apiRegistro = {
       }
       return r.json() as Promise<ResultadoRegistro>
     }),
+}
+
+/** Ruta del objeto de Storage devuelta por la URL firmada de subida (Sprint 2). */
+export interface UrlSubidaFoto {
+  path: string
+  signedUrl: string
+  token: string
+}
+
+/** Bucket privado de fotos de empleados (mismo nombre que el backend, deny-directo). */
+export const BUCKET_FOTOS_EMPLEADOS = "fotos-empleados"
+
+/** Maestro de empleados (Administración de Personal) — solo SA/TH. */
+export const apiPersonal = {
+  listar: (filtro: FiltroEmpleados = {}) =>
+    api.get<ResultadoPaginado<Empleado>>(
+      `/personal${qs({
+        q: filtro.q,
+        tipoVinculacion: filtro.tipoVinculacion,
+        vinculoEstado: filtro.vinculoEstado,
+        pagina: filtro.pagina,
+        porPagina: filtro.porPagina,
+      })}`,
+    ),
+  detalle: (id: string) => api.get<EmpleadoDetalle>(`/personal/${id}`),
+  expediente: (id: string) =>
+    api.get<ExpedienteCompleto>(`/personal/${id}/expediente`),
+  crear: (input: CrearEmpleadoInput) => api.post<Empleado>("/personal", input),
+  editar: (id: string, input: EditarEmpleadoInput) =>
+    api.post<Empleado>(`/personal/${id}`, input),
+  finalizarContrato: (id: string, fechaRetiro: string) =>
+    api.post<ResultadoMutacion>(`/personal/${id}/finalizar-contrato`, { fechaRetiro }),
+  registrarNovedad: (id: string, input: RegistrarNovedadInput) =>
+    api.post<EmpleadoDetalle>(`/personal/${id}/novedad`, input),
+
+  // ── Hoja de vida 360°: captura por bloque satélite (Sprint 2) ───────────────
+  guardarPersonales: (id: string, input: GuardarPersonalesInput) =>
+    api.post<DatosPersonales>(`/personal/${id}/personales`, input),
+  crearFamiliar: (id: string, input: CrearFamiliarInput) =>
+    api.post<Familiar>(`/personal/${id}/familiares`, input),
+  eliminarFamiliar: (id: string, familiarId: string) =>
+    api.post<void>(`/personal/${id}/familiares/${familiarId}/eliminar`),
+  crearFormacion: (id: string, input: CrearFormacionInput) =>
+    api.post<Formacion>(`/personal/${id}/formacion`, input),
+  eliminarFormacion: (id: string, formacionId: string) =>
+    api.post<void>(`/personal/${id}/formacion/${formacionId}/eliminar`),
+  crearExperiencia: (id: string, input: CrearExperienciaInput) =>
+    api.post<Experiencia>(`/personal/${id}/experiencia`, input),
+  eliminarExperiencia: (id: string, experienciaId: string) =>
+    api.post<void>(`/personal/${id}/experiencia/${experienciaId}/eliminar`),
+  guardarSalarial: (id: string, input: GuardarSalarialInput) =>
+    api.post<DatosSalariales>(`/personal/${id}/salarial`, input),
+  editarContractual: (id: string, input: EditarContractualInput) =>
+    api.post<EmpleadoContractual>(`/personal/${id}/contractual`, input),
+  crearUrlSubidaFoto: (id: string, extension: string) =>
+    api.post<UrlSubidaFoto>(`/personal/${id}/foto-url`, { extension }),
+  guardarFoto: (id: string, fotoPath: string | null) =>
+    api.post<EmpleadoContractual>(`/personal/${id}/foto`, { fotoPath }),
+  obtenerUrlFoto: (id: string) => api.get<{ url: string } | null>(`/personal/${id}/foto-url`),
 }
 
 export const apiUsuarios = {
