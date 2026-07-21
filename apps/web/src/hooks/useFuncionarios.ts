@@ -4,7 +4,7 @@ import {
   useQueryClient,
   type QueryClient,
 } from "@tanstack/react-query"
-import type { CambiarEstadoAreaInput, FiltroFuncionarios } from "@pys/shared"
+import type { CambiarEstadoAreaInput, DevolverCasoAAreaInput, FiltroFuncionarios } from "@pys/shared"
 import { apiFuncionarios } from "../lib/api"
 
 /**
@@ -25,6 +25,7 @@ export function invalidarVistasTramite(qc: QueryClient) {
     "funcionarios-todos",
     "archivo",
     "expediente",
+    "personal",
   ]) {
     void qc.invalidateQueries({ queryKey: [key] })
   }
@@ -90,6 +91,35 @@ export function useRegistrarPazYSalvo() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => apiFuncionarios.registrarPazYSalvo(id),
+    onSuccess: () => invalidarVistasTramite(qc),
+  })
+}
+
+/**
+ * Control Interno devuelve el caso a un área puntual para que lo revise de
+ * nuevo (`DEVUELTO_POR_CI`, distinguible de un rechazo). Invalida todas las
+ * vistas del trámite.
+ */
+export function useDevolverCasoAArea() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      funcionarioId,
+      ...input
+    }: DevolverCasoAAreaInput & { funcionarioId: string }) =>
+      apiFuncionarios.devolverCasoAArea(funcionarioId, input),
+    onSuccess: () => invalidarVistasTramite(qc),
+  })
+}
+
+/**
+ * Archivado formal de un trámite ya cerrado (PAZ_Y_SALVO). Invalida todas
+ * las vistas del trámite (el Archivo muestra la fecha de archivado).
+ */
+export function useArchivarCaso() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFuncionarios.archivarCaso(id),
     onSuccess: () => invalidarVistasTramite(qc),
   })
 }

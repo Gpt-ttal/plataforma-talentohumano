@@ -14,7 +14,10 @@ const detalleConEstado = (estado: any) => ({
   observaciones: [],
 })
 
-describe("generarLiquidacion (Talento Humano / SUPERADMIN + transición)", () => {
+// Gestión de Desvinculaciones: guard invertido — CI valida (penúltimo hito,
+// `generarLiquidacion`), TH cierra oficialmente (último hito, `registrarLiquidacion`).
+
+describe("generarLiquidacion (Control Interno / SUPERADMIN + transición)", () => {
   it("rechaza a un usuario AREA → 403", async () => {
     const repo = { obtenerDetalle: vi.fn(), generarLiquidacion: vi.fn() } as any
     const uc = generarLiquidacion({ repo })
@@ -24,11 +27,11 @@ describe("generarLiquidacion (Talento Humano / SUPERADMIN + transición)", () =>
     expect(repo.generarLiquidacion).not.toHaveBeenCalled()
   })
 
-  it("rechaza a CONTROL_INTERNO → 403", async () => {
+  it("rechaza a TALENTO_HUMANO → 403", async () => {
     const repo = { obtenerDetalle: vi.fn(), generarLiquidacion: vi.fn() } as any
     const uc = generarLiquidacion({ repo })
     await expect(
-      uc(hacerUsuario({ rol: "CONTROL_INTERNO" }), "f1"),
+      uc(hacerUsuario({ rol: "TALENTO_HUMANO" }), "f1"),
     ).rejects.toBeInstanceOf(ErrorAutorizacion)
   })
 
@@ -39,7 +42,7 @@ describe("generarLiquidacion (Talento Humano / SUPERADMIN + transición)", () =>
     } as any
     const uc = generarLiquidacion({ repo })
     await expect(
-      uc(hacerUsuario({ rol: "TALENTO_HUMANO" }), "f1"),
+      uc(hacerUsuario({ rol: "CONTROL_INTERNO" }), "f1"),
     ).rejects.toBeInstanceOf(ErrorNoEncontrado)
   })
 
@@ -50,47 +53,31 @@ describe("generarLiquidacion (Talento Humano / SUPERADMIN + transición)", () =>
     } as any
     const uc = generarLiquidacion({ repo })
     await expect(
-      uc(hacerUsuario({ rol: "TALENTO_HUMANO" }), "f1"),
+      uc(hacerUsuario({ rol: "CONTROL_INTERNO" }), "f1"),
     ).rejects.toBeInstanceOf(ErrorValidacion)
     expect(repo.generarLiquidacion).not.toHaveBeenCalled()
   })
 
-  it("genera si TH y estado LISTO_PARA_LIQUIDAR (autor = nombre)", async () => {
+  it("genera si CI y estado LISTO_PARA_LIQUIDAR (autor = nombre)", async () => {
     const repo = {
       obtenerDetalle: vi.fn().mockResolvedValue(detalleConEstado("LISTO_PARA_LIQUIDAR")),
       generarLiquidacion: vi
         .fn()
-        .mockResolvedValue({ estadoGlobal: "LIQUIDACION_GENERADA", hayRechazo: false }),
+        .mockResolvedValue({ estadoGlobal: "LIQUIDACION_GENERADA", hayRechazo: false, hayDevolucion: false }),
     } as any
     const uc = generarLiquidacion({ repo })
-    const r = await uc(hacerUsuario({ rol: "TALENTO_HUMANO", nombre: "Ana TH" }), "f1")
+    const r = await uc(hacerUsuario({ rol: "CONTROL_INTERNO", nombre: "Bea CI" }), "f1")
     expect(r.estadoGlobal).toBe("LIQUIDACION_GENERADA")
-    expect(repo.generarLiquidacion).toHaveBeenCalledWith("f1", "Ana TH")
-  })
-
-  it("notifica (best-effort) sin romper si el notificador falla", async () => {
-    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {})
-    const repo = {
-      obtenerDetalle: vi.fn().mockResolvedValue(detalleConEstado("LISTO_PARA_LIQUIDAR")),
-      generarLiquidacion: vi
-        .fn()
-        .mockResolvedValue({ estadoGlobal: "LIQUIDACION_GENERADA", hayRechazo: false }),
-    } as any
-    const notificar = vi.fn().mockRejectedValue(new Error("smtp caído"))
-    const uc = generarLiquidacion({ repo, notificar })
-    const r = await uc(hacerUsuario({ rol: "SUPERADMIN" }), "f1")
-    expect(r.estadoGlobal).toBe("LIQUIDACION_GENERADA")
-    expect(notificar).toHaveBeenCalledOnce()
-    errSpy.mockRestore()
+    expect(repo.generarLiquidacion).toHaveBeenCalledWith("f1", "Bea CI")
   })
 })
 
-describe("registrarLiquidacion (Control Interno / SUPERADMIN + transición)", () => {
-  it("rechaza a TALENTO_HUMANO → 403", async () => {
+describe("registrarLiquidacion (Talento Humano / SUPERADMIN + transición)", () => {
+  it("rechaza a CONTROL_INTERNO → 403", async () => {
     const repo = { obtenerDetalle: vi.fn(), registrarLiquidacion: vi.fn() } as any
     const uc = registrarLiquidacion({ repo })
     await expect(
-      uc(hacerUsuario({ rol: "TALENTO_HUMANO" }), "f1"),
+      uc(hacerUsuario({ rol: "CONTROL_INTERNO" }), "f1"),
     ).rejects.toBeInstanceOf(ErrorAutorizacion)
     expect(repo.registrarLiquidacion).not.toHaveBeenCalled()
   })
@@ -102,21 +89,21 @@ describe("registrarLiquidacion (Control Interno / SUPERADMIN + transición)", ()
     } as any
     const uc = registrarLiquidacion({ repo })
     await expect(
-      uc(hacerUsuario({ rol: "CONTROL_INTERNO" }), "f1"),
+      uc(hacerUsuario({ rol: "TALENTO_HUMANO" }), "f1"),
     ).rejects.toBeInstanceOf(ErrorValidacion)
     expect(repo.registrarLiquidacion).not.toHaveBeenCalled()
   })
 
-  it("registra si CI y estado LIQUIDACION_GENERADA (autor = nombre)", async () => {
+  it("registra si TH y estado LIQUIDACION_GENERADA (autor = nombre)", async () => {
     const repo = {
       obtenerDetalle: vi.fn().mockResolvedValue(detalleConEstado("LIQUIDACION_GENERADA")),
       registrarLiquidacion: vi
         .fn()
-        .mockResolvedValue({ estadoGlobal: "PAZ_Y_SALVO", hayRechazo: false }),
+        .mockResolvedValue({ estadoGlobal: "PAZ_Y_SALVO", hayRechazo: false, hayDevolucion: false }),
     } as any
     const uc = registrarLiquidacion({ repo })
-    const r = await uc(hacerUsuario({ rol: "CONTROL_INTERNO", nombre: "Bea CI" }), "f1")
+    const r = await uc(hacerUsuario({ rol: "TALENTO_HUMANO", nombre: "Ana TH" }), "f1")
     expect(r.estadoGlobal).toBe("PAZ_Y_SALVO")
-    expect(repo.registrarLiquidacion).toHaveBeenCalledWith("f1", "Bea CI")
+    expect(repo.registrarLiquidacion).toHaveBeenCalledWith("f1", "Ana TH")
   })
 })

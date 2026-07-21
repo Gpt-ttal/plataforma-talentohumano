@@ -26,6 +26,7 @@ import type {
 } from "./capacitaciones.js";
 import type { TipoContenidoLeccion } from "./cursos.js";
 import type { EstadoCapacitacionPlaneada } from "./planificador.js";
+import type { FilaLoteEstado } from "./desvinculaciones.js";
 
 export const ESTADO_GLOBAL_LABEL: Record<EstadoGlobal, string> = {
   PENDIENTE: "Pendiente",
@@ -48,6 +49,7 @@ export const ESTADO_AREA_LABEL: Record<EstadoArea, string> = {
   APROBADO: "Aprobado",
   NO_APLICA: "No aplica",
   NO_APROBADO: "Rechazado",
+  DEVUELTO_POR_CI: "Devuelto por Control Interno",
 };
 
 /** Etiqueta del estado de vida del usuario (PENDIENTE/ACTIVO/INACTIVO). */
@@ -80,6 +82,7 @@ export const ESTADO_AREA_BADGE: Record<EstadoArea, string> = {
   APROBADO: "bg-estado-okBg text-estado-ok ring-1 ring-estado-ok/30",
   NO_APLICA: "bg-surface-2 text-muted ring-1 ring-border",
   NO_APROBADO: "bg-estado-rechazoBg text-estado-rechazo ring-1 ring-estado-rechazo/40",
+  DEVUELTO_POR_CI: "bg-estado-listoBg text-estado-listo ring-1 ring-estado-listo/40",
 };
 
 /**
@@ -95,6 +98,25 @@ export const ESTADO_AREA_CELDA: Record<
   APROBADO: { simbolo: "✓", className: "text-estado-ok" },
   NO_APLICA: { simbolo: "–", className: "text-silver-600" },
   NO_APROBADO: { simbolo: "✕", className: "text-estado-rechazo" },
+  DEVUELTO_POR_CI: { simbolo: "↩", className: "text-estado-listo" },
+};
+
+/** Etiqueta del estado de una fila del lote de importación masiva. */
+export const FILA_LOTE_ESTADO_LABEL: Record<FilaLoteEstado, string> = {
+  VALIDA: "Válida",
+  CON_ERROR: "Con error",
+  DUPLICADA: "Duplicada en el archivo",
+  CONFIRMADA: "Confirmada",
+  DESCARTADA: "Descartada",
+};
+
+/** Color por estado de fila del lote (Regla del Semáforo Único). */
+export const FILA_LOTE_ESTADO_BADGE: Record<FilaLoteEstado, string> = {
+  VALIDA: "bg-estado-okBg text-estado-ok ring-1 ring-estado-ok/30",
+  CON_ERROR: "bg-estado-rechazoBg text-estado-rechazo ring-1 ring-estado-rechazo/40",
+  DUPLICADA: "bg-gold-50 text-gold-700 ring-1 ring-gold-300/60",
+  CONFIRMADA: "bg-estado-infoBg text-estado-info ring-1 ring-estado-info/30",
+  DESCARTADA: "bg-surface-2 text-muted ring-1 ring-border",
 };
 
 /** Punto de color (semáforo) para listas compactas. */
@@ -154,6 +176,17 @@ export function estadoAreaPill(estado: EstadoArea): {
   return {
     className: `${PILL_BASE} ${ESTADO_AREA_BADGE[estado]}`,
     label: ESTADO_AREA_LABEL[estado],
+  };
+}
+
+/** Pill de estado de fila del lote de importación masiva ya resuelta. */
+export function filaLoteEstadoPill(estado: FilaLoteEstado): {
+  className: string;
+  label: string;
+} {
+  return {
+    className: `${PILL_BASE} ${FILA_LOTE_ESTADO_BADGE[estado]}`,
+    label: FILA_LOTE_ESTADO_LABEL[estado],
   };
 }
 

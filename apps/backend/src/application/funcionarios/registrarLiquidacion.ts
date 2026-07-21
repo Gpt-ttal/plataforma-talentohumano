@@ -7,12 +7,16 @@ import {
 } from "../errors.js"
 
 /**
- * Control Interno (o el SUPERADMIN) cierra el trámite: registra la liquidación
- * final → paz y salvo.
+ * Talento Humano (o el SUPERADMIN) cierra oficialmente el trámite: registra
+ * la liquidación final → paz y salvo.
+ *
+ * Gestión de Desvinculaciones: guard invertido — Talento Humano cierra
+ * oficialmente (último hito), después de que Control Interno ya validó
+ * (`generarLiquidacion`, penúltimo hito). Ver nota de `generarLiquidacion.ts`.
  *
  * Guardas:
- *  - Rol ∈ {CONTROL_INTERNO, SUPERADMIN} → si no, 403.
- *  - Transición: solo válido cuando Talento Humano ya generó la liquidación
+ *  - Rol ∈ {TALENTO_HUMANO, SUPERADMIN} → si no, 403.
+ *  - Transición: solo válido cuando Control Interno ya validó
  *    (estado LIQUIDACION_GENERADA). El repo NO valida esto; la guarda vive aquí.
  */
 export function registrarLiquidacion(deps: { repo: FuncionarioRepo }) {
@@ -20,9 +24,9 @@ export function registrarLiquidacion(deps: { repo: FuncionarioRepo }) {
     usuario: Usuario,
     funcionarioId: string,
   ): Promise<ResultadoMutacion> => {
-    if (usuario.rol !== "CONTROL_INTERNO" && usuario.rol !== "SUPERADMIN") {
+    if (usuario.rol !== "TALENTO_HUMANO" && usuario.rol !== "SUPERADMIN") {
       throw new ErrorAutorizacion(
-        "Solo Control Interno puede registrar el paz y salvo.",
+        "Solo Talento Humano puede registrar el paz y salvo.",
       )
     }
 

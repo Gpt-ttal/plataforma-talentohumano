@@ -3,6 +3,7 @@ import { casos, requireAuth } from "../container.js"
 import { asyncHandler } from "../asyncHandler.js"
 import { requireRol } from "../middleware/requireRol.js"
 import { requireActivo } from "../middleware/requireActivo.js"
+import { paramUuid } from "../middleware/paramUuid.js"
 import { areasController } from "../controllers/areasController.js"
 
 const c = areasController(casos)
@@ -13,6 +14,8 @@ const c = areasController(casos)
  * SUPERADMIN. Montado en `/api/areas`.
  */
 export const areasRouter = Router()
+
+areasRouter.param("id", paramUuid("id"))
 
 areasRouter.use(requireAuth, requireActivo)
 

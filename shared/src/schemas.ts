@@ -60,6 +60,32 @@ export const cambiarEstadoAreaSchema = z
   .strict()
 export type CambiarEstadoAreaInput = z.infer<typeof cambiarEstadoAreaSchema>
 
+/**
+ * Devolver un caso a un área puntual (Control Interno). A diferencia de
+ * `cambiarEstadoAreaSchema`, aquí la observación siempre es obligatoria — no
+ * existe una devolución "sin motivo".
+ */
+export const devolverCasoAAreaSchema = z
+  .object({
+    funcionarioId: z.string().uuid(),
+    areaId: z.string().uuid(),
+    observacion: z.string().trim().min(1),
+  })
+  .strict()
+export type DevolverCasoAAreaSchemaInput = z.infer<
+  typeof devolverCasoAAreaSchema
+>
+
+/** Confirmar (parcial o total) las filas VALIDA seleccionadas de un lote de importación. */
+export const confirmarImportacionParcialSchema = z
+  .object({
+    filaIds: z.array(z.string().uuid()).min(1),
+  })
+  .strict()
+export type ConfirmarImportacionParcialInput = z.infer<
+  typeof confirmarImportacionParcialSchema
+>
+
 export const asignarRolSchema = z
   .object({
     usuarioId: z.string().uuid(),
@@ -82,6 +108,7 @@ export const filtroFuncionariosSchema = z.object({
   estado: z
     .enum(ESTADOS_GLOBAL as unknown as [EstadoGlobal, ...EstadoGlobal[]])
     .optional(),
+  areaBloqueante: z.string().uuid().optional(),
   pagina: z.coerce.number().int().min(1).optional(),
   porPagina: z.coerce.number().int().min(1).max(100).optional(),
 })

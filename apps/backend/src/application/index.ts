@@ -8,7 +8,9 @@ export * from "./errors.js"
 export { exigirRol } from "./guards.js"
 
 // Funcionarios
+export { archivarCaso } from "./funcionarios/archivarCaso.js"
 export { cambiarEstadoArea } from "./funcionarios/cambiarEstadoArea.js"
+export { devolverCasoAArea } from "./funcionarios/devolverCasoAArea.js"
 export { generarLiquidacion } from "./funcionarios/generarLiquidacion.js"
 export { registrarLiquidacion } from "./funcionarios/registrarLiquidacion.js"
 export { listarFuncionarios } from "./funcionarios/listarFuncionarios.js"
@@ -73,3 +75,33 @@ export { abrirRegistro } from "./capacitaciones/abrirRegistro.js"
 export { cerrarRegistro } from "./capacitaciones/cerrarRegistro.js"
 export { exportarAsistencias } from "./capacitaciones/exportarAsistencias.js"
 export { registrarAsistenciaPublica } from "./capacitaciones/registrarAsistenciaPublica.js"
+
+// Cursos (gestión autenticada + flujo público "tomar el curso por cédula")
+export { crearCurso } from "./cursos/crearCurso.js"
+export { listarCursos } from "./cursos/listarCursos.js"
+export { obtenerDetalleCurso } from "./cursos/obtenerDetalleCurso.js"
+export { editarCurso } from "./cursos/editarCurso.js"
+export { abrirRegistroCurso } from "./cursos/abrirRegistroCurso.js"
+export { cerrarRegistroCurso } from "./cursos/cerrarRegistroCurso.js"
+export { crearModuloCurso } from "./cursos/crearModuloCurso.js"
+export { editarModuloCurso } from "./cursos/editarModuloCurso.js"
+export { moverModuloCurso } from "./cursos/moverModuloCurso.js"
+export { eliminarModuloCurso } from "./cursos/eliminarModuloCurso.js"
+export { crearLeccionCurso } from "./cursos/crearLeccionCurso.js"
+export { editarLeccionCurso } from "./cursos/editarLeccionCurso.js"
+export { moverLeccionCurso } from "./cursos/moverLeccionCurso.js"
+export { eliminarLeccionCurso } from "./cursos/eliminarLeccionCurso.js"
+export { listarInscritosCurso } from "./cursos/listarInscritosCurso.js"
+export { obtenerCursoPublico } from "./cursos/obtenerCursoPublico.js"
+export { ingresarCurso } from "./cursos/ingresarCurso.js"
+export { marcarLeccionCompletadaCurso } from "./cursos/marcarLeccionCompletadaCurso.js"
+
+// Planificador (agenda anual de capacitaciones planeadas, CRUD simple)
+export { crearCapacitacionPlaneada } from "./planificador/crearCapacitacionPlaneada.js"
+export { listarCapacitacionesPlaneadas } from "./planificador/listarCapacitacionesPlaneadas.js"
+export { editarCapacitacionPlaneada } from "./planificador/editarCapacitacionPlaneada.js"
+export { eliminarCapacitacionPlaneada } from "./planificador/eliminarCapacitacionPlaneada.js"
+
+// Importación masiva de desvinculaciones
+export { previsualizarImportacionDesvinculaciones } from "./desvinculaciones/previsualizarImportacionDesvinculaciones.js"
+export { confirmarImportacionParcial } from "./desvinculaciones/confirmarImportacionParcial.js"

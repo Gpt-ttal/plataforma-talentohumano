@@ -26,6 +26,8 @@ export interface EntradaEstado {
 export interface ResultadoEstado {
   estadoGlobal: EstadoGlobal;
   hayRechazo: boolean;
+  /** Al menos un área está DEVUELTO_POR_CI. Distinguible de hayRechazo (no se fusionan). */
+  hayDevolucion: boolean;
 }
 
 function esOk(estado: EstadoArea): boolean {
@@ -36,25 +38,26 @@ export function calcularEstadoGlobal(entrada: EntradaEstado): ResultadoEstado {
   const { estadosAreas, liquidacionGenerada, liquidado } = entrada;
 
   const hayRechazo = estadosAreas.some((e) => e === "NO_APROBADO");
+  const hayDevolucion = estadosAreas.some((e) => e === "DEVUELTO_POR_CI");
 
   // Sin áreas que evaluar no se puede liberar a nadie.
   if (estadosAreas.length === 0) {
-    return { estadoGlobal: "PENDIENTE", hayRechazo };
+    return { estadoGlobal: "PENDIENTE", hayRechazo, hayDevolucion };
   }
 
   const todasOk = estadosAreas.every(esOk);
 
   if (!todasOk) {
-    return { estadoGlobal: "PENDIENTE", hayRechazo };
+    return { estadoGlobal: "PENDIENTE", hayRechazo, hayDevolucion };
   }
 
   if (liquidado) {
-    return { estadoGlobal: "PAZ_Y_SALVO", hayRechazo };
+    return { estadoGlobal: "PAZ_Y_SALVO", hayRechazo, hayDevolucion };
   }
 
   if (liquidacionGenerada) {
-    return { estadoGlobal: "LIQUIDACION_GENERADA", hayRechazo };
+    return { estadoGlobal: "LIQUIDACION_GENERADA", hayRechazo, hayDevolucion };
   }
 
-  return { estadoGlobal: "LISTO_PARA_LIQUIDAR", hayRechazo };
+  return { estadoGlobal: "LISTO_PARA_LIQUIDAR", hayRechazo, hayDevolucion };
 }

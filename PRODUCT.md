@@ -7,34 +7,47 @@ product
 ## Users
 
 Personal interno de la **Corporación Universitaria Americana**, operando una
-herramienta de gestión diaria. Cuatro roles, cada uno con un trabajo acotado:
+plataforma diaria de gestión de Talento Humano. Cinco roles, cada uno con un
+trabajo acotado:
 
 - **Usuario de área** (p. ej. Contabilidad, Biblioteca): da su visto bueno a los
   funcionarios que se retiran. Solo le importa su bandeja.
-- **Talento Humano (TH):** ve el catálogo completo y genera la liquidación cuando
-  un funcionario está listo.
+- **Talento Humano (TH):** ve el catálogo completo, gestiona el expediente 360° del
+  personal, genera la liquidación cuando un funcionario está listo, y administra
+  Capacitaciones/Cursos/Planificador.
 - **Control Interno (CI):** revisa lo generado y registra el paz y salvo final.
-- **Superadministrador:** lo ve todo, inspecciona cualquier área y administra usuarios.
+- **SST:** gestiona capacitaciones y cursos de su propio ámbito.
+- **Superadministrador:** lo ve todo, inspecciona cualquier área/módulo y administra
+  usuarios y catálogo de áreas.
 
-Contexto de uso: oficina, escritorio, luz de día, sesiones cortas y repetidas para
-resolver trámites. No es una herramienta de exploración lúdica; es un flujo que la
-gente quiere completar rápido y sin errores. Idioma: español (es-CO).
+Contexto de uso: oficina, escritorio, luz de día (con modo oscuro disponible),
+sesiones cortas y repetidas para resolver trámites. No es una herramienta de
+exploración lúdica; es un flujo que la gente quiere completar rápido y sin errores.
+Idioma: español (es-CO).
 
 ## Product Purpose
 
-**Sistema Paz y Salvo** digitaliza el trámite de paz y salvo cuando un funcionario
-se retira de la universidad. El flujo: cada área competente da (o no) su visto bueno
-→ TH genera la liquidación cuando todo está listo → CI registra el paz y salvo final.
-Reemplaza un proceso manual disperso por un circuito único, auditable y por rol.
+**Sistema Paz y Salvo** es la plataforma de Talento Humano de la universidad.
+Su núcleo original digitaliza el trámite de paz y salvo cuando un funcionario se
+retira: cada área competente da (o no) su visto bueno → TH genera la liquidación
+cuando todo está listo → CI registra el paz y salvo final. Alrededor de ese núcleo
+conviven módulos hermanos registrados declarativamente (`shared/src/modulos.ts`):
+**Administración de Personal** (hoja de vida 360° del empleado activo),
+**Capacitaciones/Eventos** (registro de asistencia por QR) y **Cursos + Planificador**
+(cursos autoformativos con progreso en vivo + plan anual de capacitaciones).
+Reemplaza procesos manuales dispersos por circuitos únicos, auditables y por rol.
 
 El éxito se ve como: cada persona entra con su cuenta institucional y cae **directo y
 solo** a lo que le corresponde; la validez de cada acción la garantiza el servidor
-(máquina de estados + guardas), no la UI; y el estado de cualquier funcionario es
-legible de un vistazo.
+(máquina de estados + guardas), no la UI; y el estado de cualquier funcionario o
+trámite es legible de un vistazo.
 
-> **Estado:** proyecto en etapa temprana (~5% del desarrollo total). La fundación de
-> auth, dominio y máquina de estados existe; las vistas por rol y el sistema visual
-> "C" están en construcción. Nada del UI actual es definitivo.
+> **Estado:** producto maduro en producción. El núcleo de Paz y Salvo, Administración
+> de Personal (incl. hoja de vida 360°), Capacitaciones/Eventos, Cursos y Planificador
+> están completos y operando sobre datos reales (500+ empleados). El sistema visual
+> "El Sello" está implementado con theming claro/oscuro. La superficie más reciente
+> en construcción es la sección "Formación" (Eventos/Cursos/Planificador), que necesita
+> una pasada de diseño — hoy las 3 páginas son visualmente genéricas y planas.
 
 ## Brand Personality
 
@@ -80,3 +93,5 @@ Objetivo: **WCAG 2.1 AA.**
 - Respeta `prefers-reduced-motion`: toda animación tiene alternativa de fundido/instantánea.
 - No depender solo del color para comunicar estado: pill = punto + etiqueta de texto.
 - Localización es-CO para fechas, números y copy.
+- Theming claro/oscuro (`ThemeProvider`, clase `.dark`, tokens CSS semánticos) mantiene el
+  mismo contraste AA en ambos modos.

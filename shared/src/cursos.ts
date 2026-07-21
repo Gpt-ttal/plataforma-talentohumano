@@ -30,6 +30,8 @@ export interface Curso {
   creadaPor: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Conteo de inscritos — visible en el listado sin entrar al detalle. */
+  totalInscritos: number;
 }
 
 /** Un módulo (capítulo) que agrupa lecciones dentro de un curso. */

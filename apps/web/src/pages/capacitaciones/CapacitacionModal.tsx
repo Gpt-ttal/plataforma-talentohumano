@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom"
+import { toast } from "sonner"
 import { QRCodeSVG } from "qrcode.react"
 import {
   AMBITO_LABEL,
@@ -171,8 +172,9 @@ function CopiarButton({ url }: { url: string }) {
   async function copiar() {
     try {
       await navigator.clipboard.writeText(url)
+      toast.success("Enlace copiado.")
     } catch {
-      /* clipboard no disponible */
+      toast.error("No se pudo copiar el enlace.")
     }
   }
 

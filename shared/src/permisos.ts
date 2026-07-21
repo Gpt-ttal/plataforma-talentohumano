@@ -50,15 +50,18 @@ export function rutaInicialPorRol(
  * del mapeo rol→ruta del módulo, reutilizada por el sidebar y por los enlaces del
  * Panel para no apuntar nunca a una oficina ajena al rol.
  *
- * SUPERADMIN supervisa el catálogo completo; TALENTO_HUMANO y CONTROL_INTERNO
- * tienen su propia página (segregación de funciones); AREA va a su cola.
+ * SUPERADMIN y TALENTO_HUMANO usan la matriz de avance por área como su oficina
+ * (consolidación: el catálogo dedicado de cada uno era redundante con la matriz,
+ * que ya cubre su función real — confirmar que todas las áreas dieron el visto
+ * bueno). CONTROL_INTERNO conserva su propia página (única acción restante:
+ * validar la liquidación); AREA va a su cola.
  */
 export function rutaOficinaPorRol(rol: RolUsuario): string {
   switch (rol) {
     case "SUPERADMIN":
-      return "/paz-y-salvo/funcionarios";
+      return "/paz-y-salvo/avance";
     case "TALENTO_HUMANO":
-      return "/paz-y-salvo/talento-humano";
+      return "/paz-y-salvo/avance";
     case "CONTROL_INTERNO":
       return "/paz-y-salvo/control-interno";
     case "AREA":

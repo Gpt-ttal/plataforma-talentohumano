@@ -1,6 +1,7 @@
 import type { Request, Response } from "express"
 import {
   cambiarEstadoAreaSchema,
+  devolverCasoAAreaSchema,
   filtroFuncionariosSchema,
   filtroMatrizSchema,
   filtroMiAreaSchema,
@@ -48,12 +49,32 @@ export function funcionariosController(casos: Casos) {
       res.json(await casos.cambiarEstadoArea(req.usuario!, parsed.data))
     },
 
+    devolverCasoAArea: async (req: Request, res: Response) => {
+      const parsed = devolverCasoAAreaSchema.safeParse({
+        ...req.body,
+        funcionarioId: req.params.id,
+        areaId: req.params.areaId,
+      })
+      if (!parsed.success) throw new ErrorValidacion(mensajeZod(parsed.error))
+      const { funcionarioId, areaId, observacion } = parsed.data
+      res.json(
+        await casos.devolverCasoAArea(req.usuario!, funcionarioId, {
+          areaId,
+          observacion,
+        }),
+      )
+    },
+
     generarLiquidacion: async (req: Request, res: Response) => {
       res.json(await casos.generarLiquidacion(req.usuario!, String(req.params.id)))
     },
 
     registrarLiquidacion: async (req: Request, res: Response) => {
       res.json(await casos.registrarLiquidacion(req.usuario!, String(req.params.id)))
+    },
+
+    archivarCaso: async (req: Request, res: Response) => {
+      res.json(await casos.archivarCaso(req.usuario!, String(req.params.id)))
     },
 
     miArea: async (req: Request, res: Response) => {

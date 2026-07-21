@@ -278,6 +278,265 @@ Comando: cmd /c npx -y @supabase/mcp-server-supabase@latest --project-ref=...
 
 ### Estado general
 
+> ✅ **MODULARIZACIÓN DE GOD OBJECTS (backend + web) — COMPLETA (Sesión 50, plan
+> `iterative-tumbling-grove.md`, 11 fases).** Dos archivos habían crecido por acumulación de
+> sesiones sucesivas hasta volverse difíciles de navegar/testear: `funcionarioRepository.ts`
+> (1327 líneas / 29 métodos, sirviendo 3 contextos acotados nacidos en sesiones distintas —
+> trámite de Paz y Salvo, maestro de empleados, Hoja de Vida 360°) y
+> `BloquesEditables.tsx` (1080 líneas / 7 componentes React / 55 `useState`, los editores del
+> expediente 360°). Objetivo explícito del usuario: **cero cambio de comportamiento, cero
+> regresión de tests, diseño de nivel senior — no un "corta y pega por conteo de líneas"**.
+> **Diseño:** el puerto único `FuncionarioRepo` (interfaz) NO se fragmentó — se preservó como
+> único contrato; el objeto que lo implementa ahora se ensambla por `Object.assign`/spread desde
+> 3 módulos internos (`tramiteRepo.ts` 12 métodos, `empleadoRepo.ts` 6 métodos, `expedienteRepo.ts`
+> 12 métodos + 9 helpers, más `mappers.compartidos.ts` para los 2 mappers compartidos), cada uno
+> tipado contra un subconjunto vía `Pick<FuncionarioRepo, "método1" | ...>`. `funcionarioRepository.ts`
+> quedó como **barrel puro de 12 líneas** (solo imports + spread + re-export) — mismo path de
+> import, mismo shape exportado, **`container.ts` (composition root, 29 inyecciones de casos de
+> uso) no se tocó ni una línea**. El único riesgo técnico real del plan (2 métodos del bloque
+> trámite se llamaban entre sí vía `this.X(...)`, imposible de preservar si se fragmentaba el
+> objeto) se resolvió declarando las 12 funciones de `tramiteRepo.ts` como `async function`
+> nombradas de nivel superior que se llaman directo por nombre, ensambladas al final en el objeto
+> exportado por shorthand — sin ambigüedad de `this`, sin cambio de firma/orden de argumentos.
+> En el lado web, `BloquesEditables.tsx` se dividió en una carpeta `bloques-editables/` con
+> `compartido.tsx` (7 helpers/JSX compartidos: `inputCls`/`labelCls`/`labelTextCls`/`mensajeError`/
+> `BotonAbrir`/`FilaGuardarCancelar`/`FilaEliminable`) + un archivo por editor (3 editores 1-1:
+> Personales/Contractual/Salarial; 3 editores 1-N: Familia/Formación/Experiencia — **deliberadamente
+> NO unificados/genericizados**, quedó documentado como mejora futura opcional fuera de este plan;
+> `FotoEditor` con su inconsistencia preexistente de manejo de errores conservada tal cual, sin
+> "corregir" comportamiento durante una modularización) + barrel `index.ts`. `ExpedientePage.tsx`
+> cambió una sola línea de import; el monolito se **borró** tras confirmar cero imports
+> remanentes. **Contenido copiado verbatim en ambos lados — cero tests nuevos** (el propio plan lo
+> especifica: solo si algo se rompe inesperadamente, y nada se rompió). **Verificación final
+> (todo verde, re-corrida completa tras la Fase 9):** shared build OK + **246/246** · `tsc --noEmit`
+> backend limpio · backend **319 pass + 11 skip** (sin regresión) · web typecheck limpio +
+> **11/11** · `npm run build` raíz **exit 0 SIN warnings** (bundle sin regresión: `index` 335 KB,
+> `LeccionForm`/Tiptap sigue diferido en 412 KB). **Working tree SIN commitear.** No se tocó
+> `estado.ts`, `recomputarEstado.ts`, ninguna migración, ni las rutas/página de Control Interno.
+> **Pendiente = ACCIÓN HUMANA:** smoke manual del expediente `/personal/:id` — abrir un empleado
+> real, confirmar que los 7 bloques renderizan igual que antes, probar un ciclo completo
+> editar→guardar/cancelar en al menos un editor 1-1 (`PersonalesEditor`) y uno 1-N
+> (`FamiliaEditor`). **Próxima sesión:** sin checklist pendiente de este plan — trabajo nuevo, o
+> el mandato de limpieza de código muerto que sigue abierto desde la Sesión 47.
+
+> ✅ **CONSOLIDACIÓN DE VISTAS + POTENCIACIÓN "AVANCE POR ÁREA" — COMPLETA (Sesiones 48-49).** El
+> usuario detectó redundancia real entre 3 vistas (catálogo Funcionarios SA, oficina Talento
+> Humano, Matriz de Avance) y dio contexto de negocio: TH ahora **valida que todas las áreas dieron
+> visto bueno antes de pasar el caso a Control Interno para liquidar** — un rol de supervisión/
+> seguimiento, no de aprobación directa. **Parte 1 (redundancia, Sesión 48):** se eliminaron
+> `FuncionariosPage.tsx`/`TalentoHumanoPage.tsx` y sus rutas; `rutaOficinaPorRol` (shared) manda a
+> SA y TH a `/paz-y-salvo/avance` (la Matriz es su oficina); `MatrizPage` ganó ruta hija `:id`+
+> `<Outlet/>`; `CatalogoFuncionarios.tsx` (ahora solo Control Interno) perdió el toggle de vista sin
+> destinos válidos; `Layout.tsx` perdió los ítems "Funcionarios"/"Talento Humano"; `MiAreaPage.tsx`
+> corrigió su enlace hardcodeado a la ruta borrada. Control Interno **no se tocó**.
+> **Parte 2 (potenciar la Matriz, Sesión 49) — plan `C:\Users\Leonardo\.claude\plans\
+> lazy-wibbling-sifakis.md` EJECUTADO ÍNTEGRO.** Diseñado en la Sesión 48 vía `superpowers:
+> brainstorming` con compañero visual (mockups A/B/C) + investigación web (Stripe, Linear, Pencil &
+> Paper) para evitar un look genérico; dirección aprobada **"C · Híbrido de precisión"**.
+> **Pilar 1 (backend):** `FiltroFuncionarios.areaBloqueante?: string` (shared `domain.ts`+
+> `schemas.ts`, uuid opcional) + subconsulta `EXISTS` nueva en `listarFuncionariosPaginado`
+> (`funcionarioRepository.ts`, cubre `PENDIENTE`/`NO_APROBADO`/`DEVUELTO_POR_CI` en un solo
+> parámetro) — sin migración, sin endpoint nuevo, `listarMatrizPaginado` lo hereda gratis por
+> delegación. Test de delegación nuevo en `lecturasCatalogo.test.ts` (archivo existente, política
+> lean). **Pilar 2 (datos frontend):** cero hooks nuevos — la cinta de cuellos de botella reusa
+> `useMetricas().pendientesPorArea` (ya existía, ya scopeado a áreas activas) y la bandeja de
+> traspaso reusa `useFuncionarios({estado:"LISTO_PARA_LIQUIDAR", porPagina:5})` tal cual; ambos
+> gated a `esSuperadmin||esTalentoHumano` para que CI nunca los dispare (mismo alcance que la
+> guarda real de `/metricas`). **Pilar 3 (rediseño visual):** `AvanceHero.tsx` nuevo — cabecera
+> `bg-navy-deep` con la cinta de KPIs fundida debajo (no cards sueltas), cada ítem un `Link`
+> clickeable que filtra (línea dorada bajo el activo); `BandejaTraspaso` nueva (hasta 5 `Avatar`+
+> nombre+fecha, "Ver los N →" apunta al mismo href que el KPI de la cinta — sin lógica duplicada);
+> toolbar con chip removible de `areaBloqueante` (tokens `estado-rechazoBg`/`estado-rechazo`, ya
+> existentes — Semáforo Único respetado); columna de la tabla resaltada cuando coincide con el área
+> bloqueante activa; afordance "Ver ficha →" revelado al hover/focus en cada fila (siempre visible
+> en touch vía `[@media(hover:none)]`). Limpieza menor incluida: el botón del Panel que decía
+> "Funcionarios" ahora dice "Avance por área" (`PanelControlPage.tsx`). **`estado.ts`/
+> `recomputarEstado.ts`/transacciones de concurrencia/rutas de Control Interno: sin tocar.**
+> Verificado todo verde: shared **246/246** · backend `tsc` limpio + **319 pass + 11 skip** · web
+> typecheck limpio + **11/11** · `npm run build` raíz **exit 0 SIN warnings** (bundle sin regresión).
+> **Working tree SIN commitear.** Detalle completo en §10 (Sesiones 48-49) y en la memoria
+> `consolidacion-avance-area-plan.md`.
+
+> ✅ **GESTIÓN DE DESVINCULACIONES — CÓDIGO Y MIGRACIONES COMPLETOS (13/13, Sesión 47).** Plan
+> `C:\Users\Leonardo\.claude\plans\cheerful-cuddling-koala.md` cerrado íntegro. Convierte Paz y
+> Salvo en "Gestión de Desvinculaciones": nuevo estado de área `DEVUELTO_POR_CI`, timestamp
+> `archivadoEn`, bitácora `eventos_auditoria`, **inversión de guardas de rol** (Control Interno
+> ahora valida el penúltimo hito vía `generarLiquidacion`; Talento Humano cierra oficialmente vía
+> `registrarLiquidacion`), y módulo de importación masiva con previsualización + confirmación
+> parcial. **Ítem 11 (backend de importación) cerrado esta sesión:** wireado `container.ts` (repo +
+> 2 casos de uso), `desvinculacionesController.ts` (nuevo), `desvinculaciones.routes.ts` (nuevo,
+> `multer` memoryStorage 5MB + rate-limit 10/min en `/importar`, `POST /lotes/:id/confirmar`, ambas
+> tras `requireRol(SA,TH)`), montado en `app.ts` como `/api/desvinculaciones`. Tests consolidados en
+> **1 archivo nuevo** `tests/desvinculaciones.test.ts` (+14: guardas 403, delegación exacta, 404/400
+> de confirmar, 3 tests del parser con buffers XLSX reales vía la librería `xlsx`, sin mockear) —
+> backend 304→**318 pass + 11 skip**. **Ítem 12 (frontend) cerrado esta sesión:** swap de botones
+> TH/CI en `CatalogoFuncionarios.tsx`/`DetalleFuncionario.tsx` (CI ve `LISTO_PARA_LIQUIDAR`→
+> `GenerarLiquidacionButton`, TH ve `LIQUIDACION_GENERADA`→`LiquidarButton`, mismos componentes
+> técnicos, solo cambia qué rol/vista los muestra) + copy de `VISTA_CFG` actualizado; nuevo
+> `DevolverAreaButton.tsx` (CI/SA, confirmación inline con observación obligatoria) cableado en
+> `AreaList.tsx` vía prop nueva `puedeDevolver` (independiente de `puedeGestionar`, visible solo
+> sobre área APROBADO/NO_APROBADO); nuevo `ArchivarButton` inline en `ArchivoPage.tsx` (visible solo
+> si `archivadoEn===null`, muestra fecha de archivado si ya se archivó); módulo nuevo
+> `apps/web/src/pages/desvinculaciones/` (`ImportacionPage.tsx` + `DropzoneArchivo.tsx` +
+> `TablaPrevisualizacionLote.tsx` + `PillFilaLoteEstado.tsx`, ruta `/desvinculaciones/importacion`
+> SA+TH) + labels/badge nuevos `FILA_LOTE_ESTADO_LABEL`/`BADGE`/`filaLoteEstadoPill` en
+> `shared/src/ui.ts` (Semáforo Único); ícono `upload` nuevo en `Layout.tsx` + nav item en
+> "Administracion" para SA y TH; `realtime.ts` extendido con `lotes_importacion`/`filas_lote` →
+> invalida `["importacion"]`. **Ítem 13 (verificación + migraciones) cerrado esta sesión:** shared
+> **246/246** · backend `tsc` limpio + **318 pass + 11 skip** · web typecheck limpio + **11/11** ·
+> `npm run build` raíz **exit 0 SIN warnings** (bundle sin regresión: `index` ~333 KB). **Migraciones
+> `0014`-`0017` APLICADAS a producción vía MCP** (autorización explícita del usuario por-lote antes
+> de las 4, verificado `list_migrations` antes/después). El re-chequeo de advisors reveló **2
+> hallazgos nuevos no previstos por el plan original**: `es_auditor` (SECURITY DEFINER de `0016`)
+> ejecutable por `anon`/`authenticated`, y el trigger `fn_archivado_en_requiere_paz_y_salvo` (`0015`)
+> sin `search_path` fijo — ambos cerrados con una **migración `0018_endurecer_funciones_
+> desvinculaciones.sql` nueva** (autorizada explícitamente aparte), mismo patrón ya probado en
+> producción desde `0005_revoke_security_definer.sql`. **Advisors finales limpios**: solo los 10
+> `rls_enabled_no_policy` INFO esperados (deny-directo, patrón intencional del proyecto) + el WARN
+> moot de leaked-password de siempre. **Working tree SIN commitear** (constraint respetado; la BD de
+> prod sí quedó modificada con autorización explícita en cada paso). **Mandato pendiente del
+> usuario, para la próxima sesión que se retome este tema**: limpieza estricta de código
+> muerto/obsoleto/legacy tras el cierre del circuito completo, incluyendo archivos de test que ya no
+> se vayan a usar — preferencia explícita por tests consolidados sobre uno-por-caso (no ejecutada
+> todavía; es un ítem adicional posterior al plan de 13, no se hizo de oficio esta sesión). Detalle
+> completo por ítem en la memoria `gestion-desvinculaciones-plan.md` y en §10 (Sesiones 45-47).
+> **Pendiente = ACCIÓN HUMANA:** smoke test manual del circuito completo — CI ve/valida
+> `LISTO_PARA_LIQUIDAR` en su oficina, TH cierra `LIQUIDACION_GENERADA`, CI devuelve un área
+> resuelta con observación y el estado se distingue de un rechazo, TH archiva un trámite cerrado
+> desde `/archivo`, subir un Excel de prueba en `/desvinculaciones/importacion` → previsualizar →
+> confirmar parcialmente → verificar que las filas descartadas no crean funcionarios.
+
+> ✅ **REMEDIACIÓN DE AUDITORÍA (idempotencia/doble-submit/caché/fallos silenciosos) — COMPLETA
+> (Sesión 44).** Plan `C:\Users\Leonardo\.claude\plans\dise-a-un-plan-completo-luminous-hare.md`
+> (22 hallazgos: 1 CRÍTICO + 8 IMPORTANTE + 13 MENOR, 17 tareas) **17/17 completas.** Fases 1+2
+> completas desde la Sesión 43 (lock `FOR UPDATE` en Cursos, idempotencia `crearArea`, lock en
+> `registrarNovedad`, catch real+logger en `requireAuth`, `notificar` muerto eliminado, `pino`
+> cableado, invalidación de caché `"personal"`, Realtime extendido a Cursos/Planificador/Personal
+> 360°, callback de estado + toast en `.subscribe()`) + 3/10 de la Fase 3 (23505→400 en
+> `crearEmpleado`, idempotencia en Cursos/Planificador, `cambiarEstadoRegistro` atómico). **Sesión
+> 44 cerró las 4 tareas restantes (3.5-3.8), todas presentacionales en `apps/web`, sin tests
+> nuevos** (política lean): `useAreas.ts` invalida también `["funcionario"]` · botón "Exportar
+> asistencias" con `disabled`+label dinámico durante la descarga (mismo patrón que
+> `ExportarCsvButton` de Archivo) · auto-reingreso de `TomarCursoPage` muestra `toast.error` en vez
+> de fallar en silencio · "copiar enlace" con `toast.success`/`toast.error` en `CapacitacionModal`
+> y `CursoDetallePage`. **Verificación final completa de las 3 fases juntas, todo verde:** shared
+> build OK + **240/240** · backend `tsc` limpio + **290 pass + 11 skip** (sin regresión) · web
+> typecheck limpio + **10/10** · `npm run build` raíz **exit 0 SIN warnings**. **Working tree SIN
+> commitear, sin migraciones a producción** (el plan no las requería — todo el cambio fue
+> aplicativo o de frontend). 3.9/3.10 quedan aceptados como riesgo residual documentado (decisión
+> ya tomada en el propio plan, no requieren código).
+
+> ✅ **IMPECCABLE ACTUALIZADO + P1 DE LA CRÍTICA DE FORMACIÓN IMPLEMENTADOS (Sesión 42).**
+> `PRODUCT.md`/`DESIGN.md` refrescados contra el código real (theming claro/oscuro, tokens
+> semánticos, `rounded-md/lg` en vez de `rounded-full`, 6 dominios de `estado*Pill()`). Crítica
+> formal (`/impeccable critique`) sobre las 3 páginas de listado de la sección Formación
+> (Eventos/Cursos/Planificador, reportadas por el usuario como "genéricas, pobres, planas") —
+> score 26/40, snapshot en `.impeccable/critique/`. **2 P1 implementados y verificados:** ícono de
+> dominio por fila (`calendar`/`book`/`grad-cap`) reemplaza el monograma de 2 letras del ámbito;
+> dato "hero" visible sin entrar al detalle (bloque de fecha en Eventos, conteo real de inscritos
+> en Cursos vía nuevo campo `Curso.totalInscritos` con query agrupada sin N+1, bloque mes/año en
+> Planificador). **2 P2 documentados como spec pendiente, sin implementar:**
+> `docs/superpowers/specs/2026-07-07-formacion-consistencia-visual-design.md` (migrar filtros a
+> `ChipFiltro` compartido; señal visual de que Cursos navega mientras Eventos/Planificador
+> expanden in-place). Verificado: shared 240/240 · backend 290+2 skip · web 10/10 · build raíz exit
+> 0 sin warnings. Working tree SIN commitear.
+
+> ✅ **CURSOS & PLANIFICADOR — CÓDIGO COMPLETO Y VERIFICADO (Sesiones 34–38). Fases 0–10 de 11
+> hechas: TODO EL BACKEND + TODO EL FRONTEND + navegación wireada. Migraciones `0012`/`0013`
+> **APLICADAS a prod en la Sesión 40** (vía C1 de la remediación de la auditoría) — solo falta el
+> smoke test manual de 11 pasos.** **Fase 9 (navegación, Sesión 38):** `Layout.tsx` (union local `IconName`
+> +`book`/`calendar` de `dash/Icon.tsx`; el bloque `formacion` es byte-idéntico en SA/TH/SST → un
+> `Edit replace_all` renombró "Capacitaciones"→"Eventos" y añadió los 2 NavItem `/cursos`+
+> `/planificador` en las 3 ramas; `routeLabels` +2) + `App.tsx` (ruta pública `/tomar-curso/:token`
+> fuera de Layout; `/cursos`, `/cursos/:id` [hermana top-level, sin Outlet] y `/planificador`
+> protegidas SA/TH/SST; `modulos.ts` intacto). **2 mejoras de criterio propio** (usuario pidió "ten
+> criterio propio"): (a) breadcrumb `routeLabels` de `/capacitaciones` también → "Eventos" (sidebar
+> y cabecera coinciden); (b) **`React.lazy`** en las 4 páginas nuevas + `<Lazy>`/`Suspense` — el
+> cableado había metido Tiptap al chunk inicial (`index` 803 KB, warning >500 KB reaparecido) → tras
+> el fix `index` 803→**317 KB** y Tiptap queda diferido en chunk `LeccionForm` 412 KB (solo baja al
+> abrir el editor); **warning eliminado**, ataca la raíz y sigue el precedente Fase 8.3.
+> **Fase 10 (verificación, Sesión 38):** shared build OK · web typecheck limpio · web **10/10** ·
+> backend **269 pass + 2 skip** · `npm run build` raíz **exit 0 SIN warnings**. Working tree SIN
+> commitear. Plan (submódulos hermanos de Capacitaciones para la demo de
+> socialización del 2026-07-07 ante Talento Humano): `C:\Users\Leonardo\.claude\plans\delegated-baking-corbato.md`.
+> Ejecutado vía `subagent-driven-development` (un implementer fresco por pieza + revisión directa del
+> controlador antes de cerrar cada una, incl. re-corrida independiente de los comandos de
+> verificación — no solo confiar en el reporte del implementador). **Fase 0** (dominio
+> `shared/src/cursos.ts`+`planificador.ts`+schemas+labels) ya estaba commiteada (`bf35127`) de la
+> sesión de arranque. **Fase 1** (migraciones `0012_cursos.sql`/`0013_planificador.sql` + espejo
+> Drizzle), **Fase 2** (backend de gestión autenticada de Cursos, 15 casos de uso, +23 tests),
+> **Fase 3** (flujo público "tomar el curso por cédula" — helper `construirResultadoIngreso` del
+> diseño "un solo viaje", +4 tests) y **Fase 4** (backend del Planificador — CRUD plano sin
+> `db.transaction`, patrón "cargar → guardar", +19 tests) completan el **backend** (Sesiones
+> 34–35): shared build OK · tsc backend limpio · **269 pass + 2 skip**.
+>
+> **Fase 5 (Sesión 36, cliente de datos del frontend):** `apiCursos`/`apiCursosPublico`/
+> `apiPlanificador` en `apps/web/src/lib/api.ts` (mirror de `apiCapacitaciones`/`apiRegistro`) +
+> hooks `useCursos.ts` (con `useInscritosCurso` a `refetchInterval:5000` — el mecanismo de
+> "progreso en vivo")/`useTomarCurso.ts`/`usePlanificador.ts`. Transcripción mecánica, sin
+> ambigüedades, sin tests nuevos (política lean).
+>
+> **Fase 6 (Sesión 36, UI de gestión de Cursos — la fase de mayor riesgo del plan):** dividida en
+> 3 piezas por el controlador (6a+6b en paralelo, 6c después porque depende de 6b). **6a:**
+> `npm install @tiptap/react @tiptap/pm @tiptap/starter-kit @tiptap/extension-underline` (única
+> dependencia nueva del plan; la extensión de subrayado se sumó porque la toolbar la necesita y
+> el backend ya sanitiza `<u>`) + `CursosPage.tsx` (listado, filas `Link` directo a `/cursos/:id`,
+> sin modal). **6b:** `LeccionForm.tsx` — único componente Tiptap del proyecto, formulario puro
+> (negrita/cursiva/subrayado/H2/H3/listas/cita para TEXTO, input URL para VIDEO), exporta
+> `PROSE_LECCION_CLS` para que la Fase 7 renderice el mismo HTML guardado con la misma
+> tipografía. Tiptap resolvió como **v3.27.1** (no v2 como asumía el plan) sin necesitar ajustes
+> de API. **6c:** `CursoDetallePage.tsx` — página dedicada `/cursos/:id` (precedente:
+> `ExpedientePage.tsx` de Personal): cabecera con Abrir/Cerrar registro + QR + copiar enlace,
+> `Segmented` Contenido/Inscritos, editor anidado módulos→lecciones (crear/renombrar/reordenar/
+> eliminar con confirmación inline, delega en `LeccionForm` para crear/editar lecciones), panel
+> de inscritos en vivo (`InscritosTab`, reusa el `refetchInterval` de Fase 5). Las 3 piezas sin
+> tests nuevos (presentacional, política lean) y **verificadas línea por línea contra sus briefs
+> por el controlador**, no solo por los reportes de los implementers.
+>
+> **Estado verificado (Fases 5+6, re-corrido independientemente al cierre):** shared build OK ·
+> `tsc --noEmit` de `apps/web` limpio · **10/10** tests, sin regresión. **Working tree SIN
+> commitear** desde la Fase 1. **Ninguna migración aplicada a Supabase** — la autorización para
+> `0012`/`0013` se pide explícitamente al usuario recién al final del plan, antes del smoke test
+> de la Fase 10 (decisión ya confirmada con él). **Todos los briefs/reportes de fase (0-6, incl.
+> 6a/6b/6c) quedaron persistidos en `.superpowers/sdd/cursos-planificador/`** (raíz del repo,
+> gitignored pero NO efímero). Detalle completo en §10 (Sesiones 34–37) y en la memoria
+> `cursos-planificador-plan.md`.
+>
+> **Fase 7 (Sesión 37, UI pública "tomar curso"):** `pages/tomar-curso/TomarCursoPage.tsx` +
+> `FormularioCedula.tsx` — mirror estructural de `RegistroAsistenciaPage.tsx`; máquina de estados
+> cargando/reanudando → error → BORRADOR → preview+cédula → `VistaContenido` (barra de progreso
+> que pasa a `estado-ok` al 100% + banner "Curso completado", módulos `FilaDesplegable`, TEXTO
+> renderizado con `PROSE_LECCION_CLS` vía `dangerouslySetInnerHTML` [HTML ya sanitizado
+> server-side], VIDEO como enlace externo). Reanudación sin login vía sessionStorage
+> `curso:${token}:ingreso` con `{nombre, documento}` (el schema `.strict()` exige nombre;
+> inocuo: `onConflictDoNothing`, gana el primer nombre). Auto-reingreso llama
+> `apiCursosPublico.ingresar` directo (evita duplicar el useMutation del hook).
+>
+> **Fase 8 (Sesión 37, UI del Planificador):** `pages/planificador/PlanificadorPage.tsx`
+> (URL-driven `vista=lista|calendario` + q/estado/ambito/anio/mes/pagina; form "Nueva planeación"
+> colapsable con ámbito gated por `ambitosVisibles`; filas planas con pill vía
+> `estadoCapacitacionPlaneadaPill` + "Mes Año · T{trimestre}" tabular; avance de estado
+> PLANEADA→Iniciar→EN_CURSO→Completar→COMPLETADA vía PATCH; eliminar con confirmación inline) +
+> `CalendarioPlanificador.tsx` (12 celdas mes `Link`, navegación de año ‹ ›, hasta 3 chips con
+> dot de estado + "+N más", query propia `porPagina:100` = tope real del schema; exporta
+> `nombreMes` con date-fns/locale es). Ambas fases vía subagent-driven-development con briefs
+> grounded contra código real, revisadas línea por línea por el controlador, sin tests nuevos
+> (política lean).
+>
+> **Estado verificado (Fases 7+8, re-corrido independientemente al cierre):** shared build OK ·
+> `tsc --noEmit` de `apps/web` limpio · **10/10** tests · backend intacto (269 pass + 2 skip).
+> **REGLA NUEVA de bookkeeping** (pedido del usuario, Sesión 37): ledger/CLAUDE.md/memoria se
+> actualizan en UN solo batch al cierre de sesión, nunca entre fases (memoria
+> `memoria-solo-al-cierre.md`).
+> **Próxima sesión — retomar en la Fase 9** (navegación: `Layout.tsx` — íconos book/calendar,
+> 2 NavItem en la sección Formación para SA/TH/SST, renombrar etiqueta "Capacitaciones"→"Eventos"
+> sin cambiar ruta, `routeLabels`; `App.tsx` — ruta pública `/tomar-curso/:token` fuera de Layout
+> junto a `/asistencia/:token`, `/cursos` + `/cursos/:id` [hermana top-level, NO hija anidada] +
+> `/planificador` protegidas SA/TH/SST; `shared/src/modulos.ts` NO cambia) → Fase 10 (verificación
+> final raíz + **pedir autorización explícita para aplicar `0012`/`0013` a prod** + smoke test
+> manual de 11 pasos, plan maestro líneas 563-579). Leer primero `.superpowers/sdd/progress.md`
+> (ledger). El brief de Fase 9 no está redactado — grounding contra `App.tsx`/`Layout.tsx` reales.
+
 > ✅ **PERSONAL v2 (HOJA DE VIDA 360°) — Sprint 2 + Sprint 3 COMPLETOS (Sesión 33). Migraciones `0011` y ETL v2
 > APLICADOS A PRODUCCIÓN.** Continuación directa de la Sesión 32 (Sprint 0+1 ya cerrados: tablas satélite + expediente
 > de solo lectura `/personal/:id`). Esta sesión cerró **captura** (Sprint 2, backend+frontend) y **ETL v2** (Sprint 3).
@@ -1658,3 +1917,1101 @@ CSP ya incluye `wss://*.supabase.co`). Cold starts mitigables con ping gratuito 
 - **Próxima sesión (si se retoma):** Sprint 4 del plan — export PDF del expediente + micro-interacciones del puente
   "Finalizar contrato". Encargos abiertos del usuario, aún sin iniciar: diccionario de datos en `docs/`, auditoría de
   código muerto en BD y sistema (con evidencia).
+
+### 2026-07-03 — Sesión 34: Cursos & Planificador — Fases 0-2/11 ejecutadas, PAUSA a petición del usuario
+
+- **Origen:** correo/convocatoria de Fiorella Paccini (TH) para una "Reunión de Socialización Plataforma del Plan
+  Institucional de Capacitaciones" el **martes 2026-07-07, 10:00am**. El usuario decidió (sesión previa, brainstorming)
+  construir un MVP real (no simulado) de dos submódulos nuevos hermanos de Capacitaciones: **Cursos** (pieza insignia:
+  crear→publicar→tomar por cédula sin login→completar lección→ver progreso en vivo) y **Planificador** (CRUD simple +
+  calendario "año de un vistazo"). Plan completo ya escrito y aprobado en sesión previa:
+  `C:\Users\Leonardo\.claude\plans\delegated-baking-corbato.md` (11 fases, 0-10, con tipos/rutas/SQL exactos).
+- **Ejecución vía `subagent-driven-development`** (implementer fresco por fase, con brief extraído del plan + revisión
+  directa del controlador leyendo el diff real antes de cerrar cada fase — no solo confiando en el reporte del
+  implementador). Sin commits salvo pedido explícito.
+- **Fase 0** (dominio `shared/`: `cursos.ts`+`planificador.ts`+schemas+labels, +47 tests → shared 240/240) ya estaba
+  commiteada de la sesión de arranque (commit `bf35127`).
+- **✅ Fase 1 COMPLETA** — `supabase/migrations/0012_cursos.sql` (enum `tipo_contenido_leccion` + tablas
+  `cursos`/`curso_modulos`/`curso_lecciones`/`inscripciones`/`progreso_lecciones`, RLS deny-directo) +
+  `0013_planificador.sql` (enum `estado_capacitacion_planeada` + tabla `capacitaciones_planeadas`) — **NO aplicadas a
+  Supabase**. Espejo en `apps/backend/src/infrastructure/db/schema.ts`: 2 enums + 6 tablas nuevas. El gotcha de Drizzle
+  ya documentado en el plan (`unique()` compuesto necesita la forma de 3 argumentos `pgTable(name,cols,(t)=>[...])` o
+  `onConflictDoNothing` truena en runtime) se verificó resuelto correctamente en las 4 tablas que lo requieren
+  (`cursoModulos`/`cursoLecciones`/`inscripciones`/`progresoLecciones`) — revisado con `git diff` directamente, no solo
+  confiando en el reporte.
+- **✅ Fase 2 COMPLETA** — backend de gestión autenticada de Cursos: `CursoRepo.ts` (puerto con 13 métodos de gestión;
+  **decisión de fasificación deliberada**: los 3 métodos del flujo público — `obtenerPorToken`/`ingresarInscripcion`/
+  `marcarLeccionCompletada` — NO se incluyen todavía, quedan para que la Fase 3 extienda la interfaz, así cada fase
+  compila y verifica de forma independiente) + `cursoRepository.ts` (mappers + swap-con-sentinela para reordenar
+  módulos/lecciones, **scopeado por padre** — a diferencia de `moverArea` que es un catálogo único global, aquí el
+  "vecino" se busca filtrando también por `cursoId`/`moduloId` porque `orden` es único por padre, no global — verificado
+  correcto en el código real) + 15 casos de uso (`application/cursos/*.ts`, guardas de rol/ámbito, autorización vía
+  `obtenerDetalle(cursoId)` antes de cada mutación de módulo/lección, regla nueva de "doble ámbito" en `editarCurso` para
+  que ni TH ni SST puedan reasignar un curso fuera de su propio ámbito) + `cursosController.ts` + `cursos.routes.ts`
+  (montado `/api/cursos`, `requireAuth+requireActivo` dejado al inicio del router a propósito para que la Fase 3 inserte
+  las rutas públicas antes, edición mecánica) + wiring en `application/index.ts`/`container.ts`/`app.ts`. Nueva
+  dependencia backend `isomorphic-dompurify` (trae `jsdom` empaquetado) usada en `crearLeccionCurso`/`editarLeccionCurso`
+  para sanitizar `contenidoTexto` (HTML de Tiptap) antes de persistir. **+23 tests** en `tests/cursos.test.ts` (guardas
+  de rol/ámbito, la regla de doble-ámbito, sanitización verificada por el argumento exacto pasado al mock del repo, no
+  solo ausencia de throw, smoke HTTP 401).
+- **PAUSA a petición explícita del usuario** ("Actualiza la memoria y finalicemos la sesión, que la siguiente sesión
+  retoma desde la fase 3 con total contexto") — justo después de cerrar la Fase 2, antes de dispatchar el implementer de
+  la Fase 3. El brief de la Fase 3 ya está redactado (flujo público "tomar el curso por cédula": las 2 transacciones más
+  delicadas de toda la feature, `ingresarInscripcion`/`marcarLeccionCompletada`, con el helper compartido
+  `construirResultadoIngreso` que arma el mismo payload `IngresoCursoResultado` para ambas — el diseño de "un solo
+  viaje" del plan).
+- **Persistencia para la continuidad entre sesiones:** el `.superpowers/sdd/progress.md` (ledger, raíz del repo,
+  gitignored pero persistente) tiene una entrada por cada fase cerrada. Además, se copiaron TODOS los briefs/reportes de
+  fase (incluido el de la Fase 3, listo para dispatch) del scratchpad efímero de esta sesión a
+  **`.superpowers/sdd/cursos-planificador/`** (raíz del repo — a diferencia del scratchpad de sesión, este directorio
+  sobrevive entre sesiones porque vive en el disco del proyecto, no en el temp de la sesión). La próxima sesión no
+  necesita releer el plan completo ni re-redactar el brief de la Fase 3 — puede dispatchar directamente con el brief ya
+  persistido.
+- **Verificación final de esta sesión (todo verde):** shared build OK · `tsc` backend limpio · `npm run test
+  --workspace=apps/backend` → **246 pass + 2 skip** (223 previos + 23 de Cursos, sin regresiones). **Working tree SIN
+  commitear** desde la Fase 1 en adelante (constraint respetado). **Ninguna migración aplicada a Supabase** — la
+  autorización para `0012`/`0013` se pide explícitamente al usuario recién al final del plan, antes del smoke test de
+  la Fase 10 (decisión ya confirmada con él en la sesión de arranque).
+- **Próxima sesión — retomar EXACTAMENTE en la Fase 3.** Orden de lectura: `.superpowers/sdd/progress.md` (ledger) →
+  `.superpowers/sdd/cursos-planificador/fase-3-brief.md` (ya redactado, dispatchar directo) → tras cerrarla, Fase 4
+  (Planificador, backend más simple sin flujo público) → Fases 5-9 (frontend: hooks, UI de gestión de Cursos con Tiptap,
+  UI pública "tomar curso", UI del Planificador con calendario de 12 meses, navegación en `Layout.tsx`/`App.tsx`) →
+  Fase 10 (verificación final + revisión de rama + **pedir autorización explícita** para aplicar `0012`/`0013` a
+  producción antes del smoke test manual de 11 pasos, literal listón de prueba para la demo del martes).
+
+### 2026-07-03 — Sesión 35: Cursos & Planificador — Fase 3 (flujo público) + Fase 4 (Planificador) ejecutadas, backend íntegro
+
+- **Continuación directa de la Sesión 34**, misma fecha calendario. El usuario pidió primero estudiar a fondo lo hecho
+  del plan original ("dominio absoluto del contexto + impacto") antes de autorizar — se releyó el ledger completo, el
+  brief de Fase 3 ya persistido, y el plan maestro completo (las 11 fases), verificando además contra el código real
+  (`CursoRepo.ts`, `cursoRepository.ts`, `cursos.routes.ts`, `application/index.ts`, `container.ts`) que cada referencia
+  del brief seguía coincidiendo línea por línea con el estado del working tree. Confirmado el contexto, el usuario
+  autorizó explícitamente ("Procede, a cocinar") antes de tocar código.
+- **✅ Fase 3 COMPLETA** — flujo público "tomar el curso por cédula", dispatchada con el brief ya redactado en la
+  sesión anterior (sin releer el plan completo, tal como estaba previsto). `CursoRepo.ts`/`cursoRepository.ts`
+  extendidos con `obtenerPorToken`/`ingresarInscripcion`/`marcarLeccionCompletada` + helper privado
+  `construirResultadoIngreso(tx, cursoId, documento)` (el mecanismo concreto del diseño de "un solo viaje": ambas
+  transacciones terminan llamándolo y devuelven la misma forma `IngresoCursoResultado`, así el cliente puede reemplazar
+  todo su estado local sin merge). `ingresarInscripcion` valida `cursoAccesible` (400 si BORRADOR) y usa
+  `onConflictDoNothing` en `(cursoId,documento)` para que "gane el primer nombre escrito" sin ramificación extra;
+  actualiza `ultimaActividadEn` siempre, incluso si el curso está CERRADO. `marcarLeccionCompletada` **deliberadamente
+  no** valida `cursoAccesible` (BORRADOR es inalcanzable sin inscripción previa; CERRADO debe seguir permitiendo
+  completar a quien ya estaba inscrito) pero sí verifica que `leccionId` pertenezca a un módulo de ESE curso vía join
+  — sin ese chequeo, un cliente malicioso podría contaminar el progreso de una inscripción con una lección de otro
+  curso. 3 casos de uso proxy sin `actor` + `cursosPublicoController.ts` (mirror de `registroPublicoController.ts`) +
+  3 rutas públicas (`GET /tomar/:token`, `POST /tomar/:token/ingresar`, `POST /tomar/:token/lecciones/:leccionId/completar`)
+  con `rateLimit(10/min)` propio, insertadas antes de `.use(requireAuth, requireActivo)` en `cursos.routes.ts`. +4 tests
+  (delegación exacta vía `toBe` + 2 smoke HTTP de rutas públicas sin JWT). **Sin ambigüedades** — todos los nombres de
+  helpers internos coincidieron literalmente con el brief. Verificado independientemente por el controlador (no solo el
+  reporte): shared build OK · tsc backend limpio · backend **250 pass + 2 skip** (antes 246+2 skip).
+- **✅ Fase 4 COMPLETA** — backend del Planificador. A diferencia de Fase 3, su brief **no existía de antemano**; lo
+  redactó el propio controlador esta sesión (`.superpowers/sdd/cursos-planificador/fase-4-brief.md`), releyendo primero
+  los patrones reales a mirror (`crearCapacitacion.ts`/`editarCapacitacion.ts`/`abrirRegistro.ts` para el patrón "cargar
+  → guardar" de autorización por ámbito de la fila ya persistida, `listarCursos.ts` para el ámbito forzado por rol,
+  `areas.routes.ts` para un router simple sin rutas públicas, y las columnas reales de la tabla `capacitacionesPlaneadas`
+  en `schema.ts`, ya creada desde la Fase 1) antes de escribir código de referencia — mismo nivel de rigor que si
+  hubiera venido del plan maestro. `PlanificadorRepo.ts` (puerto) + `planificadorRepository.ts` (repo Drizzle CRUD
+  plano de una sola tabla, **sin `db.transaction`** — el Planificador no tiene invariantes multi-tabla que proteger, a
+  diferencia de Cursos). 4 casos de uso (`crear`/`listar`/`editar`/`eliminar` CapacitacionPlaneada); `editar`/`eliminar`
+  siguen el patrón "cargar → guardar" (sin la guarda de "solo editable en BORRADOR" que sí tiene Capacitaciones — el
+  Planificador no tiene esa restricción de ciclo de vida). `planificadorController.ts` + `planificador.routes.ts`
+  (montado en `/api/planificador`, todo autenticado desde la primera línea, sin rutas públicas; 4 rutas: `GET /`,
+  `POST /`, `PATCH /:id`, `POST /:id/eliminar` — **sin** `GET /:id` porque el payload de la lista ya es autocontenido,
+  igual que `AreasPage`; **sin** endpoints dedicados de transición de estado, `estado` se edita vía el PATCH normal,
+  decisión ya tomada en el plan maestro). +19 tests. **Ambigüedad resuelta por el implementer:** el brief asumía
+  "bloques" de imports por módulo en `container.ts`, pero el archivo real ya tiene un solo import flat alfabetizado de
+  todos los módulos — insertó los 4 nombres nuevos en su posición alfabética correcta (consistente con el archivo real).
+  Verificado independientemente por el controlador: shared build OK · tsc backend limpio · backend **269 pass + 2 skip**
+  (antes 250+2 skip). Diff de `planificadorRepository.ts`/casos de uso/rutas/wiring revisado directamente.
+- **PAUSA a petición explícita del usuario** ("Haces pausa al finalizar la fase 4 por favor, que sea segura") —
+  justo después de cerrar la Fase 4, con el backend de **ambos** submódulos (Cursos completo incl. flujo público, y
+  Planificador completo) ya terminado y verificado. Antes de esta pausa, el usuario también pidió explícitamente
+  diferir las actualizaciones de memoria a solo el cierre de sesión ("Actualiza la memoria solo al final de la sesión")
+  — aplicado: ninguna actualización de `CLAUDE.md`/memoria se hizo entre la Fase 3 y la Fase 4, todas se batchearon aquí.
+- **Verificación final de esta sesión (todo verde):** shared build OK · `tsc` backend limpio · `npm run test
+  --workspace=apps/backend` → **269 pass + 2 skip** (223 base → 246 tras Fase 2 → 250 tras Fase 3 → 269 tras Fase 4,
+  sin regresiones en ningún punto). **Working tree SIN commitear** desde la Fase 1 en adelante (constraint respetado).
+  **Ninguna migración aplicada a Supabase.**
+- **Próxima sesión — retomar en la Fase 5** (frontend: cliente API `apiCursos`/`apiCursosPublico`/`apiPlanificador` en
+  `lib/api.ts` + hooks `useCursos.ts`/`useTomarCurso.ts`/`usePlanificador.ts`) → Fase 6 (UI de gestión de Cursos, incluye
+  la única dependencia nueva de todo el plan: editor Tiptap) → Fase 7 (UI pública "tomar curso") → Fase 8 (UI del
+  Planificador con calendario de 12 meses) → Fase 9 (navegación) → Fase 10 (verificación final + autorización explícita
+  de migraciones a prod antes del smoke test manual de 11 pasos). **Ningún brief de Fase 5-10 está redactado todavía**
+  — extraerlos de la sección correspondiente del plan maestro al retomar, siguiendo el mismo patrón de grounding usado
+  para el de Fase 4 esta sesión (leer los archivos reales que se van a mirror antes de escribir el brief, no transcribir
+  el plan maestro a ciegas). Orden de lectura al retomar: `.superpowers/sdd/progress.md` (ledger, tiene el detalle
+  completo de Fases 3 y 4) → memoria `cursos-planificador-plan.md`.
+
+### 2026-07-03 — Sesión 36: Cursos & Planificador — Fase 5 (cliente API + hooks) + Fase 6 (UI de gestión de Cursos, Tiptap) ejecutadas
+
+- **Sesión nueva, retoma exactamente en la Fase 5** según lo dejado por la Sesión 35. El usuario pidió "retoma el hilo y
+  comienza a ejecutar la fase 5" — se estudió primero el código real (`lib/api.ts`, `useCapacitaciones.ts`,
+  `useRegistroAsistencia.ts`, `CursoRepo.ts`/`PlanificadorRepo.ts`, `cursos.routes.ts`/`planificador.routes.ts`,
+  controllers, `schemas.ts`) antes de escribir el brief de Fase 5, mismo rigor de grounding que las fases anteriores.
+- **✅ Fase 5 COMPLETA** — `apiCursos`/`apiCursosPublico`/`apiPlanificador` agregados a `apps/web/src/lib/api.ts` (mirror
+  exacto de `apiCapacitaciones`/`apiRegistro` ya existentes) + 3 hooks nuevos: `useCursos.ts` (con helper de mutación
+  genérico `useMutacionCurso<TArgs,TResult>` — a diferencia de Capacitaciones, las mutaciones de Cursos devuelven formas
+  distintas; `useInscritosCurso` con `refetchInterval:5000`, el mecanismo de "progreso en vivo" sin Realtime nuevo),
+  `useTomarCurso.ts` (mirror de `useRegistroAsistencia.ts`, sin invalidación de caché), `usePlanificador.ts`. Sin
+  ambigüedades, transcripción mecánica del brief. Verificado independientemente por el controlador (no solo el
+  reporte): shared build OK · `tsc --noEmit` de `apps/web` limpio · **10/10** tests, sin regresión (sin tests nuevos,
+  política lean). Ledger actualizado con el detalle completo.
+- **Checkpoint intermedio:** tras cerrar Fase 5, el controlador marcó explícitamente que la Fase 6 es la de mayor riesgo
+  de todo el plan (única dependencia nueva del proyecto — Tiptap — + la pieza de UI con más superficie, según el propio
+  plan maestro) y usó `AskUserQuestion` para confirmar si continuar de inmediato o pausar ahí. El usuario eligió
+  continuar ("Continuar con Fase 6").
+- **✅ Fase 6 COMPLETA** — dividida en 3 piezas por el controlador (no venían del plan maestro como piezas separadas;
+  fue una decisión de ejecución para aislar el riesgo de Tiptap y permitir verificación independiente de cada una):
+  - **6a** (dispatchada en paralelo con 6b): `npm install @tiptap/react @tiptap/pm @tiptap/starter-kit
+    @tiptap/extension-underline --workspace=apps/web` (el plan maestro solo mencionaba los primeros 3 paquetes; se
+    agregó la extensión de subrayado porque la toolbar especificada en la Fase 6 del plan la requiere explícitamente y
+    el backend de la Fase 2 ya sanitiza la etiqueta `<u>` en su `ALLOWED_TAGS` — inconsistencia menor del plan resuelta,
+    no una desviación de producto) + `apps/web/src/pages/cursos/CursosPage.tsx` (listado, mirror de
+    `CapacitacionesPage.tsx` sin campos de fecha/lugar/instructor que un curso no tiene; cada fila es un `Link` directo
+    a `/cursos/:id`, sin acordeón ni modal — decisión de página dedicada del plan).
+  - **6b** (en paralelo con 6a): `apps/web/src/pages/cursos/LeccionForm.tsx` — el único componente Tiptap de todo el
+    proyecto, formulario puro sin llamadas a la API (reporta `onGuardar(valores)` al padre). Toolbar restringida
+    (negrita/cursiva/subrayado/H2/H3/listas con y sin numerar/cita) para contenido TEXTO, campo URL para VIDEO. Exporta
+    `PROSE_LECCION_CLS` (clases Tailwind vía arbitrary variants, sin tocar `index.css`) para que la Fase 7 renderice el
+    HTML guardado con la misma tipografía. **Detalle real descubierto en la ejecución:** Tiptap se resolvió como
+    **v3.27.1** (el brief/plan asumían v2) — la API usada (`useEditor`/`EditorContent`/`.chain().focus()...run()`/
+    `.isActive()`/`.getHTML()`/`.isEmpty`) resultó compatible sin ningún ajuste, confirmado por `tsc --noEmit` limpio.
+    El implementer de 6b tuvo que correr él mismo el `npm install` de la pieza 6a porque arrancó antes de que esa pieza
+    paralela terminara — anticipado explícitamente en ambos briefs, sin fricción real.
+  - **6c** (dispatchada solo después de que el controlador verificó — lectura línea por línea + re-corrida de `tsc`/
+    tests — que 6a y 6b ya estaban correctas y en verde): `apps/web/src/pages/cursos/CursoDetallePage.tsx`, la pieza
+    más grande de la fase. Página dedicada `/cursos/:id` (mismo precedente que `ExpedientePage.tsx` de Administración
+    de Personal): cabecera con transición Abrir/Cerrar registro (gateada por `puedeGestionarAmbito`) + QR
+    (`qrcode.react`) + copiar enlace; `Segmented` `?vista=contenido|inscritos`; editor anidado módulos→lecciones
+    (`ModuloRow`/`LeccionRow`: crear/renombrar/reordenar/eliminar en ambos niveles con confirmación inline de 1 clic
+    para eliminar — mismo patrón que `AccionesArea`/`AccionesEmpleado`; crear/editar lección delega en `LeccionForm` de
+    6b); panel de inscritos en vivo (`InscritosTab`, reusa el `refetchInterval` de 5s ya construido en Fase 5 —
+    cumple el requisito literal de "ver progreso en vivo" sin infraestructura nueva). **Desviación documentada:**
+    `ultimaActividadEn` se muestra con `formatFechaHora` (absoluto) en vez de "tiempo relativo" como sugería la prosa
+    del plan — `shared/src/ui.ts` no tiene ningún formateador de tiempo relativo y construir uno nuevo era alcance
+    fuera de esta pieza (una utilidad compartida nueva, no parte de una página); simplificación lean documentada, no
+    un defecto — cambio aislado de una línea si se pide después.
+  - Ninguna de las 3 piezas agregó tests nuevos (política lean: 100% presentacional, sin guardas de auth ni
+    transiciones de estado nuevas en el frontend — todo ya cubierto por la frontera backend de las Fases 2-4).
+  - Verificación final de la fase completa (re-corrida por el controlador tras las 3 piezas, no solo confiando en los
+    reportes de los implementers): `npm run build --workspace=shared` exit 0 · `npm run typecheck --workspace=apps/web`
+    (`tsc --noEmit`) limpio · `npm run test --workspace=apps/web` → **10/10**, sin regresión. Los 3 archivos nuevos
+    (`CursosPage.tsx`, `LeccionForm.tsx`, `CursoDetallePage.tsx`) fueron leídos línea por línea por el controlador
+    contra sus briefs respectivos antes de dar la fase por cerrada — coinciden exactamente, sin desviaciones de
+    sustancia más allá de las ya documentadas arriba.
+- **PAUSA a petición explícita del usuario** — mensaje recibido a mitad de la ejecución de 6a/6b: "Pausas al finalizar
+  la sesión 6" / "fase" (interpretado, y confirmado por el contexto, como "pausa al finalizar la Fase 6", no la sesión
+  completa de inmediato) — se completó la Fase 6 entera (incl. 6c, que todavía no se había dispatchado en ese momento)
+  antes de detenerse, tal como se había hecho con la pausa de Fase 4 en la Sesión 35.
+- **Verificación final de esta sesión (todo verde):** shared build OK · `tsc --noEmit` de `apps/web` limpio ·
+  `npm run test --workspace=apps/web` → **10/10** (Fase 5 y Fase 6 no agregaron tests, política lean). Backend
+  (heredado de la Sesión 35, no tocado esta sesión): **269 pass + 2 skip**. **Working tree SIN commitear** desde la
+  Fase 1 en adelante (constraint respetado). **Ninguna migración aplicada a Supabase.** `apps/web/package.json` ahora
+  incluye las 4 dependencias de Tiptap (única dependencia nueva de todo el plan).
+- **Próxima sesión — retomar en la Fase 7** (UI pública "tomar curso": `TomarCursoPage.tsx` + `FormularioCedula.tsx`,
+  mirror estructural de `RegistroAsistenciaPage.tsx`, máquina de estados cédula→contenido→completado, reutiliza
+  `PROSE_LECCION_CLS` de `LeccionForm.tsx` para renderizar `contenidoTexto` vía `dangerouslySetInnerHTML`) → Fase 8 (UI
+  del Planificador con calendario de 12 meses) → Fase 9 (navegación: `Layout.tsx`+`App.tsx` — wireará por fin las
+  rutas `/cursos`, `/cursos/:id`, `/planificador`, `/tomar-curso/:token` que hasta ahora existen sin ruta) → Fase 10
+  (verificación final + autorización explícita de migraciones `0012`/`0013` a prod antes del smoke test manual de 11
+  pasos). **Ningún brief de Fase 7-10 está redactado todavía** — extraerlos del plan maestro al retomar, siguiendo el
+  mismo patrón de grounding contra código real usado en las Fases 4-6. Orden de lectura al retomar:
+  `.superpowers/sdd/progress.md` (ledger, tiene el detalle completo de Fases 5 y 6) → memoria
+  `cursos-planificador-plan.md`.
+
+### 2026-07-04 — Sesión 37: Cursos & Planificador — Fase 7 (UI pública "tomar curso") + Fase 8 (UI del Planificador) ejecutadas, pausa segura
+
+- **Sesión nueva, retoma exactamente en la Fase 7** según lo dejado por la Sesión 36. El usuario activó 3 skills
+  (`engineering-architecture-pro`, `design-taste-frontend`, `ui-ux-pro-max`), pidió dominio total del contexto antes de
+  autorizar (se leyó ledger → memoria → plan maestro líneas 460-596 → código real a espejar) y autorizó con "Comienza a
+  cocinar, usa las skills". Ejecución vía `subagent-driven-development`: brief grounded por fase (leyendo primero los
+  archivos reales a mirror, no transcribiendo el plan maestro) + implementer fresco + revisión línea por línea del
+  controlador + re-corrida independiente de la verificación. **Sin commits** (constraint respetado).
+- **✅ Fase 7 COMPLETA** — UI pública "tomar el curso por cédula", 2 archivos nuevos en `pages/tomar-curso/`:
+  - `TomarCursoPage.tsx` (373 líneas): máquina de estados cargando/reanudando → error → BORRADOR (aviso tono gold) →
+    preview del curso sin progreso + `FormularioCedula` → `VistaContenido`. Reanudación sin login vía sessionStorage
+    `curso:${token}:ingreso` guardando `{nombre, documento}` como JSON — **ambigüedad del plan resuelta**: el plan decía
+    guardar solo `documento`, pero `ingresarCursoSchema` es `.strict()` y exige `nombre`; se guardan ambos (inocuo:
+    `onConflictDoNothing` en BD, gana el primer nombre escrito). Auto-reingreso con `useEffect`+`intentoRef` llamando
+    `apiCursosPublico.ingresar` directo (decisión del implementer aceptada: evita dos `useMutation` con el mismo
+    propósito). `VistaContenido`: barra de progreso (fill `bg-gold-500` → `bg-estado-ok` al 100% + banner "Curso
+    completado"), módulos como `FilaDesplegable` (`defaultOpen` solo el primero), lecciones con badge
+    `TIPO_CONTENIDO_LABEL`; TEXTO → `PROSE_LECCION_CLS` + `dangerouslySetInnerHTML` (HTML ya sanitizado server-side con
+    isomorphic-dompurify en Fase 2); VIDEO → enlace externo `noopener noreferrer`. Completar lección → el resultado
+    "un solo viaje" reemplaza TODO el estado local sin merge. Nota registrada (no defecto): en dev con StrictMode el
+    auto-reingreso puede disparar 2 POST — idempotente por diseño.
+  - `FormularioCedula.tsx` (112 líneas): nombre (2-120) + documento (3-30, inputMode numeric), máquina idle/enviando/
+    error, reporta `onIngresado(resultado, datos)` al padre.
+- **✅ Fase 8 COMPLETA** — UI del Planificador, 2 archivos nuevos en `pages/planificador/`:
+  - `PlanificadorPage.tsx` (603 líneas): URL-driven por searchParams (`vista=lista|calendario`, q, estado, ambito,
+    anio, mes, pagina). Form "Nueva planeación" colapsable (título/área objetivo/ámbito gated `ambitosVisibles(rol)>1`/
+    año actual−1…+2/mes/notas; opcionales con `|| undefined` por el `.strict()` del backend). `Segmented`
+    Lista/Calendario preservando params. Filtros de estado/ámbito + chip removible "Mes: <nombre>" cuando se llega
+    desde el calendario. Filas planas `premium-card` con pill vía `estadoCapacitacionPlaneadaPill` (Semáforo Único) +
+    "Mes Año · T{trimestreDe(mes)}" `tabular-nums` + avance de estado PLANEADA→"Iniciar"→EN_CURSO→"Completar"→
+    COMPLETADA vía `useEditarPlaneada` + eliminar con confirmación inline de 1 clic (patrón `GestionArea`).
+  - `CalendarioPlanificador.tsx` (147 líneas): "año de un vistazo" — 12 celdas mes (`grid-cols-2 sm:3 lg:4`), cada
+    celda un `Link` a la vista lista filtrada por mes/año; navegación de año ‹ ›; hasta 3 chips de título con dot de
+    estado + "+N más"; celda vacía apagada; skeleton de 12 celdas. Query propia `usePlanificador({anio, porPagina:100})`
+    — **validado contra el schema real**: `.max(100)` es el tope, riesgo runtime que tsc no atrapa. Exporta `nombreMes`
+    (date-fns `format` con locale `es`, capitalizado), importado por la página para el chip de mes.
+- **Verificación (re-corrida por el controlador tras cada fase):** shared build OK · `tsc --noEmit` de `apps/web`
+  limpio · **10/10** tests, sin regresión · `git status` confirma alcance exacto (solo `pages/tomar-curso/` y
+  `pages/planificador/` nuevos en web). Backend intacto: **269 pass + 2 skip**. Sin tests nuevos (política lean:
+  100% presentacional, frontera ya cubierta por backend Fases 2-4). **Working tree SIN commitear.** **Ninguna
+  migración aplicada a Supabase.**
+- **⚙️ REGLA NUEVA DE PROCESO (feedback del usuario, 2 veces):** "No me está gustando ese mecanismo de que actualices
+  la memoria antes de que finalicemos la sesión. Me estás gastando muchos tokens." → ledger/CLAUDE.md/memoria se
+  actualizan en **UN solo batch al cierre de sesión**, nunca entre fases. Persistida en la memoria
+  `memoria-solo-al-cierre.md` (+ índice MEMORY.md). También pidió: tests al final de cada fase (cumplido) y mayor
+  eficiencia de tokens (menos narración, operaciones batcheadas).
+- **PAUSA SEGURA a petición explícita del usuario** ("Haces pausa segura al finalizar la fase 8") — ejecutada al
+  cerrar la Fase 8: ledger actualizado (Fases 7+8 + próximo paso), CLAUDE.md §8+§10 actualizados, memoria al día.
+- **Próxima sesión — retomar en la Fase 9 (navegación):** `Layout.tsx` (íconos book/calendar del set local, 2 NavItem
+  en sección Formación para SA/TH/SST, renombrar etiqueta "Capacitaciones"→"Eventos" sin cambiar ruta, `routeLabels`)
+  + `App.tsx` (ruta pública `/tomar-curso/:token` fuera de Layout junto a `/asistencia/:token`; `/cursos` y
+  `/cursos/:id` como hermana top-level [NO hija anidada] y `/planificador`, protegidas SA/TH/SST). `shared/src/
+  modulos.ts` NO cambia. Brief de Fase 9 sin redactar — grounding contra `App.tsx`/`Layout.tsx` reales. Luego Fase 10:
+  verificación final raíz + **pedir autorización explícita para aplicar `0012`/`0013` a prod** + smoke test manual de
+  11 pasos (plan maestro líneas 563-579; corte seguro si falta tiempo = recortar la cuadrícula de 12 meses). Orden de
+  lectura al retomar: `.superpowers/sdd/progress.md` (ledger) → memoria `cursos-planificador-plan.md`. Demo:
+  **martes 2026-07-07, 10:00am**.
+
+### 2026-07-04 — Sesión 38: Cursos & Planificador — Fase 9 (navegación) + Fase 10 (verificación) → CÓDIGO COMPLETO
+
+- **Continuación directa de la Sesión 37**, misma fecha. El usuario pidió retomar la Fase 9 con dominio total del
+  contexto antes de autorizar; se estudió ledger + `App.tsx`/`Layout.tsx` reales + plan maestro §Fase 9-10 + exports
+  de las 4 páginas nuevas antes de tocar código. Skills activas: `ui-ux-pro-max` + `design-taste-frontend` como lente
+  de consistencia sobre el Sello (no re-skin). El usuario dio criterio propio explícito ("quiero que tengas criterio
+  propio y encuentres oportunidad de mejora para esta fase y la apliques") + pidió Fase 10 en el mismo hilo y memoria
+  **solo al cierre**, nunca intermedia. Cambio quirúrgico de 2 archivos → ejecutado por el controlador directo (sin
+  dispatch de implementer). **Sin commits.**
+- **✅ Fase 9 (navegación):** `Layout.tsx` — union local `IconName` + `iconPath` con `book`/`calendar` (paths
+  replicados verbatim de `components/ui/dash/Icon.tsx`, que es un set aparte; el de Layout es cerrado propio). El
+  bloque de la sección `formacion` es **byte-idéntico** en las 3 ramas SA/TH/SST → un solo `Edit replace_all` renombró
+  la etiqueta "Capacitaciones"→"Eventos" y añadió los 2 NavItem (`/cursos` book, `/planificador` calendar,
+  `status:"live"`) en las tres a la vez. `routeLabels` +2 entradas (`/cursos`, `/planificador`). `App.tsx` — 4 imports,
+  ruta pública `/tomar-curso/:token` fuera de `<Layout>` (junto a `/asistencia/:token`), y `/cursos`, `/cursos/:id`
+  (hermana top-level, **NO** hija anidada — página dedicada sin `<Outlet/>`), `/planificador`, las 3 protegidas
+  SA/TH/SST. `shared/src/modulos.ts` intacto (confirmado por el plan).
+- **✅ MEJORA DE CRITERIO PROPIO #1 (consistencia):** el breadcrumb de la barra superior lee de `routeLabels`; el plan
+  solo renombraba el sidebar → habría dejado sidebar="Eventos" / cabecera="Capacitaciones". Se renombró **también** el
+  `routeLabels` de `/capacitaciones`→"Eventos" para que sidebar y breadcrumb coincidan.
+- **✅ MEJORA DE CRITERIO PROPIO #2 (regresión de bundle atrapada y resuelta):** al montar las rutas, las páginas
+  nuevas (incl. **Tiptap**, la dep más pesada del proyecto) entraron al chunk inicial → `index` saltó a **803 KB** y
+  reapareció el warning de >500 KB (el proyecto tiene "build SIN warnings" como estándar, resuelto en su día en Fase
+  8.3). Fix: **`React.lazy`** en las 4 páginas nuevas + helper `<Lazy>` con `Suspense` (fallback sobrio "Cargando…").
+  Resultado: `index` 803→**317 KB**, Tiptap aislado en chunk `LeccionForm` **412 KB diferido** (solo baja al abrir el
+  editor de un curso). Login/Panel/aprendiz público (`/tomar-curso`) ya no descargan Tiptap (130 KB gzip menos en el
+  arranque). **Warning eliminado.** Ataca la raíz (carga diferida), no el síntoma; alineado con la guía de las skills
+  ("lazy-load lo no-above-the-fold") y con el precedente Fase 8.3 (code-split).
+- **✅ Fase 10 (verificación final, todo verde, re-corrida independientemente):** `shared` build OK · `apps/web`
+  typecheck limpio · `apps/web` **10/10** · `apps/backend` **269 pass + 2 skip** (sin regresión) · `npm run build`
+  raíz **exit 0 SIN warnings**. Hook impeccable de `index.css` (`Sfmono-Regular` L445) = preexistente ya clasificado
+  intencional (stack mono del Sello, port verbatim), no tocado esta fase.
+- **CÓDIGO DE CURSOS & PLANIFICADOR COMPLETO (Fases 0-10).** **Working tree SIN commitear.** **Migraciones
+  `0012`/`0013` NO aplicadas a prod** — vía `AskUserQuestion` el usuario eligió explícitamente "cerrar solo en código,
+  aplicar migraciones después". Memoria actualizada en UN solo batch al cierre (ledger + CLAUDE.md §8/§10 + memorias
+  `cursos-planificador-plan.md`/MEMORY.md), respetando la regla de `memoria-solo-al-cierre.md`.
+- **Pendiente = ACCIÓN HUMANA (no código):** (1) autorizar y aplicar `0012`+`0013` a prod vía MCP (sin ellas la BD no
+  tiene las tablas y el runtime de Cursos/Planificador falla — mismo patrón del bug de Capacitaciones Sesión 23);
+  (2) smoke test manual de 11 pasos del plan maestro (líneas 563-579) contra el stack en vivo. Demo: **martes
+  2026-07-07, 10:00am**.
+
+### 2026-07-04 — Sesión 39: Auditoría de backend + BD (modo interpretativo) → informe consolidado + plan de remediación (sin código)
+
+- **Sesión de auditoría + diseño de plan, sin tocar código.** Skills: `engineering-skills:senior-backend`,
+  `senior-fullstack`, `engineering-architecture-pro` (modo AUDIT + interpretativo al máximo). Alcance confirmado con
+  el usuario: **todo el backend `apps/backend` + su conexión con la BD** (web excluida), con **verificación en vivo**
+  (269 tests ✓, MCP contra prod, 3 agentes senior por capa + lectura directa). **Sin commits, sin migraciones
+  aplicadas, sin ediciones de código.**
+- **Informe único rankeado entregado — 11 hallazgos:**
+  - **🔴 C1** · Cursos & Planificador 100% desconectado de la BD: `0012_cursos`/`0013_planificador` **NO aplicadas**
+    (BD llega a `0011`) → toda ruta `/api/cursos` y `/api/planificador` lanza `relation does not exist` (mismo patrón
+    que el bug de Capacitaciones Sesión 23). Migraciones revisadas: correctas/aplicables. **Bloquea la demo del martes.**
+  - **🔴 C2 (+I1)** · IDOR/BOLA cross-ámbito en gestión de Cursos: los casos de uso autorizan sobre `cursoId` pero el
+    repo muta el hijo solo por su id (`eq(cursoModulos.id, moduloId)` / `eq(cursoLecciones.id, leccionId)`) sin cotejar
+    pertenencia al padre → un TALENTO_HUMANO edita/borra/reordena módulos/lecciones de un curso SST ajeno. Verificado
+    línea por línea; el patrón correcto YA existe en `marcarLeccionCompletada` (repo:574-580).
+  - **🟠 I2** · `mapFuncionario` (repo:92) `String(null)`→`"null"` vía `obtenerDetalle` sin scope → viaja a
+    `GET /api/funcionarios/:id` y `/api/archivo/:id`. **I3** · N+1 ~1.634 queries en `crearArea`/`cambiarActivaArea`
+    (loops `for…await recomputarEstado`; backfill ya es batch). **I4** · rate-limit público 10/min (riesgo WiFi
+    compartido en la demo).
+  - **🟡 M1** (0-áreas→PENDIENTE, seguridad por diseño `estado.ts:41`) · **M2** (N+1 `construirResultadoIngreso`) ·
+    **M3** (deadlock swap-sentinela) · **M4** (param no-UUID→500) · **M5** (BORRADOR por token, intencional).
+  - **Verificado sano:** cero drift en 13 tablas + 14 enums; advisors limpios; cableado Cursos/Planificador correcto;
+    máquina de estados, JWT, errorHandler, TOCTOU, guarda salarial sólidos.
+- **Plan de remediación diseñado y APROBADO por el usuario para ejecutar en la PRÓXIMA SESIÓN:**
+  `C:\Users\Leonardo\.claude\plans\recursive-finding-raven.md` (6 fases, file:line exactos, patrones a espejar,
+  trade-offs explícitos, política de tests lean + migraciones gated). Dato clave que habilita el fix limpio del IDOR:
+  `obtenerDetalle(cursoId)` YA devuelve el árbol completo (`CursoDetalle.modulos[].lecciones[]`) → cotejo de
+  pertenencia en memoria en el caso de uso (unit-testeable) + hardening de repo. I2: dominio confirma
+  `Funcionario.fechaRetiro:string` no-null ("nulabilidad vive solo en Empleado") → scope de `obtenerDetalle` con
+  `isNotNull(fechaRetiro)`.
+- **Estado:** working tree sin cambios de código (solo se escribió el plan + memoria al cierre). **Próxima sesión:**
+  ejecutar el plan en orden C1→C2/I1→I2→I3→I4/M2/M4→M1/M3/M5. Memoria nueva: `auditoria-backend-plan.md`.
+
+### 2026-07-04 — Sesión 40: Remediación de la auditoría — C1 + C2/I1 + I2 + I3 + I4 ejecutados (faltan solo los MENOR)
+
+- **Ejecución del plan** `recursive-finding-raven.md` (skills `engineering-architecture-pro`, `code-reviewer`,
+  `senior-backend`). El usuario pidió ejecutar en fases con validación intermedia; se hicieron 3 tramos con pausa
+  (C1+C2/I1 → I2 → I3+I4). **Cerrados los 2 CRÍTICO + los 4 IMPORTANTE.** Los 5 MENOR (M2/M4 rápidos, M1/M3/M5
+  decisiones) quedan explícitamente para la **próxima sesión** (decisión del usuario). **Sin commitear** (constraint);
+  la BD de prod sí quedó modificada (C1) con autorización explícita por-migración.
+- **✅ C1 (desbloquea la demo):** migraciones `0012_cursos` (`20260704170940`) y `0013_planificador`
+  (`20260704170956`) **APLICADAS a prod vía MCP** (autorización explícita del usuario por-migración; verificado
+  `list_migrations` antes/después + `get_advisors` limpios: solo los `rls_enabled_no_policy` INFO esperados de las 6
+  tablas deny-directo + el WARN moot de leaked-password). `/api/cursos` y `/api/planificador` ya no lanzan
+  `relation does not exist`.
+- **✅ C2 + I1 (IDOR/BOLA cross-ámbito, defensa en profundidad):** un gestor autorizado en un curso podía
+  editar/borrar/reordenar módulos/lecciones de un curso de OTRO ámbito. Cerrado en **2 capas**: (primaria) cotejo de
+  pertenencia en memoria en los 7 casos de uso `{editar,eliminar,mover}ModuloCurso`/`{crear,editar,mover,eliminar}LeccionCurso`,
+  reusando el `detalle` ya cargado (cero queries) → 404 si el hijo es ajeno; (repo) 6 métodos de `cursoRepository`
+  acotados al padre en el `WHERE` (espejo de `marcarLeccionCompletada`), y 5 firmas del puerto `CursoRepo` extendidas
+  con `cursoId`. El controller ya pasaba los ids. **+9 tests** (7 rechazos cross-curso verificando que el repo NO se
+  llama + 2 happy-path del reenvío de `cursoId`); fixture de sanitización actualizado a la firma nueva.
+- **✅ I2 (el string `"null"` fabricado):** `mapFuncionario` (repo) hacía `String(null)`→`"null"` sobre empleados
+  ACTIVOS que se colaban por `obtenerDetalle` (única lectura por-id sin scope) → el `"null"` viajaba a
+  `GET /api/funcionarios/:id` y `/api/archivo/:id`. Fix en 3 puntos: (1) scope autoritativo `isNotNull(fechaRetiro)`
+  en `obtenerDetalle` → un ACTIVO devuelve `null` → 404 (correcto: tiene su `GET /api/personal/:id`); (2) mapper
+  endurecido `r.fechaRetiro ?? ""` (elimina el `typeof/String` raíz del bug); (3) **poda** del método muerto
+  `listarFuncionarios()` (sin-args, cero callers vivos — el caso de uso homónimo usa `listarFuncionariosPaginado`,
+  que ya scopeaba desde Sesión 28) del puerto + repo. `mapFuncionario` exportado; **+2 tests** de regresión.
+- **✅ I3 (N+1 ~1.634 queries en el catálogo de áreas):** `crearArea`/`cambiarActivaArea` hacían
+  `for (f) await recomputarEstado(f)` — 3 queries × 543 en una sola `tx` (pool `max:1`) → riesgo de statement-timeout.
+  Fix: extraje la decisión **pura** `decidirRecalculo(estadosAreas, hitos)` (el núcleo que alimenta a
+  `calcularEstadoGlobal`), refactoricé `recomputarEstado` para consumirla (extracción fiel 1:1) y añadí
+  `recomputarEstadoEnLote` que la reusa → **equivalencia por construcción**. El helper de lote colapsa el I/O a
+  **2 lecturas** (aprobaciones de áreas activas + hitos, agrupadas en memoria) + **escrituras agrupadas por estado
+  destino** (`UPDATE … IN (…)`, ≤ 8) → ~1.634 → ~8 queries, constante respecto a N. Reemplazados los 2 loops de
+  `areaRepository` (:64, :131). **`estado.ts` intacto.** **+6 tests** de la matriz de estados sobre `decidirRecalculo`.
+- **✅ I4 (rate-limit público estrangulaba la demo):** `limit: 10/min/IP` → **60** en `cursos.routes.ts` y
+  `capacitaciones.routes.ts` (una sala de TH tras el mismo NAT/WiFi comparte IP saliente → el 11.º toque recibía 429).
+  Sigue protegiendo endpoints anónimos idempotentes; el token de ~131 bits es la barrera principal. El progreso-en-vivo
+  (refetch 5s) pega al endpoint autenticado, no a este limiter.
+- **Verificación final (todo verde):** shared build OK · `tsc --noEmit` backend limpio · backend **286 pass + 2 skip**
+  (269 base → 278 C2 → 280 I2 → 286 I3) · `npm run build` raíz **exit 0 SIN warnings** (index 317 KB, Tiptap diferido
+  en `LeccionForm` 412 KB). **Working tree SIN commitear.** No se tocó `estado.ts` ni las transacciones de concurrencia.
+- **🔵 PRÓXIMA SESIÓN — los MENOR:** **M2** (N+1 en `construirResultadoIngreso` `cursoRepository.ts:129-131`, hot path
+  del progreso vivo → 1 query con `inArray(moduloId, ids)`) · **M4** (param no-UUID → 500; guard `paramUuid` → 400
+  antes del repo, opción (a) del plan) · **M1/M3/M5** (puntos de decisión — exponer, no cambiar en silencio: M1
+  0-áreas→PENDIENTE es seguridad por diseño; M3 deadlock swap-sentinela raro; M5 BORRADOR por token intencional).
+  Detalle en la memoria `auditoria-backend-plan.md`. **Pendiente humano aparte:** smoke test manual de 11 pasos de
+  Cursos/Planificador contra el stack en vivo (ahora que `0012`/`0013` están en prod). Demo: **martes 2026-07-07, 10am.**
+
+### 2026-07-04 — Sesión 41: Auditoría de backend — cierre de los MENOR (M2, M4, M1/M3/M5) → AUDITORÍA COMPLETA
+
+- **Continuación directa de la Sesión 40**, mismo día. Skills activas: `engineering-skills:senior-fullstack` +
+  `engineering-skills:senior-backend` (activadas a pedido del usuario al abrir sesión). Se releyó primero el plan
+  `recursive-finding-raven.md` + la memoria `auditoria-backend-plan.md` + el código real de `cursoRepository.ts`,
+  `errorHandler.ts` y los 8 routers del backend antes de tocar nada. **Sin commits** (constraint).
+- **✅ M2 (N+1 en el hot path del progreso vivo):** `construirResultadoIngreso` (`cursoRepository.ts`) hacía
+  `for (m of modulosBase) await listarLeccionesDeModulo(m.id, tx)` — N queries por curso, en el path que
+  `ingresarInscripcion`/`marcarLeccionCompletada` ejecutan en cada toque del alumno. Fix: nuevo helper
+  `listarLeccionesDeModulos(moduloIds, ex)` (1 query con `inArray` + agrupación en memoria, mismo patrón que ya usaba
+  `obtenerDetalle`). **Bonus de limpieza (no pedido, de bajo riesgo):** `obtenerDetalle` tenía la MISMA lógica
+  duplicada a mano (no era N+1, ya usaba `inArray`, pero repetía el ensamblado) → se unificó para consumir el mismo
+  helper, eliminando la duplicación entre los dos ensambladores gemelos del árbol curso→módulos→lecciones.
+- **✅ M4 (param no-UUID → 500):** el `errorHandler` solo traduce errores con `.status`; un id malformado llegaba
+  intacto a Postgres (`22P02 invalid input syntax for type uuid`) → 500 genérico en vez de 400 legible. Fix (opción
+  (a) del plan, la recomendada): middleware `paramUuid(nombre)` nuevo (`interface/middleware/paramUuid.ts`), cableado
+  vía `router.param(nombre, paramUuid(nombre))` en los **8 routers** que tienen params de fila (`cursos`,
+  `planificador`, `capacitaciones`, `areas`, `archivo`, `funcionarios`, `personal`, `usuarios`) — **nunca** sobre
+  `:token` (Cursos/Capacitaciones), que es un string base64url, no un UUID. `router.param` de Express se dispara solo
+  cuando el nombre del param aparece en la ruta que matcheó, así que una sola línea por router cubre todas sus rutas
+  sin tocarlas una por una. **+4 tests**: 3 unitarios de `paramUuid` (mismo patrón que `requireAuth.test.ts`: llamar
+  el middleware directo con stubs, sin levantar Express) + 1 smoke HTTP end-to-end sobre la ruta pública
+  `POST /tomar/:token/lecciones/:leccionId/completar` (confirma 400, no 500, sin necesitar JWT ni BD real porque es
+  pública).
+- **✅ M1/M3/M5 — expuestos al usuario vía `AskUserQuestion`, sin tocar código a ciegas:** las 3 decisiones se
+  presentaron con la recomendación del plan de auditoría; el usuario confirmó **las 3 por defecto**: **M1** (0 áreas
+  activas → PENDIENTE atascado) es seguridad por diseño, se acepta tal cual — **`estado.ts` sigue intocado**. **M3**
+  (deadlock raro del swap-sentinela en reordenamientos concurrentes, SA-only) se acepta/difiere — mitigación solo si
+  se materializa alguna vez. **M5** (metadata de curso BORRADOR visible por token público) se acepta como intencional
+  — es el aviso de "aún no disponible" de la UI pública, el token de ~131 bits no es enumerable.
+- **Verificación final (todo verde):** shared build OK + **240/240** · `tsc --noEmit` backend limpio · backend
+  **290 pass + 2 skip** (286→290, +4 de M4) · web typecheck limpio + **10/10** · `npm run build` raíz **exit 0 SIN
+  warnings** (bundle sin cambios de tamaño relevantes: index 317 KB, Tiptap diferido en `LeccionForm` 412 KB).
+  **Working tree SIN commitear.** No se tocó `estado.ts`, `recomputarEstado.ts` ni ninguna migración.
+- **AUDITORÍA DE BACKEND + BD COMPLETA — los 11 hallazgos (2 CRÍTICO + 4 IMPORTANTE + 5 MENOR) están cerrados o
+  explícitamente aceptados con decisión del usuario.** No queda ningún punto abierto del plan
+  `recursive-finding-raven.md`. **Pendiente = ACCIÓN HUMANA (sin cambios):** smoke test manual de 11 pasos de
+  Cursos/Planificador contra el stack en vivo. Demo: **martes 2026-07-07, 10am.**
+
+### 2026-07-07 — Sesión 42: Impeccable activado/actualizado + crítica de la sección Formación + P1 implementados
+
+- **Petición del usuario:** activar la skill `impeccable` en modo actualización, luego atacar un problema concreto de
+  diseño que adelantó: la sección Formación (Eventos/Capacitaciones, Cursos, Planificador) tiene 3 páginas
+  "genéricas, pobres, planas", todas iguales. **Sin commits** (constraint del proyecto).
+- **Impeccable activado y actualizado.** `node context.mjs --target apps/web` cargó `PRODUCT.md`/`DESIGN.md`
+  existentes (marcaban el proyecto como "~5% del desarrollo" — claramente desactualizado dado el estado real).
+  Vía `AskUserQuestion` el usuario eligió **"Refrescar"** (no sobrescribir a ciegas). Se re-extrajeron los tokens
+  reales del código (`tailwind.config.ts` + `index.css` + componentes `EstadoPill`/`FilaDesplegable`/`Avatar`/
+  `ChipFiltro`/`Segmented`/`Buscador`/`PageHeader`/`GenerarLiquidacionButton`) y se reescribieron ambos archivos:
+  **`PRODUCT.md`** (5 roles incl. SST, plataforma multi-módulo real, estado "producto maduro en producción" en vez
+  de "~5%", nota de theming claro/oscuro) y **`DESIGN.md`** (formato Stitch de 6 secciones + frontmatter — colores
+  resueltos de los tokens CSS reales `--bg`/`--card`/`--foreground`/`--estado-*`, tipografía real `text-3xl
+  font-bold` sin fuente web, esquinas `rounded-md`/`rounded-lg` documentadas como el default actual — reemplazando
+  el `rounded-full` de la primera versión —, y una nueva regla explícita contra dejar páginas nuevas genéricas
+  reusando componentes de forma literal).
+- **Crítica formal de la sección Formación** (`/impeccable critique`, siguiendo `reference/critique.md`): Assessment
+  A (revisión de diseño manual sobre `CapacitacionesPage.tsx`/`CursosPage.tsx`/`PlanificadorPage.tsx`/
+  `GestionCapacitacion.tsx` reales) + Assessment B (`detect.mjs --json` sobre los 3 directorios → 0 hallazgos, exit
+  0 — el detector cubre anti-patrones CSS puntuales, no "sameness" holístico entre páginas). **Score 26/40
+  (Aceptable).** Hallazgo central: las 3 páginas comparten literalmente el mismo `premium-card` de filtros, el
+  mismo formulario "Nuevo X", y la misma fila (monograma de 2 letras del ámbito + título + pill) — pese a que el
+  proyecto ya tiene íconos `calendar`/`book`/`grad-cap` sin usar en `dash/Icon.tsx`. 2 P1 + 2 P2 identificados,
+  con personas Alex (power user de TH) y Sam (lector de pantalla, badge sin `aria-label`). Snapshot persistido en
+  `.impeccable/critique/2026-07-07T14-13-30Z__macion-capacitaciones-cursos-planificador-listados.md`.
+- **2 P1 implementados en la misma sesión** (el usuario eligió atacarlos primero vía `AskUserQuestion`):
+  - **Identidad de dominio:** el monograma de 2 letras se reemplazó por un ícono real por página —
+    `calendar` en `CapacitacionesPage`, `book` en `CursosPage`, `grad-cap` en `PlanificadorPage` (todos ya
+    existían en `dash/Icon.tsx`, cero íconos nuevos).
+  - **Dato "hero" visible en la fila:** Eventos ahora muestra un bloque día/mes (`BloqueFecha`, nuevo) en vez de
+    la fecha en texto pequeño; Cursos muestra el **conteo real de inscritos** — requirió un cambio de backend
+    contenido: `Curso.totalInscritos: number` nuevo en `shared/src/cursos.ts`, poblado en
+    `cursoRepository.listarCursos` con **una sola query agrupada** (`groupBy(inscripciones.cursoId)` +
+    `inArray` sobre los ids de la página, sin N+1) y en `obtenerDetalle` (reusa el conteo que ya calculaba);
+    `CursoRepo.crearCurso`/la implementación excluyen `totalInscritos` de su `Omit` de entrada (no es un campo de
+    creación). Planificador muestra un bloque mes/año junto al trimestre (que ya existía en texto, ahora también
+    como bloque visual, con ícono `grad-cap` junto al título).
+  - **2 P2 quedaron documentados, sin implementar** (decisión explícita del usuario: cerrar la sesión con spec):
+    migrar los filtros hechos a mano (`FiltroEstado`/`FiltroAmbito`, duplicados letra por letra entre
+    `CapacitacionesPage`/`CursosPage`) al componente compartido `ChipFiltro`; y añadir una señal visual de que
+    `CursosPage` navega (Link a página dedicada) mientras `CapacitacionesPage`/`PlanificadorPage` expanden
+    in-place (`FilaDesplegable`) — hoy visualmente indistinguibles hasta el clic.
+- **Spec escrito para la próxima sesión:** `docs/superpowers/specs/2026-07-07-formacion-consistencia-visual-design.md`
+  — contexto, diseño propuesto para cada P2 (con decisión a tomar sobre `ChipFiltro` vs `Link`+`hrefCon`), alcance
+  explícito de qué NO tocar (arquitectura de `CursosPage` como página dedicada, `CursoDetallePage`,
+  `GestionCapacitacion`, `CalendarioPlanificador`, sin backend/migraciones nuevas) y pasos de verificación.
+- **Verificación final (todo verde):** `npm run build --workspace=shared` OK · `npx tsc --noEmit` backend limpio ·
+  `npm run typecheck --workspace=apps/web` limpio · shared **240/240** · backend **290 pass + 2 skip** (sin
+  regresión) · web **10/10** · `npm run build` raíz **exit 0 SIN warnings** (bundle sin cambios de tamaño
+  relevantes: `index` 318 KB). **Working tree SIN commitear.** No se tocó `estado.ts`, `recomputarEstado.ts` ni
+  ninguna migración — el único cambio de backend fue el campo `totalInscritos` (agregado puro sobre datos
+  existentes, sin tocar la máquina de estados ni las transacciones de concurrencia).
+- **Próxima sesión:** ejecutar el spec de los 2 P2 (`2026-07-07-formacion-consistencia-visual-design.md`) →
+  re-correr `/impeccable critique` sobre el mismo target para confirmar la subida de score. Pendiente humano
+  aparte, sin cambios: smoke test manual de 11 pasos de Cursos/Planificador (Sesión 40/41). Demo ya pasada
+  (2026-07-07, hoy) — confirmar con el usuario si sigue vigente o se reprogramó.
+
+### 2026-07-07 — Sesión 43: Remediación de auditoría idempotencia/doble-submit/caché/fallos silenciosos — 11/17 tareas (PAUSA a mitad de plan)
+
+- **Origen:** el usuario pidió ejecutar el plan ya escrito y aprobado
+  `C:\Users\Leonardo\.claude\plans\dise-a-un-plan-completo-luminous-hare.md` — remediación de una auditoría
+  fullstack previa (6 finders + verificación adversarial, fuera de esta sesión) sobre idempotencia, doble-submit,
+  desincronización de caché y fallos silenciosos: **22 hallazgos confirmados** (1 CRÍTICO, 8 IMPORTANTE, 13 MENOR),
+  organizados en 3 fases. Skills activas: `engineering-architecture-pro` + `senior-fullstack`.
+- **Decisión de ejecución:** el plan trae plantillas de `subagent-driven-development` (commits por tarea +
+  worktree), pero eso choca con la regla dura del proyecto ("nunca commitear sin que el usuario lo pida" +
+  construcción siempre in-place) — se ejecutó **directamente por el controlador**, fase por fase, sin worktree ni
+  commits, verificando build/tsc/tests al cierre de cada bloque. **Sin commits** (constraint respetado).
+- **El usuario pidió explícitamente pausar al superar el 50% del plan** y dejar la memoria lista para que la
+  próxima sesión retome el 50% restante con dominio total del contexto — esta entrada cumple ese pedido.
+  **11 de 17 tareas del plan completas** (toda la Fase 1 + toda la Fase 2 + 3.1/3.2/3.3 de la Fase 3).
+- **✅ FASE 1 — CRÍTICO (1.1) completa:** lost-update al reordenar módulos/lecciones de un curso.
+  `cursoRepository.ts` `moverModulo`/`moverLeccion` ahora abren con un `SELECT...FOR UPDATE` sobre la fila raíz del
+  scope (`cursos`/`cursoModulos` respectivamente, mismo patrón que `cambiarEstadoArea` en
+  `funcionarioRepository.ts:369-379`) **antes** de leer `actual`/`vecino`, serializando dos reordenamientos
+  concurrentes del mismo curso/módulo. Test nuevo `tests/concurrencia-cursos.integration.test.ts` (gated por
+  `DATABASE_URL_TEST`, mismo molde que `concurrencia-estadoArea.integration.test.ts`, 10 iteraciones × 2 casos):
+  verifica que el orden final tras dos `moverModulo`/`moverLeccion` en paralelo nunca queda duplicado ni perdido.
+- **✅ FASE 2 — IMPORTANTE (2.1–2.8) completa:**
+  - **2.1** `areaRepository.crearArea` — pre-chequeo `SELECT` normalizado (`lower(trim(...))`, Drizzle `sql`)
+    **dentro de la misma tx**, antes del insert/backfill → `ErrorValidacion` si hay match. **2.2**
+    `funcionarioRepository.registrarNovedad` — el `SELECT` inicial de `emp` ahora es `.for("update")` (lock
+    pesimista, no UPDATE-condicional: aquí no hay "estado esperado", es un cambio de valor libre) → serializa dos
+    ediciones concurrentes del mismo empleado, evitando un `valorAnterior` incorrecto en la bitácora append-only.
+    Test nuevo `tests/concurrencia-personal.integration.test.ts` (gated, 10 iteraciones): verifica que dos
+    `CAMBIO_CARGO` concurrentes producen una bitácora encadenada (`valorAnterior` de la 2ª fila = `valorNuevo` de
+    la 1ª, nunca el valor original — eso sería el salto que el lock evita). **2.3** `requireAuth.ts` — el
+    `catch {}` mudo pasó a `catch (e)` + `logger.error({err:e}, ...)` antes de traducir a `ErrorAutenticacion` (el
+    cliente sigue recibiendo el mismo 401 genérico). Test nuevo en `requireAuth.test.ts`: el logger se invoca con
+    el error real, el mensaje al cliente no cambia. **2.4** `generarLiquidacion.ts` — eliminado el parámetro muerto
+    `notificar?` (nunca lo pasaba `container.ts`) + su bloque `if` + docstring corregido; test obsoleto de
+    `liquidacion.test.ts` que lo ejercía, eliminado. **2.5** `npm install pino --workspace=apps/backend` (única
+    dependencia nueva del plan) → `infrastructure/logging/logger.ts` (instancia única, nivel `debug`/`info` según
+    `NODE_ENV`, sin `pino-pretty`) → `errorHandler.ts` y `interface/index.ts` migrados de `console.error`/
+    `console.log` al logger real; los tests que espiaban `console.error` en `requireAuth.test.ts` migrados a espiar
+    `logger.error`. **2.6** `useFuncionarios.ts` (`invalidarVistasTramite`) y `realtime.ts` (`invalidarTramite`)
+    ahora incluyen el prefijo `"personal"` — el expediente 360° (`["personal","expediente",id]`, distinto del
+    `["expediente",id]` de Archivo) ya se refresca tras un cambio de trámite del mismo funcionario. **2.7+3.4**
+    (mismo cambio cohesivo en `realtime.ts`, documentados juntos según el plan): el canal `"plataforma-sync"`
+    ahora escucha también `cursos`/`curso_modulos`/`curso_lecciones`/`inscripciones`/`progreso_lecciones` (→
+    invalidan `["cursos"]`), `capacitaciones_planeadas` (→ `["planificador"]`), y las 6 tablas satélite de
+    Personal 360° (`empleado_personales`/`_familiares`/`_formacion`/`_experiencia`/`_salarial`/`novedades`, → ya
+    cubierto por el mismo prefijo `"personal"` de 2.6). **2.8** `.subscribe()` ahora recibe un callback de estado:
+    en `CHANNEL_ERROR`/`TIMED_OUT`/`CLOSED` loguea (`console.warn`, es código de frontend) y muestra **un solo**
+    `toast.warning` (bandera local `avisoMostrado`, se resetea en silencio al volver a `SUBSCRIBED`, sin toast de
+    "reconectado" para no ser ruidoso).
+- **✅ FASE 3 — MENOR, 3/10 completas (3.1, 3.2, 3.3):**
+  - **3.1** `funcionarioRepository.crearEmpleado` — el `insert` se envolvió en `try/catch`: si la carrera ocurre
+    igual (pasa el pre-chequeo de 3.1-histórico pero pierde la carrera del insert), el código Postgres `23505` se
+    traduce al mismo `ErrorValidacion("Ya existe un empleado con ese documento.")` de la ruta feliz, en vez de
+    dejar salir un 500 crudo. Test nuevo `tests/crearEmpleado.integration.test.ts` (gated): dos `crearEmpleado`
+    concurrentes con el mismo documento vía `Promise.allSettled` → exactamente 1 éxito + 1 `ErrorValidacion`.
+    **3.2** (implementado junto con 2.1 por ser el mismo patrón, tal como indicaba el plan): mismo pre-chequeo
+    normalizado dentro de tx aplicado a `cursoRepository.crearModulo` (scope `cursoId`), `crearLeccion` (scope
+    `moduloId`) y `planificadorRepository.crear` (mismo `titulo`+`anio`+`mes`+`ambito`; este último se envolvió en
+    `db.transaction` porque antes era un insert plano fuera de tx). Los 4 casos (área/módulo/lección/planificador)
+    quedaron cubiertos en un único archivo nuevo `tests/idempotencia-crear.integration.test.ts` (gated) — la lógica
+    vive en el repo (DB), no en el caso de uso, así que no es unit-testeable con un repo mockeado como el resto de
+    `areas.test.ts`/`cursos.test.ts`. **3.3** — la guarda de estado de `abrirRegistroCurso`/`cerrarRegistroCurso`
+    no era atómica con la escritura (`obtenerDetalle` + luego `UPDATE` incondicional por id). Fix: la firma del
+    puerto `CursoRepo.cambiarEstadoRegistro` ganó un 3er parámetro `estadoEsperado`; el repo ahora hace
+    `UPDATE...WHERE id=X AND estado_registro=estadoEsperado RETURNING` (mismo molde que
+    `generarLiquidacion`/`registrarLiquidacion` en `funcionarioRepository.ts:407-436`) — si 0 filas, un `SELECT`
+    adicional distingue "no existe" (`ErrorNoEncontrado`) de "ya cambió de estado" (`ErrorValidacion`). Los 2 casos
+    de uso pasan el estado esperado (`abrir`: `"BORRADOR"`; `cerrar`: `"ABIERTO"`). Test agregado al mismo archivo
+    de idempotencia (gated): un `estadoEsperado` equivocado → `ErrorValidacion`, la transición correcta sí aplica.
+    **Nota:** `capacitacionRepository.cambiarEstadoRegistro` es un método homónimo de un *puerto distinto*
+    (`CapacitacionRepo`, módulo Capacitaciones) — no tocado, no forma parte de este hallazgo.
+- **Riesgos residuales aceptados por el plan, sin implementar (no son deuda olvidada):** 3.9 (duplicado de
+  bitácora en `registrarNovedad` por reintento de red, no concurrencia — el lock de 2.2 no lo cubre) y 3.10
+  (duplicado en `crearFamiliar`/`crearFormacion`/`crearExperiencia` — la UI ya deshabilita el botón durante
+  `isPending`, el único vector residual es un reintento de red genuino sobre datos legítimamente 1-N). Mismo
+  criterio de aceptación que M1/M3/M5 de la auditoría de la Sesión 41 — documentado en el propio plan, no
+  requieren código.
+- **Verificación de este checkpoint (todo verde, re-corrida por el controlador antes de pausar):**
+  `npm run build --workspace=shared` OK · `npx tsc --noEmit --project apps/backend` limpio ·
+  `npm run test --workspace=apps/backend` → **290 pass + 11 skip** (290 sin cambio neto: -1 test obsoleto de
+  `notificar` +1 test nuevo de `requireAuth` = 0; +9 nuevos tests de integración gated, todos `skip` sin
+  `DATABASE_URL_TEST` — antes eran 2 skip) · `npm run typecheck --workspace=apps/web` limpio. **No se corrió
+  `npm run build` raíz completo ni `npm run test --workspace=apps/web`** en este checkpoint intermedio (quedan en
+  la lista de verificación final del cierre real de sesión). **Working tree SIN commitear.** No se tocó
+  `estado.ts` ni ninguna migración SQL — todo el plan es aplicativo (SELECT/lock/UPDATE-condicional dentro de
+  transacciones ya existentes) o de frontend (invalidación de caché).
+- **🔵 PRÓXIMA SESIÓN — retomar exactamente en la Fase 3, tarea 3.5 del plan** (leer el plan completo primero,
+  ya tiene todo el detalle file:line):
+  - **3.5** `apps/web/src/hooks/useAreas.ts` — `useMutacionArea` (líneas ~34-52) invalida
+    `areas/funcionarios/funcionarios-todos/mi-area/metricas/matriz` pero no `["funcionario", id]` → agregar
+    `"funcionario"` a esa lista (el modal de detalle abierto de un funcionario no se entera si su área bloqueante
+    se desactiva).
+  - **3.6** `apps/web/src/pages/capacitaciones/GestionCapacitacion.tsx` — el botón "Exportar asistencias"
+    (`ExportarButton`, líneas ~105-131) no tiene `disabled` durante la descarga. Aplicar el patrón ya existente de
+    `ArchivoPage.tsx:100-139` (`ExportarCsvButton`): `useState(descargando)` + `try/finally` + `disabled={descargando}`
+    + label dinámico "Exportando…".
+  - **3.7** `apps/web/src/pages/tomar-curso/TomarCursoPage.tsx` — el `.catch` del auto-reingreso (línea ~52) falla
+    en silencio. Agregar `import { toast } from "sonner"` + `toast.error(...)` antes/junto al
+    `sessionStorage.removeItem(...)`.
+  - **3.8** — dos "copiar enlace" sin feedback: `CapacitacionModal.tsx:170-177` (`copiar()`, hoy sin ningún toast
+    en try/catch) necesita `toast.success("Enlace copiado.")` + `toast.error(...)`; `CursoDetallePage.tsx:148-155`
+    ya tiene el `toast.success`, solo falta el `toast.error` en el catch (hoy vacío).
+  - Luego: **verificación final completa** (todas las fases juntas) — `npm run build --workspace=shared` →
+    `npm run test --workspace=shared` (esperado sin cambios de dominio) → `npx tsc --noEmit --project apps/backend`
+    → `npm run test --workspace=apps/backend` (290+ pass, mismo conteo de skip) → `npm run typecheck --workspace=apps/web`
+    → `npm run test --workspace=apps/web` (10/10, sin tests nuevos — 3.5-3.8 son presentacionales, política lean) →
+    `npm run build` raíz (exit 0 sin warnings). Si hay `DATABASE_URL_TEST` configurado, correr también los 4
+    archivos de integración nuevos de esta sesión (`concurrencia-cursos`, `concurrencia-personal`,
+    `idempotencia-crear`, `crearEmpleado`) para confirmar en una BD real que los locks/UPDATE-condicionales
+    efectivamente serializan. **Smoke manual no bloqueante** (sugerido por el plan, opcional): dos pestañas
+    reordenando módulos de un mismo curso casi a la vez; registrar una novedad del mismo empleado desde 2 pestañas;
+    confirmar que el expediente 360° se refresca solo tras un cambio de trámite; confirmar sincronía en vivo de
+    Cursos/Planificador entre 2 sesiones. **Sin commits ni migraciones a producción** — el plan lo especifica
+    explícitamente, el usuario decide cuándo commitear.
+
+### 2026-07-07 — Sesión 44: Remediación de auditoría idempotencia/doble-submit/caché/fallos silenciosos — CIERRE (17/17)
+
+- **Continuación directa de la Sesión 43**, retomando exactamente en la tarea 3.5 del plan
+  `dise-a-un-plan-completo-luminous-hare.md` tal como quedó indicado en el checkpoint anterior.
+  Sesión corta y quirúrgica: 4 tareas presentacionales + verificación final. **Sin commits**
+  (constraint del proyecto).
+- **✅ 3.5** — `apps/web/src/hooks/useAreas.ts`, `useMutacionArea`: se agregó `["funcionario"]` a
+  la lista de invalidación (junto a `areas/funcionarios/funcionarios-todos/mi-area/metricas/matriz`)
+  — el modal de detalle de un funcionario ahora se entera si su área bloqueante se desactiva/activa.
+- **✅ 3.6** — `apps/web/src/pages/capacitaciones/GestionCapacitacion.tsx`, `ExportarButton`: mismo
+  patrón que `ExportarCsvButton` de `ArchivoPage.tsx` — `useState(descargando)` + `try/finally` +
+  `disabled={descargando}` + label dinámico "Exportando…" mientras dura la descarga del CSV.
+- **✅ 3.7** — `apps/web/src/pages/tomar-curso/TomarCursoPage.tsx`: el `.catch` del auto-reingreso
+  (reanudación de sesión sin login vía `sessionStorage`) ahora hace `toast.error(e instanceof
+  ApiError ? e.message : "No se pudo reanudar la sesión.")` antes de limpiar la clave de sesión —
+  ya no falla en silencio.
+- **✅ 3.8** — dos "copiar enlace" sin feedback cerrados: `CapacitacionModal.tsx` (`copiar()`) ganó
+  `toast.success("Enlace copiado.")` en el try y `toast.error("No se pudo copiar el enlace.")` en
+  el catch (antes, ambos vacíos); `CursoDetallePage.tsx` (`copiar()`) ya tenía el `toast.success`,
+  solo le faltaba el `toast.error` en el catch (antes vacío) — agregado.
+- **Sin tests nuevos** (las 4 tareas son 100% presentacionales, política lean del plan — la
+  frontera ya está cubierta por los tests de backend de las Fases 1-2).
+- **Verificación final completa de las 3 fases juntas (todo verde):**
+  `npm run build --workspace=shared` OK · `npm run test --workspace=shared` **240/240** ·
+  `npx tsc --noEmit --project apps/backend` limpio · `npm run test --workspace=apps/backend`
+  **290 pass + 11 skip** (sin regresión, mismo conteo que el checkpoint de la Sesión 43 — los 4
+  archivos de integración nuevos de esa sesión siguen `skip` sin `DATABASE_URL_TEST`) ·
+  `npm run typecheck --workspace=apps/web` limpio · `npm run test --workspace=apps/web` **10/10**
+  (sin tests nuevos, confirmando la política lean) · `npm run build` raíz **exit 0 SIN warnings**
+  (bundle sin cambios de tamaño relevantes: `index` 320 KB, Tiptap diferido en `LeccionForm` 412 KB).
+- **PLAN DE REMEDIACIÓN COMPLETO — 17/17 tareas.** Los 2 riesgos residuales (3.9 duplicado de
+  bitácora por reintento de red en `registrarNovedad`, 3.10 duplicado en los formularios 1-N de
+  Personal 360°) quedan **aceptados según el propio plan**, sin código adicional — mismo criterio
+  que M1/M3/M5 de la auditoría anterior (Sesión 41). **Working tree SIN commitear. Sin migraciones
+  a producción** (el plan completo no requería ninguna — todas las decisiones de idempotencia son
+  a nivel de aplicación, confirmado con el usuario al aprobar el plan).
+- **Pendiente = ACCIÓN HUMANA (opcional, no bloqueante):** si hay `DATABASE_URL_TEST` configurado,
+  correr los 4 archivos de integración de concurrencia (`concurrencia-cursos`,
+  `concurrencia-personal`, `idempotencia-crear`, `crearEmpleado`) contra una BD real para confirmar
+  que los locks/UPDATE-condicionales serializan de verdad. Smoke manual sugerido por el plan (no
+  bloqueante): dos pestañas reordenando módulos de un mismo curso casi a la vez; registrar una
+  novedad del mismo empleado desde 2 pestañas; confirmar refresco del expediente 360° tras un
+  cambio de trámite; confirmar sincronía en vivo de Cursos/Planificador entre 2 sesiones.
+- **Próxima sesión:** sin checklist pendiente de este plan — trabajo nuevo (commit del working
+  tree si el usuario lo pide, smoke test manual de Cursos/Planificador de la Sesión 40/41 aún
+  aparte, o cualquier otra iniciativa).
+
+### 2026-07-08 — Sesión 45: Gestión de Desvinculaciones — ítems 1-6/13 ejecutados, pausa breve solicitada
+
+- **Ejecución del plan** `C:\Users\Leonardo\.claude\plans\cheerful-cuddling-koala.md` (13 ítems,
+  orden estricto). Igual que en la remediación de la Sesión 43-44, se ejecutó **directamente por el
+  controlador** (sin worktree, sin commits) en vez de con las plantillas de commit-por-tarea de
+  `subagent-driven-development`, por chocar con la regla dura del proyecto de construir siempre
+  in-place en `main` sin commitear sin pedido explícito. **Sin commits** (constraint respetado).
+- **Feedback nuevo del usuario, ya guardado en memoria** (`feedback-test-files-lean.md`):
+  *"No hagas tantos archivos de test, eso gasta muchos tokens"* — desde este punto, los tests nuevos
+  se consolidaron en archivos ya existentes (`recomputarEstado.test.ts` extendido,
+  `liquidacion.test.ts` reescrito en el mismo archivo) en vez de crear uno por caso de uso. Aplica
+  también a los ítems pendientes 7-11.
+- **✅ Ítem 2 — migración `0014_devuelto_por_ci.sql`:** nuevo valor de enum `estado_area` (patrón de
+  migración propia para extender enum, precedente `0007_rol_sst.sql`) + espejo en `schema.ts`.
+- **✅ Ítem 3 — TDD `hayDevolucion`:** `shared/src/estado.ts` — `ResultadoEstado.hayDevolucion`
+  calculado junto a `hayRechazo` (`estadosAreas.some(e => e === "DEVUELTO_POR_CI")`), en las 3 ramas
+  de retorno. `+6 tests` en `estado.test.ts` (19 totales). `recomputarEstado.ts` —
+  `decidirRecalculo`/`recomputarEstado` propagan `hayDevolucion` (extraído de `calcularEstadoGlobal`,
+  sin tocar su lógica). `ui.ts` — `ESTADO_AREA_LABEL`/`ESTADO_AREA_BADGE`/`ESTADO_AREA_CELDA`
+  completados con `DEVUELTO_POR_CI` (3 errores de exhaustividad de `tsc` detectados y corregidos).
+  Un archivo de test **huérfano preexistente** (`shared/tests/desvinculaciones.test.ts`, de un
+  intento previo con un dominio incompatible — `EstadoGlobal` con valores nuevos que la Decisión #3
+  del plan descarta explícitamente) fue detectado, señalado al usuario vía `AskUserQuestion`, y
+  **descartado** por elección explícita (movido a backup fuera del repo, no borrado a ciegas).
+- **✅ Ítem 4 — migración `0015_archivado_en.sql`:** columna `archivado_en timestamptz` en
+  `funcionarios` + trigger `fn_archivado_en_requiere_paz_y_salvo` (rechaza si se intenta archivar sin
+  `estado_global='PAZ_Y_SALVO'` — defensa en profundidad en BD, no solo en el caso de uso) + espejo
+  `schema.ts` + mapeo en `mapFuncionario`.
+- **✅ Ítem 5 — migración `0016_eventos_auditoria.sql`:** tabla `eventos_auditoria` (entidad/acción/
+  actor/estado-anterior/estado-nuevo en jsonb/observación/metadata + índice, RLS SELECT solo
+  SA/CI vía función `es_auditor` nueva, mismo patrón que `0004_rls_datos.sql`) + espejo `schema.ts` +
+  `eventoAuditoriaRepository.ts` (función standalone `registrarEvento(evento, ex=db)`, se invoca
+  DENTRO de transacciones ya existentes — mismo molde que `recomputarEstado(id, tx)`).
+- **✅ Ítem 6 — swap de guardas de rol (el cambio de negocio central del plan):**
+  `generarLiquidacion.ts` ahora exige `CONTROL_INTERNO`/`SUPERADMIN` (antes TH/SA);
+  `registrarLiquidacion.ts` ahora exige `TALENTO_HUMANO`/`SUPERADMIN` (antes CI/SA); guarda de ruta
+  invertida en `funcionarios.routes.ts` (`/:id/liquidacion`→SA+CI, `/:id/paz-y-salvo`→SA+TH);
+  `funcionarioRepository.ts` — ambos métodos ahora escriben `registrarEvento(...)` dentro de su
+  propia `tx` (antes de `recomputarEstado`) con `estadoAnterior`/`estadoNuevo` en jsonb, y el autor
+  fallback se intercambió (`"Control Interno"` para `generarLiquidacion`, `"Talento Humano"` para
+  `registrarLiquidacion"`, reflejando qué rol invoca ahora cada uno). Docstrings de ambos casos de
+  uso actualizados explicando la inversión (el nombre técnico NO cambia, solo el rol autorizado, para
+  no migrar el enum de hitos en BD). `liquidacion.test.ts` **reescrito en el mismo archivo** (no uno
+  nuevo) con los roles invertidos + `hayDevolucion: false` agregado a los mocks de `ResultadoMutacion`.
+- **Verificación (todo verde, re-confirmada en esta sesión leyendo los archivos reales):** shared
+  build OK + **246/246** tests · backend `tsc --noEmit` limpio · **292 pass + 11 skip** (sin
+  regresión). **Working tree SIN commitear. Ninguna migración (`0014`/`0015`/`0016`) aplicada a
+  Supabase** — se pedirá autorización explícita, por-migración, recién en el ítem 13 (verificación
+  final), igual que en planes anteriores.
+- **PAUSA BREVE a petición explícita del usuario** ("Haz una pausa y recapitulación corta y breve"),
+  distinta de una pausa "urgente pero segura" — se detuvo el trabajo a mitad de la investigación del
+  ítem 7 (solo lectura de `cambiarEstadoArea.ts`/`cambiarEstadoAreaSchema` como referencia, sin
+  ninguna edición de archivo iniciada) y se dio un recap conciso en vez de seguir codificando.
+- **🔵 PRÓXIMA SESIÓN — retomar exactamente en el ítem 7 del plan:** **`devolverCasoAArea`** (repo +
+  caso de uso + ruta + tests). Patrón a espejar: `cambiarEstadoArea.ts` (guarda `areaPermitida`,
+  observación obligatoria, `obtenerDetalle` + rechazo si `PAZ_Y_SALVO`, delega en repo con
+  `autor: usuario.nombre`) + `cambiarEstadoAreaSchema` de `shared/src/schemas.ts` (merge de
+  `funcionarioId`/`areaId` de los params de URL con el body). Ya existen en `domain.ts`:
+  `DevolverCasoAAreaInput{areaId,observacion}` y `EstadoArea`/`ESTADOS_AREA` con `DEVUELTO_POR_CI`.
+  Después: ítem 8 `archivarCaso` → ítem 9 refactor `finalizarContrato`→`iniciarTramiteDesvinculacion`
+  → ítem 10 migración `0017_lotes_importacion` → ítem 11 importación masiva (multer/xlsx) → ítem 12
+  frontend (swap botones TH/CI, Devolver, Archivar, módulo importación, `realtime.ts`) → ítem 13
+  verificación final + autorización explícita por-migración de `0014-0017`. Detalle completo,
+  file:line y patrones exactos en la memoria `gestion-desvinculaciones-plan.md` y en el plan original
+  `cheerful-cuddling-koala.md`. Seguir aplicando [[feedback-test-files-lean]] en los ítems 7-11.
+  Sin commits ni migraciones sin pedido explícito.
+
+### 2026-07-08 — Sesión 46: Gestión de Desvinculaciones — ítems 7-10 completos + ítem 11 iniciado, pausa segura inmediata
+
+- **Continuación directa de la Sesión 45**, retomando exactamente en el ítem 7 tras releer el plan
+  completo + la memoria `gestion-desvinculaciones-plan.md`. Skills activas: `engineering-architecture-pro`
+  + `senior-fullstack`. Misma disciplina de ejecución (directo por el controlador, sin worktree, sin
+  commits). **Sin commits** (constraint respetado).
+- **✅ Ítem 7 — `devolverCasoAArea` completo:** `shared/src/schemas.ts` (`devolverCasoAAreaSchema`,
+  merge funcionarioId+areaId+observacion) · puerto `FuncionarioRepo.devolverCasoAArea` ·
+  `funcionarioRepository.ts` (lock `FOR UPDATE` + UPDATE aprobaciones→`DEVUELTO_POR_CI` + INSERT
+  observaciones + `registrarEvento` + `recomputarEstado`, todo en una tx) ·
+  `application/funcionarios/devolverCasoAArea.ts` (guarda CI/SA, observación obligatoria, 404 si no
+  existe, 400 si `PAZ_Y_SALVO`) · wireado en barrel+`container.ts`+`funcionariosController.ts` · ruta
+  `POST /:id/areas/:areaId/devolver` (`requireRol` CI/SA) · **+7 tests añadidos a
+  `cambiarEstadoArea.test.ts`** (NO archivo nuevo, [[feedback-test-files-lean]]).
+- **✅ Ítem 8 — `archivarCaso` completo:** puerto `FuncionarioRepo.archivarCaso` ·
+  `funcionarioRepository.ts` (UPDATE condicionado `WHERE estadoGlobal='PAZ_Y_SALVO' AND
+  archivadoEn IS NULL RETURNING`, 0 filas → `ErrorValidacion`, + `registrarEvento`) ·
+  `application/funcionarios/archivarCaso.ts` (guarda SA/TH, 404/400) · wireado en
+  barrel+`container.ts`+`funcionariosController.ts` · ruta `POST /:id/archivar` (`requireRol` SA/TH)
+  · **+4 tests añadidos a `archivo.test.ts`** (NO archivo nuevo).
+- **✅ Ítem 9 — refactor `finalizarContrato`→`iniciarTramiteDesvinculacion` completo:** nuevo
+  `apps/backend/src/infrastructure/db/iniciarTramiteDesvinculacion.ts` — función standalone
+  `(args, ex=db) => Promise<ResultadoMutacion>` que extrae TODA la lógica del puente (TOCTOU flip,
+  backfill de aprobaciones, `registrarEvento`, `recomputarEstado`) de dentro de
+  `funcionarioRepository.finalizarContrato`, que ahora es un wrapper de 3 líneas
+  (`db.transaction(tx => iniciarTramiteDesvinculacion({id,fechaRetiro,autor}, tx))`). Sin tests
+  nuevos (refactor puro, `personal.test.ts` con repo mockeado no se ve afectado). Esta función
+  standalone es la pieza clave que el ítem 11 (importación masiva) reusa para confirmar cada fila.
+- **✅ Ítem 10 — migración `0017_lotes_importacion.sql` completa:** enums `lote_estado`
+  (PREVISUALIZADO/CONFIRMADO_PARCIAL/CONFIRMADO_TOTAL) y `fila_lote_estado`
+  (VALIDA/CON_ERROR/DUPLICADA/CONFIRMADA/DESCARTADA), tablas `lotes_importacion`+`filas_lote` (FK
+  cascade, `unique(lote_id, numero_fila)`), RLS deny-directo (mismo patrón que `eventos_auditoria`)
+  — espejo 1:1 en `schema.ts`. **NO aplicada a Supabase.**
+- **✅ Ítem 2 (tipos compartidos, prerrequisito del 11) completo:** `shared/src/desvinculaciones.ts`
+  (nuevo) — `LoteEstado`, `FilaLoteEstado`, `FilaLote`, `LotePrevisualizacion` (con
+  `erroresParseo: {numeroFila,motivo}[]`, mejora deliberada sobre el plan original: los errores de
+  *parseo* de una fila del Excel — sin descartarlos en silencio — se distinguen de los errores de
+  *validación contra BD*), `ResultadoConfirmacionLote` + barrel `shared/src/index.ts` +
+  `schemas.ts` (`confirmarImportacionParcialSchema`/`ConfirmarImportacionParcialInput`). **Fricción
+  resuelta:** un primer intento declaró el mismo nombre de tipo en dos archivos (interfaz en
+  `desvinculaciones.ts` + `z.infer` en `schemas.ts`) → colisión de export en el barrel `export *`;
+  corregido dejando solo la versión inferida de `schemas.ts` (patrón ya establecido por
+  `CambiarEstadoAreaInput`), detectado antes de correr `tsc`.
+- **🔧 Ítem 11 (importación masiva) INICIADO — escrito pero SIN CONECTAR aún:**
+  `apps/backend/package.json` +`multer@^2.2.0`+`xlsx@^0.18.5`+`@types/multer` (instaladas) · puerto
+  `LoteImportacionRepo.ts` (`FilaCruda`, `ErrorParseoFila`, interfaz `{crearLoteConFilas,
+  obtenerLote, confirmarParcial}`) · `infrastructure/importacion/parsearArchivoDesvinculaciones.ts`
+  (parser XLSX vía `XLSX.read`+`sheet_to_json`, alias de encabezados case/acento-insensibles, filas
+  inválidas → `errores` sin abortar el archivo completo; **fix de robustez**: el primer intento de
+  `normalizarClave` usaba un regex literal con caracteres Unicode combinantes incrustados —
+  reemplazado por `new RegExp("[\\u0300-\\u036f]", "g")` con puntos de código escapados
+  explícitamente, inmune a problemas de encoding del archivo) · `loteImportacionRepository.ts`
+  (`crearLoteConFilas` clasifica cada fila VALIDA/CON_ERROR/DUPLICADA contra la BD en una tx;
+  `confirmarParcial` con lock `FOR UPDATE` sobre el lote — serializa dos confirmaciones concurrentes
+  del mismo lote — y reusa `iniciarTramiteDesvinculacion` por fila dentro de un `try/catch` que
+  **no aborta el lote completo** si una fila individual falla por TOCTOU, marcándola `DESCARTADA`
+  con el motivo en vez de perder las demás) · casos de uso
+  `application/desvinculaciones/previsualizarImportacionDesvinculaciones.ts` (guarda SA/TH, parsea +
+  delega) y `confirmarImportacionParcial.ts` (guarda SA/TH, 404 si no existe el lote, 400 si ya
+  `CONFIRMADO_TOTAL`) · ambos ya exportados en `application/index.ts`. **Falta:** wireado en
+  `container.ts`, `desvinculacionesController.ts` (nuevo), `desvinculaciones.routes.ts` (nuevo,
+  multer memoryStorage + rate-limit estricto en el upload), montaje en `app.ts`, y **un solo
+  archivo de test consolidado** `tests/desvinculaciones.test.ts` (guardas 403 de ambos casos de uso
+  + 404/400 de confirmar + 2-3 tests del parser con un buffer XLSX real, sin mockear la librería).
+- **Verificación de este checkpoint (todo verde):** `npm run build --workspace=shared` OK ·
+  `npx tsc --noEmit --project apps/backend` limpio · `npm run test --workspace=apps/backend` →
+  **304 pass + 11 skip** (sin regresión — el conteo no sube todavía porque los archivos del ítem 11
+  no están conectados a ningún router). shared **246/246**. **Working tree SIN commitear. Ninguna
+  migración aplicada a Supabase** (`0014`-`0017` siguen pendientes de autorización explícita en el
+  ítem 13).
+- **PAUSA SEGURA a petición explícita y urgente del usuario** ("Haz una pausa segura, por favor" +
+  "ya mismo" inmediatamente después) — a mitad de la escritura del ítem 11, justo tras cerrar el
+  barrel de casos de uso. **Feedback nuevo del usuario, guardado en memoria**
+  (`feedback-pausa-inmediata.md`): un pedido de pausa exige detenerse en el acto, sin ninguna tool
+  call adicional de verificación "para dejar todo prolijo" antes de responder — incluso una
+  intención bien intencionada de cerrar con evidencia se lee como no haber escuchado la instrucción
+  si llega después del pedido de detenerse.
+- **🔵 PRÓXIMA SESIÓN — retomar exactamente en el ítem 11, punto "Falta" de arriba** (wireado de
+  `container.ts` → controller → rutas con multer/rate-limit → montaje en `app.ts` → tests
+  consolidados → verificar build+tsc+test). Después: ítem 12 (frontend: swap de botones TH/CI,
+  botón Devolver, botón Archivar, módulo de importación masiva, `realtime.ts`) → ítem 13
+  (verificación end-to-end + **autorización explícita, por-migración**, de `0014`-`0017` a Supabase
+  + smoke test manual). **Mandato adicional del usuario, para ejecutar DESPUÉS del ítem 13**:
+  limpieza estricta de código muerto/obsoleto/legacy/residual, incluyendo archivos de test que ya no
+  se vayan a usar — reforzó su preferencia por tests consolidados sobre uno-por-caso. Detalle
+  completo, file:line y patrones exactos en la memoria `gestion-desvinculaciones-plan.md`. Seguir
+  aplicando [[feedback-test-files-lean]] y [[feedback-pausa-inmediata]]. Sin commits ni migraciones
+  sin pedido explícito.
+
+### 2026-07-08 — Sesión 47: Gestión de Desvinculaciones — CIERRE COMPLETO (ítems 11-13/13) + migraciones 0014-0018 en producción
+
+- **Continuación directa de la Sesión 46**, retomando exactamente en el ítem 11 tras releer a fondo
+  el plan `cheerful-cuddling-koala.md`, la memoria `gestion-desvinculaciones-plan.md`, `feedback-
+  test-files-lean.md`, `feedback-pausa-inmediata.md` y `memoria-solo-al-cierre.md` (pedido explícito
+  del usuario: "estudia, explora y domina el contexto + impacto por completo" antes de tocar código).
+  Skills activas: `senior-fullstack`, `senior-backend`, `senior-frontend`. **Sin commits** (constraint
+  respetado); el usuario pidió ejecutar el circuito completo y dejar todo sincronizado.
+- **✅ Ítem 11 (backend de importación masiva) COMPLETO** — se verificó primero el estado real del
+  código (puerto `LoteImportacionRepo`, `parsearArchivoDesvinculaciones.ts`,
+  `loteImportacionRepository.ts` y los 2 casos de uso ya escritos y compilando desde la Sesión 46, sin
+  wireear). `container.ts`: import + instancia de `loteImportacionRepository` +
+  `previsualizarImportacionDesvinculaciones`/`confirmarImportacionParcial`.
+  `interface/controllers/desvinculacionesController.ts` (nuevo): `importar` (lee `req.file` de
+  multer) + `confirmar` (Zod `confirmarImportacionParcialSchema` sobre el body).
+  `interface/routes/desvinculaciones.routes.ts` (nuevo): `multer({storage: memoryStorage(), limits:
+  {fileSize: 5MB}})`, rate-limit 10/min en `/importar` (operación pesada: parseo + N validaciones
+  contra BD, distinto del límite 60/min de endpoints públicos idempotentes), `POST /importar` y
+  `POST /lotes/:id/confirmar`, ambas tras `requireAuth, requireActivo, requireRol(SA,TH)`. Montado en
+  `app.ts` como `/api/desvinculaciones`. **1 solo archivo de test nuevo**
+  `tests/desvinculaciones.test.ts` (+14, [[feedback-test-files-lean]]): guardas 403 de ambos casos de
+  uso, delegación exacta de argumentos (incl. `toHaveBeenCalledWith` verificando el parseo real del
+  Excel), 404/400 de `confirmarImportacionParcial`, y 3 tests de
+  `parsearArchivoDesvinculaciones` construyendo buffers `.xlsx` reales con la librería `xlsx`
+  (`XLSX.utils.json_to_sheet`+`book_new`+`write`) — sin mockear la librería, tal como pedía el plan.
+  Backend **304→318 pass + 11 skip**.
+- **✅ Ítem 12 (frontend) COMPLETO — 8 piezas:**
+  1. **Swap de botones TH/CI**: `CatalogoFuncionarios.tsx` — `VISTA_CFG.th`/`ci` intercambian
+     `estadoAccionable` (CI ahora `LISTO_PARA_LIQUIDAR`, TH ahora `LIQUIDACION_GENERADA`) + copy
+     actualizado; `AccionRol` intercambia qué vista muestra `GenerarLiquidacionButton`/
+     `LiquidarButton` (mismos componentes técnicos — el plan explícitamente no renombra nada, solo
+     invierte qué rol/vista los ve). `DetalleFuncionario.tsx`: `mostrarGenerar`/`mostrarLiquidar`
+     invierten su `tieneRol(...)`.
+  2. **`DevolverAreaButton.tsx`** (nuevo): confirmación inline con observación obligatoria, mismo
+     molde visual que `AccionesArea`, usa `useDevolverCasoAArea` (hook nuevo en `useFuncionarios.ts`).
+     Cableado en `AreaList.tsx` vía prop nueva `puedeDevolver` (independiente de `puedeGestionar` —
+     Control Interno no gestiona el resto de acciones de área), visible solo si
+     `ap.estado==="APROBADO"||"NO_APROBADO"`. `DetalleFuncionario.tsx` pasa
+     `puedeDevolver={tieneRol("CONTROL_INTERNO","SUPERADMIN")}`.
+  3. **`ArchivarButton`** (inline en `ArchivoPage.tsx`): confirmación inline, `useArchivarCaso` (hook
+     nuevo), visible solo si `f.archivadoEn===null`; se agregó además el dato "Archivado" a
+     `DetalleResumen` (fecha si ya se archivó, "Sin archivar" si no).
+  4. **`apiFuncionarios.devolverCasoAArea`/`archivarCaso`** + **`apiDesvinculaciones`** (nuevo, con
+     helper `requestMultipart`/`api.multipart` — primer uso de `multipart/form-data` en el proyecto,
+     sin fijar `Content-Type` a mano para que el navegador agregue el boundary) en `lib/api.ts`.
+  5. **Módulo nuevo `apps/web/src/pages/desvinculaciones/`**: `ImportacionPage.tsx` (sube→previsualiza
+     →selecciona filas VALIDA→confirma parcial/total, toasts de resultado), `DropzoneArchivo.tsx`
+     (drag&drop + input file, presentacional puro), `TablaPrevisualizacionLote.tsx` (checkboxes por
+     fila VALIDA + sección aparte de `erroresParseo`, nunca mezclados con filas persistidas),
+     `PillFilaLoteEstado.tsx`. Ruta `/desvinculaciones/importacion` (SA+TH) en `App.tsx`.
+  6. **`shared/src/ui.ts`**: `FILA_LOTE_ESTADO_LABEL`/`FILA_LOTE_ESTADO_BADGE`/`filaLoteEstadoPill`
+     nuevos (Regla del Semáforo Único — la fuente de color vive en shared, no en el componente).
+  7. **`Layout.tsx`**: ícono `upload` nuevo (flecha+bandeja) + nav item "Importacion masiva" en la
+     sección "Administracion" de SA y TH + entrada en `routeLabels`.
+  8. **`realtime.ts`**: `lotes_importacion`/`filas_lote` → invalida `["importacion"]`; docstring del
+     módulo actualizado.
+  Web typecheck limpio + **11/11** (10 previos + ninguno nuevo — presentacional, política lean; el
+  test 11 ya existía de `ThemeContext`).
+- **✅ Ítem 13 (verificación + migraciones) COMPLETO:**
+  - Verificación final: shared **246/246** · backend `tsc` limpio + **318 pass + 11 skip** · web
+    typecheck limpio + **11/11** · `npm run build` raíz **exit 0 SIN warnings** (bundle sin
+    regresión: `index` ~333 KB, Tiptap sigue diferido en `LeccionForm`).
+  - **Autorización explícita del usuario** (vía `AskUserQuestion`, nombrando las 4 migraciones) →
+    **`0014`/`0015`/`0016`/`0017` aplicadas a producción vía MCP en orden**, verificado
+    `list_migrations` antes (BD en `0013`) y después (`0014`-`0017` registradas,
+    `20260708212956`-`213041`).
+  - **Hallazgo no previsto por el plan**: el re-chequeo de advisors reveló 2 WARN nuevos —
+    `es_auditor` (SECURITY DEFINER de `0016`) ejecutable por `anon`/`authenticated` (mismo patrón que
+    `rol_de`/`es_superadmin` antes de `0005_revoke_security_definer.sql`), y el trigger
+    `fn_archivado_en_requiere_paz_y_salvo` (`0015`) sin `search_path` fijo. **Reportado al usuario
+    con `AskUserQuestion`** (no se aplicó a ciegas) → autorización explícita → **migración
+    `0018_endurecer_funciones_desvinculaciones.sql` nueva**, mismo `REVOKE EXECUTE ... FROM anon,
+    authenticated, public` que `0005` (razonamiento documentado en el propio SQL: RLS se evalúa con
+    los privilegios del *definer*, revocar `EXECUTE` a los roles públicos NO rompe las policies, ya
+    probado en producción desde la Sesión 16) + `fn_archivado_en_requiere_paz_y_salvo` reescrita con
+    `set search_path = public`. **Advisors finales limpios**: solo los 10 `rls_enabled_no_policy`
+    INFO esperados (deny-directo, patrón intencional del proyecto en `asistencias`/`capacitaciones`/
+    `capacitaciones_planeadas`/`curso_*`/`cursos`/`filas_lote`/`inscripciones`/`lotes_importacion`/
+    `novedades`/`progreso_lecciones`) + el WARN moot de leaked-password de siempre.
+- **PLAN COMPLETO — 13/13 ítems cerrados.** `estado.ts`/`recomputarEstado.ts` no se tocaron esta
+  sesión (ya intervenidos con TDD en la Sesión 45); las 3 transacciones de concurrencia existentes
+  (`cambiarEstadoArea`, hitos, `finalizarContrato`/`iniciarTramiteDesvinculacion`) tampoco se
+  tocaron. **Working tree SIN commitear** (constraint respetado — la BD de prod sí quedó modificada
+  con autorización explícita en cada una de las 5 migraciones de esta sesión).
+- **Mandato pendiente del usuario, NO ejecutado esta sesión** (era "posterior al ítem 13", no una
+  acción automática de cierre): limpieza estricta de código muerto/obsoleto/legacy/residual,
+  incluyendo archivos de test que ya no se vayan a usar. Queda para cuando el usuario la pida
+  explícitamente — no se asumió que "cerrar el circuito" incluyera este mandato adicional.
+- **Pendiente = ACCIÓN HUMANA:** smoke test manual completo — CI ve/valida `LISTO_PARA_LIQUIDAR` en
+  su oficina y CI recibe la bandeja correcta, TH cierra `LIQUIDACION_GENERADA` desde su oficina, CI
+  devuelve un área ya resuelta con observación obligatoria y la UI distingue "devuelto" de
+  "rechazado", TH archiva un trámite `PAZ_Y_SALVO` desde `/archivo` y ve la fecha de archivado, subir
+  un Excel de prueba pequeño en `/desvinculaciones/importacion` → previsualizar → seleccionar
+  algunas filas VALIDA → confirmar parcialmente → verificar que las filas no seleccionadas ni las
+  `CON_ERROR`/`DUPLICADA` no crean funcionarios → confirmar el resto → verificar `eventos_auditoria`
+  para cada paso (solo legible por SA/CI). **Próxima sesión:** sin checklist pendiente de este plan
+  — retomar solo si el usuario pide la limpieza de código muerto mandatada, o trabajo nuevo.
+
+### 2026-07-08 — Sesión 48: Consolidación de vistas (redundancia SA/TH) + diseño de "Avance por Área" potenciado
+
+- **Origen:** el usuario notó redundancia real entre el catálogo de Funcionarios (SA), la oficina
+  de Talento Humano y la Matriz de Avance, y dio contexto de negocio: en una reunión reciente se
+  acordó que **TH ahora valida que todas las áreas dieron visto bueno antes de pasar el caso a
+  Control Interno para liquidar** — trabajo de supervisión/seguimiento, no de aprobación directa.
+  **Feedback nuevo del usuario, guardado en memoria permanente** (`feedback-idioma-espanol.md`):
+  exige que TODA la comunicación sea en español, sin excepción, incluyendo traducir cualquier
+  resultado de subagentes antes de mostrarlo.
+- **✅ PARTE 1 (eliminación de redundancia) EJECUTADA Y VERIFICADA, con autorización explícita
+  ("Si elimina esa redundancia en las vistas que lo sufran como superadmin y talento humano"):**
+  - Borrados `apps/web/src/pages/funcionarios/FuncionariosPage.tsx` y `TalentoHumanoPage.tsx` + sus
+    rutas e imports en `App.tsx`.
+  - `shared/src/permisos.ts` — `rutaOficinaPorRol` ahora manda a SA y TH a `/paz-y-salvo/avance`
+    (antes cada uno tenía su propia página); `permisos.test.ts` actualizado (2 tests).
+  - `MatrizPage.tsx` ganó ruta hija `:id` + `<Outlet/>` (antes solo era de lectura, sin modal
+    propio) — reusa `FuncionarioModal`/`DetalleFuncionario`, que ya traían las acciones de rol y el
+    rastro de auditoría de hitos, así que no se perdió ninguna capacidad.
+  - `CatalogoFuncionarios.tsx` (ahora consumido SOLO por `ControlInternoPage`, vista="ci") perdió el
+    `Segmented` de vista de supervisión que ya no tenía destinos válidos (Todo/TH ya no existen).
+  - `Layout.tsx` — eliminados los ítems de sidebar "Funcionarios" (SA) y "Talento Humano" (TH);
+    "Avance por área" queda como única entrada de SA/TH al módulo. `routeLabels` actualizado.
+  - `MiAreaPage.tsx` — el único enlace hardcodeado a la ruta borrada (`/paz-y-salvo/funcionarios/:id`,
+    visible solo para SA) se corrigió para resolver dinámicamente vía `rutaOficinaPorRol`.
+  - **Control Interno no se tocó** — conserva su página y bandeja dedicadas.
+  - Verificación (todo verde): `npm run build --workspace=shared` OK · `npm run test --workspace=shared`
+    **246/246** · `npm run typecheck --workspace=apps/web` limpio · `npm run test --workspace=apps/web`
+    **11/11** · `npm run build` raíz **exit 0 SIN warnings**. **Working tree SIN commitear.**
+- **🔵 PARTE 2 (potenciar/consolidar "Avance por Área") — DISEÑADA Y APROBADA EN SU ESTRUCTURA, SIN
+  EJECUTAR** (el usuario pidió explícitamente dejarla para la próxima sesión). Proceso:
+  `superpowers:brainstorming` con preguntas de alcance (`AskUserQuestion`: capacidad prioritaria =
+  "ambas" — visibilidad de cuellos de botella + bandeja de traspaso; interacción = clic filtra;
+  ubicación = bloque arriba de la matriz). A mitad del brainstorming el usuario amplió el alcance a
+  un **rediseño visual completo** ("jerarquía visual, tipografía, paleta delux y limpieza, filtros
+  múltiples y combinados, UX... que no parezca hecho por IA") — se activó el **compañero visual**
+  (servidor en `.superpowers/brainstorm/`, mockups HTML de 3 direcciones A/comando-ejecutivo/
+  B/tablero-editorial/C/híbrido-de-precisión) y se hizo **investigación web real** (Stripe, Linear,
+  Pencil & Paper — fuentes citadas al usuario) para refinar la dirección elegida y evitar un look
+  "genérico de dashboard-plantilla". El usuario aprobó **"C · Híbrido de precisión" refinada**: cinta
+  de KPIs fundida dentro de una cabecera navy (no cards sueltas tipo SaaS genérico), celdas de tabla
+  que resaltan la columna bloqueante activa, acciones de fila reveladas al hover en vez de links
+  permanentes. Exploración de código (sin escribir nada aún) confirmó que casi todo es reusable sin
+  tocar backend salvo un filtro nuevo: `pendientesPorArea` (cuellos de botella) YA existe en
+  `obtenerMetricas`/`useMetricas`; la bandeja de traspaso reusa `useFuncionarios({estado:
+  "LISTO_PARA_LIQUIDAR"})` tal cual; solo hace falta un campo nuevo `areaBloqueante` en
+  `FiltroFuncionarios` (shared) + una subconsulta `EXISTS` en `listarFuncionariosPaginado` (sin
+  migración, sin endpoint nuevo, heredado gratis por `listarMatrizPaginado`).
+  **Plan completo escrito** en `C:\Users\Leonardo\.claude\plans\lazy-wibbling-sifakis.md` (Plan mode,
+  3 pilares: backend del filtro combinable · datos de frontend reusando hooks existentes · rediseño
+  visual con `AvanceHero.tsx` nuevo + toolbar de filtros combinables removibles + bandeja de
+  traspaso + limpieza menor de un label stale en `PanelControlPage.tsx:182`), con 6 fases ordenadas,
+  archivos clave identificados y pasos de verificación end-to-end. **El usuario pidió detener ahí
+  explícitamente** ("Actualiza la memoria aplicaremos/ejecutaremos el plan completo en una nueva
+  sesión siguiente") — **cero código de la Parte 2 se tocó**, el plan queda listo para ejecutar tal
+  cual está escrito.
+- **Working tree:** Parte 1 sin commitear (verificada en verde), Parte 2 sin ningún cambio de código
+  (solo el archivo de plan fuera del repo, en `~/.claude/plans/`).
+- **Próxima sesión — ejecutar el plan completo desde `C:\Users\Leonardo\.claude\plans\
+  lazy-wibbling-sifakis.md`** en el orden de sus 6 fases (backend → datos frontend → visual →
+  bandeja de traspaso → limpieza menor → verificación final raíz). Detalle completo en la memoria
+  `consolidacion-avance-area-plan.md`. Sigue aplicando [[feedback-idioma-espanol]],
+  [[feedback-test-files-lean]] y [[feedback-pausa-inmediata]]. Sin commits ni migraciones sin pedido
+  explícito (este plan, de hecho, no requiere ninguna migración SQL).
+
+### 2026-07-09 — Sesión 49: Potenciación "Avance por Área" — plan completo ejecutado
+
+- **Continuación directa de la Sesión 48**, retomando desde el plan `C:\Users\Leonardo\.claude\
+  plans\lazy-wibbling-sifakis.md` ya aprobado. Ejecución en el orden exacto de sus 6 fases.
+  **Sin commits** (constraint respetado).
+- **✅ Fase 1 (backend):** `FiltroFuncionarios.areaBloqueante?: string` en `shared/src/domain.ts` +
+  validación uuid opcional en `filtroFuncionariosSchema` (`schemas.ts`; `filtroMatrizSchema` la
+  hereda gratis por ser alias). `funcionarioRepository.ts` (`listarFuncionariosPaginado`, ~línea
+  669): condición `EXISTS` nueva sobre `aprobaciones` cuando `areaBloqueante` viene (`funcionarioId
+  = funcionarios.id AND areaId = filtro.areaBloqueante AND estado NOT IN (APROBADO, NO_APLICA)`) —
+  importó `exists`/`notInArray` de `drizzle-orm`. `listarMatrizPaginado` lo hereda automáticamente
+  (delega en el mismo método) — cero cambios ahí. Sin migración, sin endpoint nuevo, sin cambio de
+  firma en `FuncionarioRepo` (puerto). Test nuevo en `lecturasCatalogo.test.ts` (archivo existente,
+  [[feedback-test-files-lean]]): delegación exacta del filtro al repo mockeado.
+- **✅ Fase 2 (frontend — datos):** `MatrizPage.tsx` lee `areaBloqueante` de `searchParams` y lo
+  pasa a `useMatriz` + a todos los `hrefCon` existentes (búsqueda, chips de estado, paginación).
+  `useMetricas({enabled: puedeGestionar})` (cuellos de botella, campo `pendientesPorArea` ya
+  existente) y `useFuncionarios({estado:"LISTO_PARA_LIQUIDAR", porPagina:5}, {enabled})` (bandeja de
+  traspaso) — **cero hooks nuevos**, `puedeGestionar = esSuperadmin || esTalentoHumano` gatea ambos
+  para que Control Interno nunca los dispare (mismo alcance que la guarda real de `/metricas`).
+- **✅ Fase 3 (frontend — visual):** `AvanceHero.tsx` nuevo (`pages/matriz/`) reemplaza el
+  `PageHeader` plano — cabecera `bg-navy-deep` (token ya existente, reusado literal del resto de la
+  app) con la cinta de KPIs fundida debajo en la misma superficie (`bg-navy-900`, `divide-white/10`,
+  sin cards blancas sueltas); cada ítem es un `Link` que set/toggle su filtro (línea `bg-gold-400`
+  bajo el activo, `aria-pressed`). Toolbar: chip removible nuevo para `areaBloqueante` activo
+  (`bg-estado-rechazoBg`/`text-estado-rechazo`, mismos tokens que `ESTADO_AREA_CELDA` — Semáforo
+  Único, sin hex nuevos). Tabla: columna del área bloqueante activa resalta con
+  `bg-estado-rechazoBg/60`; cada fila gana un afordance "Ver ficha →" revelado en
+  `group-hover`/`focus-visible` (visible siempre en touch vía el arbitrary variant
+  `[@media(hover:none)]:opacity-100`), sin quitar el link existente sobre el nombre.
+- **✅ Fase 4 (bandeja de traspaso):** componente `BandejaTraspaso` (dentro de `MatrizPage.tsx`) —
+  hasta 5 `Avatar`+nombre+fecha de retiro, "Ver los N →" apunta al **mismo** `href` que clickear el
+  KPI "Listos para traspasar" de la cinta (sin lógica de filtro duplicada). Montada entre el hero y
+  la tabla, gated por `puedeGestionar`.
+- **✅ Fase 5 (limpieza menor):** `PanelControlPage.tsx` — el botón que enlazaba a `oficina` decía
+  "Funcionarios" (desactualizado desde la Sesión 48, cuando `oficina` pasó a apuntar a
+  `/paz-y-salvo/avance`) → renombrado a "Avance por área".
+- **✅ Fase 6 (verificación final):** `npm run build --workspace=shared` OK · `npm run test
+  --workspace=shared` **246/246** · `npx tsc --noEmit --project apps/backend` limpio · `npm run
+  test --workspace=apps/backend` **319 pass + 11 skip** (+1 sobre la Sesión 47, el test nuevo de
+  `areaBloqueante`) · `npm run typecheck --workspace=apps/web` limpio · `npm run test
+  --workspace=apps/web` **11/11** (sin tests nuevos — presentacional, política lean) · `npm run
+  build` raíz **exit 0 SIN warnings** (bundle sin regresión: `index` ~336 KB, `LeccionForm`/Tiptap
+  sigue diferido en 412 KB). `git status` confirmó el alcance exacto: solo los 6 archivos listados
+  en el plan + `AvanceHero.tsx` nuevo — nada fuera de lo planeado.
+- **`estado.ts`, `recomputarEstado.ts`, las transacciones de concurrencia y las rutas/página de
+  Control Interno NO se tocaron** — tal como exigía el plan. **Working tree SIN commitear.**
+- **Plan `lazy-wibbling-sifakis.md` cerrado íntegro** (Pilares 1-3, Fases 1-6). El módulo "Avance
+  por Área" es ahora la oficina de trabajo real de SA/TH: cinta de KPIs accionable, filtros
+  combinables por URL (texto + estado + área bloqueante), bandeja de traspaso, y un rediseño visual
+  bajo la dirección aprobada "C · Híbrido de precisión".
+- **Pendiente = ACCIÓN HUMANA:** smoke test manual (los 6 pasos ya descritos en el propio plan,
+  sección "Verificación end-to-end") — entrar como SA/TH y confirmar la cinta con datos reales,
+  clic en un cuello de botella filtra + chip removible aparece, combinar con búsqueda/estado, clic
+  en "Listos para traspasar" (cinta o bandeja) da el mismo resultado, hover revela "Ver ficha →" y
+  se ve siempre en touch, Control Interno no ve cinta ni bandeja, el Panel dice "Avance por área".
+  **Próxima sesión:** sin checklist pendiente de este plan — trabajo nuevo, o el mandato de limpieza
+  de código muerto que sigue abierto desde la Sesión 47 (memoria `gestion-desvinculaciones-plan.md`).
+
+### 2026-07-09 — Sesión 50: Modularización de God Objects (backend + web) — plan completo, 11 fases
+
+- **Ejecución del plan** `C:\Users\Leonardo\.claude\plans\iterative-tumbling-grove.md` sobre dos
+  archivos que habían crecido por acumulación de sesiones sucesivas: `funcionarioRepository.ts`
+  (1327 líneas/29 métodos, "una tabla, tres proyecciones": trámite + maestro de empleados +
+  Hoja de Vida 360°) y `BloquesEditables.tsx` (1080 líneas/7 componentes/55 `useState`, editores
+  del expediente 360°). Objetivo explícito: **cero cambio de comportamiento, cero regresión de
+  tests** — no un recorte mecánico por conteo de líneas. Ejecutado directo por el controlador
+  (sin worktree, sin commits — mismo criterio que la remediación de la Sesión 43-44), en varios
+  tramos con pausas seguras pedidas por el usuario entre fases. **Sin commits** (constraint
+  respetado).
+- **Fases 0-2 (backend, sesión previa a esta):** extracción de `expedienteRepo.ts` (12 métodos +
+  9 helpers), `mappers.compartidos.ts` (2 mappers) y `empleadoRepo.ts` (6 métodos) — cada uno
+  tipado `Pick<FuncionarioRepo, ...>` contra el puerto único, sin fragmentarlo.
+  `funcionarioRepository.ts` bajó de 1327→702 líneas en ese punto.
+- **✅ Fase 3 (esta sesión) — extraer `tramiteRepo.ts` resolviendo `this.`:** los 12 métodos del
+  bloque trámite (`listarGestionArea`, `obtenerDetalle`, `cambiarEstadoArea`, `devolverCasoAArea`,
+  `generarLiquidacion`, `registrarLiquidacion`, `archivarCaso`, `obtenerMetricas`,
+  `listarFuncionariosPaginado`, `listarMatrizPaginado`, `listarGestionAreaPaginado`,
+  `listarArchivo`) se extrajeron a `apps/backend/src/infrastructure/db/funcionario/tramiteRepo.ts`
+  (723 líneas). El único riesgo técnico real del plan: 2 de estos métodos se llamaban entre sí vía
+  `this.listarFuncionariosPaginado(...)`/`this.listarGestionArea(...)` — imposible de preservar
+  como objeto-literal fragmentado sin ambigüedad de `this`. Resuelto declarando las 12 funciones
+  como `async function` nombradas de nivel superior (no shorthand de objeto) que se llaman
+  directo por nombre, ensambladas al final en `tramiteRepo` vía shorthand de propiedad y tipadas
+  `Pick<FuncionarioRepo, ...>` — mismo patrón de tipado que los módulos previos, cero cambio de
+  comportamiento. Incluye `mapFuncionario` (con el comentario de invariante `fechaRetiro ?? ""`
+  preservado verbatim) y `RANGO_ESTADO_AREA`.
+- **✅ Fase 4 (cierre backend):** `funcionarioRepository.ts` quedó como **barrel puro de 12
+  líneas** (`import { tramiteRepo, mapFuncionario } ...` + `import { empleadoRepo } ...` +
+  `import { expedienteRepo } ...` + `export const funcionarioRepository = {...tramiteRepo,
+  ...empleadoRepo, ...expedienteRepo}` + `export { mapFuncionario }`). Confirmado vía `grep` que
+  `container.ts` (composition root, 29 inyecciones de casos de uso) sigue importando del mismo
+  path exacto, **cero líneas tocadas**. Total backend: 5 archivos, 1418 líneas (vs. 1327 del
+  monolito original — el incremento modesto es esperado: imports duplicados por módulo, anotaciones
+  de tipo `Pick<...>`, boilerplate de export/re-export; el plan prioriza modularidad/testeabilidad
+  sobre minimizar el conteo de líneas).
+- **✅ Fase 5 (web) — `compartido.tsx`:** carpeta nueva `apps/web/src/pages/personal/
+  bloques-editables/` con `compartido.tsx` (no `.ts`, porque `BotonAbrir`/`FilaGuardarCancelar`/
+  `FilaEliminable` son JSX) — los 7 helpers copiados verbatim del monolito.
+- **✅ Fase 6 (web) — editores 1-1:** `PersonalesEditor.tsx`, `ContractualEditor.tsx`,
+  `SalarialEditor.tsx` — cada uno un archivo nuevo, contenido idéntico al monolito, imports
+  reapuntados a la profundidad de carpeta nueva (`../../../hooks/...`, `../../../lib/api`, etc.)
+  y a `./compartido`.
+- **✅ Fase 7 (web) — editores 1-N:** `FamiliaEditor.tsx`, `FormacionEditor.tsx`,
+  `ExperienciaEditor.tsx` — **deliberadamente NO unificados/genericizados** pese a ser
+  estructuralmente casi idénticos (mismo patrón lista+agregar+eliminar); el plan documenta esto
+  como mejora futura opcional, fuera de alcance de una modularización de "cero cambio de
+  comportamiento".
+- **✅ Fase 8 (web) — `FotoEditor.tsx` + barrel:** incluye la inconsistencia preexistente ya
+  documentada por el plan (`manejarArchivo` usa `e instanceof Error` mientras `quitar()` usa
+  `mensajeError`/`ApiError`) **conservada tal cual**, sin "corregir" comportamiento durante una
+  modularización. `index.ts` re-exporta los 7 componentes. Typecheck aislado limpio antes de tocar
+  el consumidor real.
+- **✅ Fase 9 (web) — swap + borrado del monolito:** `ExpedientePage.tsx` cambió una sola línea
+  (`from "./BloquesEditables"` → `from "./bloques-editables"`). Confirmado vía `grep -rn` que
+  ningún otro archivo importaba el monolito (solo quedaba una mención en un comentario histórico
+  de `compartido.tsx`) antes de borrar `BloquesEditables.tsx`.
+- **✅ Fase 10 (verificación final completa, todo verde):** `npm run build --workspace=shared`
+  OK · `npm run test --workspace=shared` **246/246** · `npx tsc --noEmit --project apps/backend`
+  limpio · `npm run test --workspace=apps/backend` **319 pass + 11 skip** (sin regresión — los
+  ECONNREFUSED en el log son ruido esperado de 2 smoke tests que golpean intencionalmente una BD
+  local inexistente, ya documentado en sesiones previas) · `npm run typecheck --workspace=apps/web`
+  limpio · `npm run test --workspace=apps/web` **11/11** · `npm run build` raíz **exit 0 SIN
+  warnings** (bundle sin regresión: `index` 335.62 KB / gzip 83.11 KB, `LeccionForm`/Tiptap sigue
+  diferido en 412.37 KB). `git status` confirmó el alcance exacto: `funcionarioRepository.ts`
+  modificado (barrel), carpeta `funcionario/` nueva (backend), `BloquesEditables.tsx` borrado,
+  `ExpedientePage.tsx` modificado (1 línea), carpeta `bloques-editables/` nueva (web) — nada fuera
+  de lo planeado.
+- **Cero tests nuevos** en toda la ejecución (Fases 3-10), tal como especificaba el plan
+  explícitamente — el contenido se copió verbatim en ambos lados, sin lógica nueva que testear.
+  **`estado.ts`, `recomputarEstado.ts`, cualquier migración SQL, y las rutas/página de Control
+  Interno NO se tocaron.** **Working tree SIN commitear** (constraint respetado).
+- **PLAN `iterative-tumbling-grove.md` COMPLETO — 11/11 fases (0-10).**
+- **Pendiente = ACCIÓN HUMANA:** smoke manual del expediente `/personal/:id` — abrir un empleado
+  real ya existente, confirmar que los 7 bloques satélite renderizan igual que antes de la
+  modularización, y probar un ciclo completo editar→guardar/cancelar en al menos un editor 1-1
+  (`PersonalesEditor`) y uno 1-N (`FamiliaEditor`), comparando contra el comportamiento previo.
+- **Próxima sesión:** sin checklist pendiente de este plan — trabajo nuevo, o el mandato de
+  limpieza de código muerto que sigue abierto desde la Sesión 47 (memoria
+  `gestion-desvinculaciones-plan.md`).

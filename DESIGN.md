@@ -1,17 +1,22 @@
 ---
 name: Sistema Paz y Salvo
-description: Herramienta institucional de paz y salvo — navy estructural, oro reservado al hito.
+description: Herramienta institucional de talento humano — navy estructural, oro reservado al hito, theming claro/oscuro.
 colors:
   navy: "#142943"
   navy-deep: "#0E1F35"
   gold: "#B68D40"
   gold-light: "#E9D196"
-  ink: "#16202E"
-  silver-text: "#8B93A6"
-  silver-hairline: "#CCD2DE"
-  silver-track: "#EEF0F5"
-  surface: "#FFFFFF"
   bg: "#F4F7FB"
+  surface: "#F4F7FB"
+  card: "#FEFCF8"
+  surface-2: "#EEF0F5"
+  elevated: "#FFFFFF"
+  foreground: "#0A1830"
+  muted: "#697080"
+  faint: "#AEB6C6"
+  border: "#E0E4EC"
+  hairline: "#CCD2DE"
+  plaqueta: "#785824"
   ok: "#16936A"
   ok-bg: "#E4F5EE"
   info: "#3B6FD4"
@@ -20,12 +25,15 @@ colors:
   listo-bg: "#F4E8C6"
   pendiente: "#8B93A6"
   rechazo: "#A4231F"
+  rechazo-bg: "#FDE8E8"
+  paz: "#1E7A52"
+  paz-bg: "#E3F2EA"
 typography:
   display:
-    fontFamily: "'Hoefler Text', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, Cambria, serif"
-    fontSize: "1.75rem"
-    fontWeight: 600
-    lineHeight: 1.1
+    fontFamily: "'Segoe UI Variable Display', 'Segoe UI', Inter, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1.875rem"
+    fontWeight: 700
+    lineHeight: 1.2
     letterSpacing: "-0.01em"
   title:
     fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
@@ -40,7 +48,7 @@ typography:
   label:
     fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
     fontSize: "0.75rem"
-    fontWeight: 500
+    fontWeight: 600
     lineHeight: 1.4
   data:
     fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
@@ -66,34 +74,34 @@ components:
     rounded: "{rounded.md}"
     padding: "8px 16px"
   button-secondary:
-    backgroundColor: "{colors.surface}"
+    backgroundColor: "{colors.card}"
     textColor: "{colors.navy}"
-    rounded: "{rounded.lg}"
+    rounded: "{rounded.xl}"
     padding: "12px 20px"
   chip:
-    backgroundColor: "{colors.surface}"
+    backgroundColor: "{colors.card}"
     textColor: "{colors.navy}"
-    rounded: "{rounded.full}"
+    rounded: "{rounded.md}"
     padding: "6px 12px"
   chip-active:
     backgroundColor: "{colors.navy-deep}"
-    textColor: "{colors.surface}"
-    rounded: "{rounded.full}"
+    textColor: "#FFFFFF"
+    rounded: "{rounded.md}"
     padding: "6px 12px"
   segmented-tab-active:
-    backgroundColor: "{colors.surface}"
+    backgroundColor: "{colors.card}"
     textColor: "{colors.navy}"
-    rounded: "{rounded.full}"
+    rounded: "{rounded.sm}"
     padding: "6px 16px"
   input-search:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.full}"
-    padding: "8px 16px"
+    backgroundColor: "{colors.card}"
+    textColor: "{colors.foreground}"
+    rounded: "{rounded.md}"
+    padding: "10px 16px 10px 40px"
   card-row:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.xl}"
+    backgroundColor: "{colors.card}"
+    textColor: "{colors.foreground}"
+    rounded: "{rounded.lg}"
     padding: "12px 16px"
   pill-ok:
     backgroundColor: "{colors.ok-bg}"
@@ -111,161 +119,172 @@ components:
 El sistema se comporta como la papelería oficial de una universidad seria: un chasis
 **navy** sobrio que carga toda la estructura, y un **oro** que casi nunca aparece —
 porque cuando aparece, _significa_ algo. El oro es el sello: marca la acción principal
-y el hito del trámite (la liquidación generada, el paz y salvo registrado). Una
-superficie tranquila y legible donde el momento de validación se siente porque es raro.
+y el hito del trámite (liquidación generada, paz y salvo registrado, curso completado).
+Una superficie tranquila y legible donde el momento de validación se siente porque es raro.
 
 Es una **herramienta diaria, no una vitrina.** La densidad sirve a la lectura: estados
 legibles de un vistazo, números tabulares, hairlines de plata en vez de bordes pesados.
-La identidad premium (navy + oro antiguo, serif editorial para el wordmark) se intuye
-en el oficio, no se exhibe en cada superficie. La marca es de la institución, no del
-software.
+Desde la Sesión 27 el sistema vive en **claro y oscuro** vía tokens CSS semánticos
+(`--bg`, `--card`, `--foreground`, `--estado-*`, resueltos con `rgb(var(--x) / <alpha>)`)
+conmutados por una clase `.dark` en `<html>` — el navy y el oro son constantes en ambos
+modos, solo cambian los neutros de fondo/texto. La identidad premium se intuye en el
+oficio, no se exhibe en cada superficie; es de la institución, no del software.
 
 Rechaza explícitamente dos extremos: el **SaaS genérico** (cards idénticas, morados y
-gradientes de startup, eyebrows en mayúsculas sobre cada sección) y el **software
-estatal anticuado** (tablas grises sin jerarquía, formularios planos, contraste pobre).
-También se baja el "lujo recargado" del sistema previo —menos veladuras y foil
-metálico— sin perder la identidad.
+gradientes de startup, eyebrows en mayúsculas sobre cada sección, marcadores 01/02/03)
+y el **software estatal anticuado** (tablas grises sin jerarquía, formularios planos,
+contraste pobre). El sistema evolucionó desde su primera versión hacia esquinas más
+**estructuradas y menos "todo-pill"**: chips, buscador, segmented y avatar usan hoy
+`rounded-md`/`rounded-lg` (8–12px) en vez de `rounded-full`; el óvalo pleno queda
+reservado a puntos de estado, badges de una letra y el botón-pill compacto de acciones.
 
 **Key Characteristics:**
 
-- Navy estructural en todo; oro reservado al hito y a la acción principal.
-- Superficies blancas sobre fondo perla frío (`#F4F7FB`), separadas por sombra ambiente sutil y hairlines de plata.
-- Filas-acordeón antes que tablas; pills de estado como única fuente de color semántico.
-- Números tabulares para contadores, documentos y fechas.
-- Serif editorial solo para wordmark y titulares; sans nítida para todo lo demás.
+- Navy estructural en todo; oro reservado al hito y a la acción principal (≤10% de la pantalla).
+- Superficies "premium-card": `card/94%` + `backdrop-blur(10px)` + hairline + sombra ambiente de dos capas, no bordes duros.
+- Filas-acordeón (`FilaDesplegable`) antes que tablas; pills de estado como única fuente de color semántico, hoy multiplicadas a 6 dominios (trámite, área, usuario, vinculación laboral, registro de capacitación, capacitación planeada) desde el mismo patrón `estado*Pill()` en `@pys/shared`.
+- Números tabulares para contadores, documentos, fechas y avance.
+- Serif de sistema (`.font-display`, sin fuente web) solo para wordmark y títulos de página; sans nítida para todo lo demás.
+- Theming claro/oscuro con el mismo contraste AA en ambos modos; el chrome navy de la barra lateral se mantiene fijo por identidad de marca.
 
 ## 2. Colors
 
 Una paleta institucional fría y contenida: navy + plata cargan el 90% de cualquier
-pantalla, el oro entra como acento de hito, y un semáforo funcional (verde/azul)
-comunica el estado del trámite.
+pantalla, el oro entra como acento de hito, y un semáforo funcional (verde/azul/rojo)
+comunica el estado del trámite. Los valores de abajo son el modo **claro** (canónico en
+el frontmatter); el modo oscuro remapea los mismos roles semánticos — ver Do's and Don'ts.
 
 ### Primary
-- **Navy Institucional** (#142943): marca, estructura, chasis de barra superior, texto fuerte. El color por defecto de toda superficie oscura. Su variante profunda **Navy Deep** (#0E1F35, usada en gradiente `navy-deep`) viste la barra de navegación y los chips activos.
+- **Navy Institucional** (#142943): marca, estructura, chasis de barra lateral/superior, texto fuerte. Su variante **Navy Deep** (#0E1F35) viste el gradiente de la nav y los chips/segmented activos.
 
 ### Secondary
-- **Oro Antiguo** (#B68D40): el sello. Acción principal (botón "Generar liquidación", gradiente `gold-sheen`), subrayado del enlace de nav activo, anillo del avatar, foco accesible, y el estado "Listo para liquidar". Su luz **Oro Claro** (#E9D196) solo aparece dentro del gradiente del sello.
-
-### Neutral
-- **Ink** (#16202E): color de cuerpo de texto sobre superficies claras. Contraste alto, no gris claro.
-- **Plata Texto** (#8B93A6, silver-500): texto secundario, metadatos, placeholders. Nunca para texto largo de cuerpo.
-- **Plata Hairline** (#CCD2DE, silver-300): bordes, divisores, anillos de inputs en reposo. La línea, no la sombra, separa.
-- **Plata Track** (#EEF0F5, silver-100): fondos de pista (segmented, avatares, íconos de empty state).
-- **Surface** (#FFFFFF): tarjetas, filas, inputs, modal.
-- **Fondo Perla** (#F4F7FB): fondo base del sistema, plano y frío.
+- **Oro Antiguo** (#B68D40): el sello. Acción principal (`bg-gold-sheen`, gradiente #E9D196→#CBA135→#B68D40→#DAB55E), subrayado de nav activo, anillo del avatar, foco accesible, estado "Listo para liquidar"/"Planeada". Su luz **Oro Claro** (#E9D196) vive dentro del gradiente y en fondos tintados sutiles.
 
 ### Tertiary (semáforo de estado)
-- **Verde Paz** (#16936A sobre #E4F5EE): aprobado / paz y salvo. El estado de cierre logrado.
-- **Azul Liquidación** (#3B6FD4 sobre #E8EFFC): liquidación generada (en curso, a la espera de Control Interno).
+- **Verde Paz** (#16936A sobre #E4F5EE): aprobado / completado / paz y salvo.
+- **Verde Cierre** (#1E7A52 sobre #E3F2EA): el paz y salvo como hito final, un tono más profundo que "aprobado" para marcar que es terminal.
+- **Azul Liquidación** (#3B6FD4 sobre #E8EFFC): en curso, a la espera del siguiente rol (liquidación generada, capacitación en curso).
 - **Plata Pendiente** (#8B93A6): pendiente, sin urgencia cromática.
-- **Rojo Rechazo** (#A4231F): no aprobado. El único rojo del sistema; se usa con cuidado.
+- **Rojo Rechazo** (#A4231F sobre #FDE8E8): no aprobado. El único rojo del sistema; se usa con cuidado.
+
+### Neutral
+- **Ink / Foreground** (#0A1830 en claro): color de cuerpo de texto sobre superficies claras. Token semántico `--foreground`, se invierte a casi-blanco en oscuro.
+- **Muted** (#697080, `--muted`): texto secundario, metadatos, placeholders. Nunca para prosa larga.
+- **Hairline** (#CCD2DE, `--hairline`): bordes, divisores, la línea que separa por defecto.
+- **Border** (#E0E4EC, `--border`): anillos de inputs y chips en reposo, un paso más claro que el hairline.
+- **Card** (#FEFCF8, `--card`): superficie de tarjetas/filas/inputs — marfil, no blanco puro (`--elevated` #FFFFFF es el blanco puro, reservado a elevaciones fuertes como el modal).
+- **Bg** (#F4F7FB, `--bg`): fondo base, perla frío y plano, con una veladura radial dorada casi imperceptible arriba-izquierda.
 
 ### Named Rules
 **La Regla del Sello.** El oro cubre ≤ 10% de cualquier pantalla. Es la acción
-principal y el hito — nunca relleno, nunca fondo de sección, nunca decoración. Su
-rareza es el punto: si todo es dorado, nada es el sello.
+principal y el hito — nunca relleno, nunca fondo de sección, nunca decoración. Si todo
+es dorado, nada es el sello.
 
 **La Regla del Semáforo Único.** El color semántico de un estado se define una sola vez
-en `lib/ui.ts` y se pinta solo vía `EstadoPill`. Ningún componente reconstruye el color
-de un estado a mano.
+en `@pys/shared` (`ui.ts` del paquete compartido) y se pinta solo vía las funciones
+`estado*Pill()`. Ningún componente reconstruye el color de un estado a mano. Esta regla
+ya escaló a 6 dominios de estado distintos sin romperse.
 
 ## 3. Typography
 
-**Display Font:** Hoefler Text (con Iowan Old Style, Palatino, Georgia, serif)
+**Display Font:** "Segoe UI Variable Display" (con Segoe UI, Inter, sans-serif de sistema — sin fuente web, cero dependencia de red)
 **Body Font:** Sans del sistema (ui-sans-serif / system-ui / Segoe UI / Roboto)
 **Data:** la misma sans con `font-variant-numeric: tabular-nums`
 
-**Character:** un emparejamiento de contraste real: serif editorial de aire "delux"
-para los pocos momentos de marca (wordmark, titular de pantalla, título de empty
-state), y una sans neutra y nítida que carga toda la interfaz —labels, botones, datos,
-cuerpo. No se mezclan dos sans ni dos serifs; el contraste es serif↔sans.
+**Character:** un emparejamiento de contraste moderado: una "serif de sistema" con aire
+editorial para los pocos momentos de marca (wordmark, título de página vía `PageHeader`,
+título de empty state), y una sans neutra y nítida que carga toda la interfaz — labels,
+botones, datos, cuerpo. No se mezclan dos sans; el contraste es serif-de-sistema↔sans.
 
 ### Hierarchy
-- **Display** (serif, 600, 1.5–1.75rem, lh 1.1): wordmark "Paz y Salvo", título de pantalla, título de empty state. Raro y deliberado.
-- **Title** (sans, 600, 1rem, lh 1.3): encabezados de sección, nombre del funcionario en la fila.
-- **Body** (sans, 400, 0.875rem, lh 1.5): texto de interfaz, descripciones. Prosa ≤ 65–75ch.
-- **Label** (sans, 500, 0.75rem): pills, chips, contadores, metadatos, botones compactos.
-- **Data** (sans, 500, 0.875rem, tabular-nums): documentos, fechas, contadores, barras de progreso. Las cifras se alinean en columna.
+- **Display** (700, 1.875rem/text-3xl, lh 1.2, tracking -0.01em): título de `PageHeader` en cada página. Raro y deliberado — una vez por pantalla.
+- **Title** (600, 1rem, lh 1.3): encabezados de sección, nombre del funcionario/curso en la fila.
+- **Body** (400, 0.875rem, lh 1.5): texto de interfaz, descripciones. Prosa ≤ 65–75ch.
+- **Label** (600, 0.75rem): pills, chips, contadores, metadatos, botones compactos.
+- **Data** (500, 0.875rem, tabular-nums): documentos, fechas, contadores, barras de progreso.
 
 ### Named Rules
-**La Regla de la Serif Reservada.** La serif (`.font-display`) es para marca y
-titulares, jamás para labels de UI, botones ni datos. Una serif en un botón es un error.
+**La Regla de la Serif Reservada.** `.font-display` es para wordmark y títulos de
+página, jamás para labels de UI, botones ni datos. Una serif en un botón es un error.
 
 **La Regla Tabular.** Todo número que el ojo pueda comparar en columna (documentos,
-contadores, fechas) usa cifras tabulares. Los números que bailan al cambiar de fila son
-del software viejo.
+contadores, fechas, avance de progreso) usa cifras tabulares.
 
 ## 4. Elevation
 
-Sistema **plano con elevación ambiente sutil**: las superficies son blancas y planas;
-la profundidad viene de una sombra difusa de baja opacidad (`shadow-luxe`) más un
-hairline de plata, no de bordes gruesos ni sombras duras. La sombra dice "esto flota un
-poco sobre el fondo perla", no "esto es un botón de 2014".
+Sistema **plano con elevación ambiente sutil**, servido hoy por una única clase
+utilitaria: `.premium-card` (`card/94%` + `border hairline/78%` + `backdrop-filter:
+blur(10px)` + sombra de dos capas). No hay bordes gruesos; la profundidad viene de esa
+sombra difusa más el hairline, y el hover sube un peldaño de elevación + tiñe el borde
+de oro al 24%. En oscuro las mismas clases cambian solo la opacidad/oscuridad de la
+sombra (más negra, más difusa), nunca la receta.
 
 ### Shadow Vocabulary
-- **Luxe** (`box-shadow: 0 1px 2px rgba(16,28,51,0.04), 0 12px 28px -14px rgba(16,28,51,0.22)`): tarjetas, filas, botones secundarios en reposo. La elevación por defecto.
-- **Luxe-lg** (`box-shadow: 0 2px 6px rgba(16,28,51,0.05), 0 24px 48px -20px rgba(16,28,51,0.30)`): hover de fila, modal de detalle. El levante al interactuar.
-- **Gold** (`box-shadow: 0 8px 24px -10px rgba(182,141,64,0.55)`): solo el botón primario (sello) en hover. La única sombra de color del sistema.
+- **Luxe** (`0 1px 2px rgba(16,28,51,.04), 0 12px 28px -14px rgba(16,28,51,.22)`): tarjetas, filas, botones secundarios, segmented, buscador en reposo.
+- **Luxe-lg** (`0 2px 6px rgba(16,28,51,.05), 0 24px 48px -20px rgba(16,28,51,.30)`): hover de fila, modal de detalle.
+- **Gold** (`0 8px 24px -10px rgba(182,141,64,.55)`): solo el botón primario (sello) en hover. La única sombra de color del sistema.
+- **Premium-card** (propia, ver arriba): la elevación por defecto real de filas/tarjetas — más suave que Luxe, con blur.
 
 ### Named Rules
 **La Regla del Hairline Primero.** La separación por defecto es una línea de plata
-(`#CCD2DE`), no una sombra. La sombra se reserva para comunicar elevación real
-(tarjeta sobre fondo, modal sobre página), no para enmarcar cada caja.
+(`--hairline`), no una sombra. La sombra se reserva para elevación real.
 
 ## 5. Components
 
 ### Buttons
-- **Shape:** esquinas suaves — `rounded-lg` (8px) y `rounded-xl` (12px) para botones; `rounded-full` para botones-pill compactos.
-- **Primary (el sello):** fondo gradiente `gold-sheen` (oro), texto navy profundo, `shadow-luxe`, anillo `gold-600/30`. Lleva un punto navy a la izquierda que crece sutilmente en hover. En hover gana `shadow-gold`. Es el único botón dorado de la pantalla.
-- **Secondary:** superficie blanca, texto navy, borde de plata, `shadow-luxe`; en hover el borde vira a oro. Usado para "Continuar con Google" y acciones no principales.
-- **Hover / Focus:** transición 200ms; foco visible con anillo oro (`outline: 2px solid rgba(182,141,64,0.65)`).
-- **Disabled:** opacidad 50–60%, sin cambio de color.
+- **Shape:** `rounded-md` (8px) en botones compactos/primarios, `rounded-xl` (12px) en el secundario grande (p. ej. "Continuar con Google").
+- **Primary (el sello):** fondo `bg-gold-sheen` (gradiente oro), texto `navy-900`, anillo `gold-600/30`, `shadow-sm`→`shadow-gold` en hover. Lleva un punto navy a la izquierda que crece en hover (`GenerarLiquidacionButton`/`LiquidarButton`). Es el único botón dorado de la pantalla.
+- **Secondary:** superficie `card`, texto navy, borde `border`, `shadow-luxe`; hover vira el borde a oro y sube a `shadow-luxe-lg`.
+- **Hover / Focus:** transición 200ms; foco visible con anillo oro (`outline: 2px solid rgba(182,141,64,.65)`), definido una vez en `index.css` para todo control interactivo.
+- **Disabled:** opacidad 50–60%, `cursor-not-allowed`.
 
 ### Chips (filtro)
-- **Style:** pill `rounded-full`. Inactivo: superficie blanca, texto navy, anillo de plata; hover lleva el anillo a oro-300. Activo: gradiente `navy-deep`, texto blanco, anillo `gold/40`, `shadow-luxe`.
-- **Contador:** cifra tabular a la derecha — oro-200 cuando activo, plata-400 cuando inactivo.
+- **Style:** `rounded-md` (no `rounded-full`). Inactivo: `card/82%`, texto muted, anillo `border`; hover sube a `card` pleno + anillo oro-300. Activo: `navy-deep`, texto blanco, anillo `gold/45`, `shadow-luxe`.
+- **Contador:** cifra tabular a la derecha — oro-200 activo, muted inactivo.
 
 ### Segmented (toggle de vista)
-- **Style:** pista `silver-100` con anillo de plata, `rounded-full`, padding 4px. La pestaña activa es una pastilla blanca con `shadow-sm` y anillo de plata; las inactivas son texto plata que vira a navy en hover. Server-driven (cada opción es un `Link`).
+- **Style:** pista `border` + `card/70%`, `rounded-lg`, padding 1. La pestaña activa es `rounded-md` `card` con `shadow-luxe` + anillo `gold/35`; inactivas son texto muted que vira a foreground en hover. Server-driven — cada opción es un `Link`, nunca estado local.
 
-### Inputs / Fields
-- **Style:** `rounded-full`, superficie blanca, borde de plata, `shadow-sm`, ícono de lupa en plata a la izquierda.
-- **Focus:** el borde y el anillo viran a oro-400 (`focus:ring-1 focus:ring-gold-400`); sin glow.
-- **Placeholder:** plata-400 (cuidar contraste ≥ 4.5:1 en texto real, no en placeholder decorativo).
+### Inputs / Fields (Buscador)
+- **Style:** `rounded-md`, `card/88%`, borde `border`, `shadow-luxe`, ícono de lupa muted a la izquierda, debounce 300ms escribe en `?q=`.
+- **Focus:** borde y anillo viran a oro (`focus:border-gold-400 focus:ring-gold-300/45`); sin glow.
+- **Placeholder:** `muted` (verificar contraste ≥4.5:1 en texto real, no solo placeholder).
 
 ### Cards / Containers (Fila desplegable)
-- **Corner Style:** `rounded-2xl` (16px).
-- **Background:** superficie blanca; al expandir, el cuerpo revelado usa `silver-50/40`.
-- **Shadow Strategy:** `shadow-luxe` en reposo → `shadow-luxe-lg` en hover (ver Elevation).
-- **Border:** hairline `silver-200`; divisor interno `silver-100` al expandir.
-- **Disclosure:** la cabecera ES el disparador (sin anidar interactivos); chevron que rota 90° al abrir; las acciones de rol viven fuera del disparador, a la derecha.
+- **Corner Style:** `rounded-xl` (12px) — no `rounded-2xl`.
+- **Background:** `.premium-card` (ver Elevation); al expandir, el cuerpo revelado usa gradiente `surface-2/75%→card/70%`.
+- **Border:** hairline `border-t` al expandir + `.premium-hairline` (gradiente oro→foreground→transparente) como divisor interno.
+- **Disclosure:** la cabecera ES el disparador (`aria-expanded`+`aria-controls`), chevron que rota 90°; las acciones de rol viven fuera del disparador, a la derecha, nunca anidadas dentro de un botón.
 
 ### Navigation
-- **Style:** barra navy (gradiente `navy-deep`), enlaces en blanco al 65% que llegan a blanco pleno; el activo lleva un subrayado fino de `gold-sheen`. Condicionada por rol: cada rol ve solo sus destinos. `rounded-md` en el hit area.
+- **Style:** barra navy (gradiente `navy-deep`, chrome fijo en ambos temas por identidad de marca), enlaces blanco/65%→blanco pleno; el activo lleva subrayado fino `gold-sheen`. Condicionada por rol y por el registro declarativo de módulos (`shared/src/modulos.ts`) — el sidebar nunca hardcodea qué módulos existen.
 
 ### Avatar (firma)
-- Disco `navy-50` con iniciales navy-700 y anillo de oro (`gold-200/50`), `rounded-full`. Tres tamaños (sm/md/lg). La marca premium en miniatura.
+- Placa `rounded-lg` (8px, no un círculo pleno) con gradiente `navy-50→card`, iniciales navy-700, anillo `gold-200/60`. Tres tamaños (sm/md/lg).
 
 ### Estado Pill (firma)
-- Pastilla `rounded-full` con punto de color + etiqueta de texto (nunca solo color). Fondo tintado del propio matiz del estado (okBg/infoBg/listoBg) con anillo del mismo matiz al 30%. Fuente única: `lib/ui.ts`.
+- Pastilla `rounded-full` con punto de color + etiqueta de texto (nunca solo color). Fondo tintado del propio matiz del estado con anillo del mismo matiz. Fuente única: las funciones `estado*Pill()` de `@pys/shared`, hoy cubriendo trámite, área, usuario, vinculación laboral, registro de capacitación y capacitación planeada — el mismo patrón, 6 veces, sin excepciones.
 
 ## 6. Do's and Don'ts
 
 ### Do:
-- **Do** reservar el oro al hito y a la acción principal (Regla del Sello, ≤10% de la pantalla). El paz y salvo se siente porque el oro es raro.
-- **Do** pintar todo estado vía `EstadoPill` desde `lib/ui.ts` — punto de color **+** etiqueta de texto, nunca solo color.
-- **Do** usar cifras tabulares en documentos, contadores y fechas.
-- **Do** separar con hairline de plata (`#CCD2DE`) por defecto; usar sombra solo para elevación real.
-- **Do** mantener el cuerpo de texto en Ink (`#16202E`) con contraste ≥ 4.5:1; placeholders y secundarios en plata-500, nunca para prosa larga.
-- **Do** reservar la serif (`.font-display`) a wordmark y titulares.
-- **Do** dar a cada control sus estados: default, hover, focus visible (anillo oro), active, disabled; y una alternativa `prefers-reduced-motion`.
+- **Do** reservar el oro al hito y a la acción principal (Regla del Sello, ≤10% de la pantalla).
+- **Do** pintar todo estado vía las funciones `estado*Pill()` de `@pys/shared` — punto de color **+** etiqueta de texto, nunca solo color.
+- **Do** usar cifras tabulares en documentos, contadores, fechas y barras de avance.
+- **Do** separar con hairline de plata (`--hairline`) por defecto; sombra solo para elevación real.
+- **Do** mantener el cuerpo de texto en `--foreground` con contraste ≥ 4.5:1; secundarios en `--muted`, nunca para prosa larga.
+- **Do** reservar `.font-display` a wordmark y títulos de `PageHeader`.
+- **Do** verificar cada superficie nueva en **ambos temas** (claro/oscuro) — los tokens semánticos ya resuelven esto si se usan `bg-card`/`text-foreground`/`border-border` en vez de hex o `bg-white` a mano.
+- **Do** usar `rounded-md`/`rounded-lg` (8–12px) como esquina por defecto de chips, inputs, botones y tarjetas; reservar `rounded-full` a puntos de estado, badges y pills.
 
 ### Don't:
-- **Don't** parecer **SaaS genérico**: nada de grids de cards idénticas, morados/gradientes de startup, ni eyebrows en mayúsculas tracked sobre cada sección, ni marcadores numerados de relleno (01/02/03).
+- **Don't** parecer **SaaS genérico**: nada de grids de cards idénticas, morados/gradientes de startup, eyebrows en mayúsculas sobre cada sección, ni marcadores numerados de relleno (01/02/03).
 - **Don't** parecer **software estatal anticuado**: nada de tablas grises densas sin jerarquía, formularios planos sin aire, ni contraste pobre.
 - **Don't** recargar de oro: nada de veladuras doradas de fondo, foil metálico en texto de UI, ni gradientes dorados fuera del botón-sello.
-- **Don't** usar `background-clip: text` con gradiente (texto en gradiente) para énfasis; el énfasis es por peso o tamaño, color sólido.
+- **Don't** usar `background-clip: text` con gradiente para énfasis; el énfasis es por peso o tamaño, color sólido.
 - **Don't** usar bordes laterales de color (`border-left` > 1px) como acento en filas o callouts.
-- **Don't** poner serif en labels, botones o datos.
-- **Don't** reconstruir el color de un estado a mano en un componente; siempre desde `lib/ui.ts`.
-- **Don't** abrir un modal como primer recurso; preferir la fila-acordeón y la revelación progresiva (el modal de detalle es profundidad, no el camino por defecto).
+- **Don't** poner la serif de sistema en labels, botones o datos.
+- **Don't** reconstruir el color de un estado a mano en un componente; siempre desde `@pys/shared`.
+- **Don't** abrir un modal como primer recurso; preferir la fila-acordeón (`FilaDesplegable`) y páginas dedicadas (`/personal/:id`, `/cursos/:id`) — el modal es profundidad puntual, no el camino por defecto.
+- **Don't** hardcodear `bg-white`/hex de estado directo en un componente nuevo — usa los tokens semánticos (`bg-card`, `text-foreground`, `estado.*`) para que el modo oscuro herede gratis.
+- **Don't** dejar una página nueva plana/genérica solo porque reusa `FilaDesplegable`/`ChipFiltro`/`Buscador` de forma literal — el Sello exige que cada superficie tenga *algo* propio (una franja de progreso, un ícono de dominio, jerarquía visual que refleje su propio dato), no un catálogo idéntico reetiquetado.

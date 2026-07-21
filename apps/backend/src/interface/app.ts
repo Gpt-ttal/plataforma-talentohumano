@@ -12,7 +12,10 @@ import { catalogoRouter } from "./routes/catalogo.routes.js"
 import { areasRouter } from "./routes/areas.routes.js"
 import { archivoRouter } from "./routes/archivo.routes.js"
 import { capacitacionesRouter } from "./routes/capacitaciones.routes.js"
+import { cursosRouter } from "./routes/cursos.routes.js"
+import { planificadorRouter } from "./routes/planificador.routes.js"
 import { personalRouter } from "./routes/personal.routes.js"
+import { desvinculacionesRouter } from "./routes/desvinculaciones.routes.js"
 
 /**
  * Ensambla la app Express: hardening (helmet), CORS al origen del frontend,
@@ -48,7 +51,10 @@ export function crearApp() {
   app.use("/api/areas", areasRouter)
   app.use("/api/archivo", archivoRouter)
   app.use("/api/capacitaciones", capacitacionesRouter)
+  app.use("/api/cursos", cursosRouter)
+  app.use("/api/planificador", planificadorRouter)
   app.use("/api/personal", personalRouter)
+  app.use("/api/desvinculaciones", desvinculacionesRouter)
   app.use("/api", catalogoRouter)
 
   app.use(errorHandler)

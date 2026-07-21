@@ -3,6 +3,7 @@ import { casos, requireAuth } from "../container.js"
 import { asyncHandler } from "../asyncHandler.js"
 import { requireRol } from "../middleware/requireRol.js"
 import { requireActivo } from "../middleware/requireActivo.js"
+import { paramUuid } from "../middleware/paramUuid.js"
 import { archivoController } from "../controllers/archivoController.js"
 
 const c = archivoController(casos)
@@ -14,6 +15,8 @@ const c = archivoController(casos)
  * seguridad).
  */
 export const archivoRouter = Router()
+
+archivoRouter.param("id", paramUuid("id"))
 
 archivoRouter.use(
   requireAuth,

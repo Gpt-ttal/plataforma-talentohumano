@@ -35,7 +35,7 @@ import {
   FotoEditor,
   PersonalesEditor,
   SalarialEditor,
-} from "./BloquesEditables"
+} from "./bloques-editables"
 
 /**
  * Expediente 360° del empleado (hoja de vida completa): header pegajoso con

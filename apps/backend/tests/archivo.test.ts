@@ -2,7 +2,12 @@ import { describe, it, expect, vi } from "vitest"
 import { listarArchivo } from "../src/application/archivo/listarArchivo"
 import { obtenerExpediente } from "../src/application/archivo/obtenerExpediente"
 import { exportarArchivo } from "../src/application/archivo/exportarArchivo"
-import { ErrorAutorizacion, ErrorNoEncontrado } from "../src/application/errors"
+import { archivarCaso } from "../src/application/funcionarios/archivarCaso"
+import {
+  ErrorAutorizacion,
+  ErrorNoEncontrado,
+  ErrorValidacion,
+} from "../src/application/errors"
 import { hacerFuncionario, hacerUsuario } from "./_fixtures"
 
 // El archivo es de la plataforma de gestión: SA + TH lo ven; CI y AREA no.
@@ -98,5 +103,55 @@ describe("exportarArchivo (plataforma: SUPERADMIN y TALENTO_HUMANO)", () => {
       pagina: 1,
       porPagina: 1,
     })
+  })
+})
+
+describe("archivarCaso (plataforma: SUPERADMIN y TALENTO_HUMANO)", () => {
+  it.each(VETADOS)("rechaza a %s → 403", async (rol) => {
+    const repo = { archivarCaso: vi.fn() } as any
+    const uc = archivarCaso({ repo })
+    await expect(
+      uc(hacerUsuario({ rol, areaId: rol === "AREA" ? "a1" : null }), "f1"),
+    ).rejects.toBeInstanceOf(ErrorAutorizacion)
+    expect(repo.archivarCaso).not.toHaveBeenCalled()
+  })
+
+  it("404 si el funcionario no existe", async () => {
+    const repo = {
+      obtenerDetalle: vi.fn().mockResolvedValue(null),
+      archivarCaso: vi.fn(),
+    } as any
+    const uc = archivarCaso({ repo })
+    await expect(
+      uc(hacerUsuario({ rol: "TALENTO_HUMANO" }), "f1"),
+    ).rejects.toBeInstanceOf(ErrorNoEncontrado)
+    expect(repo.archivarCaso).not.toHaveBeenCalled()
+  })
+
+  it("400 si el trámite no está en PAZ_Y_SALVO", async () => {
+    const repo = {
+      obtenerDetalle: vi
+        .fn()
+        .mockResolvedValue({ funcionario: hacerFuncionario("LISTO_PARA_LIQUIDAR"), aprobaciones: [], observaciones: [] }),
+      archivarCaso: vi.fn(),
+    } as any
+    const uc = archivarCaso({ repo })
+    await expect(
+      uc(hacerUsuario({ rol: "SUPERADMIN" }), "f1"),
+    ).rejects.toBeInstanceOf(ErrorValidacion)
+    expect(repo.archivarCaso).not.toHaveBeenCalled()
+  })
+
+  it("archiva el trámite cerrado y pasa el autor (nombre)", async () => {
+    const repo = {
+      obtenerDetalle: vi
+        .fn()
+        .mockResolvedValue({ funcionario: hacerFuncionario("PAZ_Y_SALVO"), aprobaciones: [], observaciones: [] }),
+      archivarCaso: vi.fn().mockResolvedValue({ archivadoEn: "2026-07-08T00:00:00.000Z" }),
+    } as any
+    const uc = archivarCaso({ repo })
+    const r = await uc(hacerUsuario({ rol: "TALENTO_HUMANO", nombre: "Talento Humano" }), "f1")
+    expect(r.archivadoEn).toBe("2026-07-08T00:00:00.000Z")
+    expect(repo.archivarCaso).toHaveBeenCalledWith("f1", "Talento Humano")
   })
 })

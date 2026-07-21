@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express"
+import { logger } from "../../infrastructure/logging/logger.js"
 
 /**
  * Manejador de errores central. Traduce los errores tipados de la capa de
@@ -30,7 +31,7 @@ export function errorHandler(
   if (status >= 500) {
     // Contexto mínimo para diagnóstico en los logs del servidor (sin PII): qué
     // ruta falló y el error completo. Al cliente solo le llega un texto genérico.
-    console.error("[errorHandler]", req.method, req.originalUrl, err)
+    logger.error({ err, method: req.method, url: req.originalUrl, status }, "error no manejado")
     res.status(status).json({ error: MENSAJE_GENERICO })
     return
   }

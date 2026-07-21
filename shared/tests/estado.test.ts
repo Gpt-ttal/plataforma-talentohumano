@@ -146,4 +146,62 @@ describe("calcularEstadoGlobal", () => {
     expect(r.hayRechazo).toBe(true);
     expect(r.estadoGlobal).toBe("PENDIENTE");
   });
+
+  it("DEVUELTO_POR_CI bloquea igual que NO_APROBADO => PENDIENTE", () => {
+    const r = calcularEstadoGlobal({
+      estadosAreas: A("APROBADO", "DEVUELTO_POR_CI", "APROBADO"),
+      liquidacionGenerada: false,
+      liquidado: false,
+    });
+    expect(r.estadoGlobal).toBe("PENDIENTE");
+  });
+
+  it("DEVUELTO_POR_CI no se convierte en PAZ_Y_SALVO aunque esté liquidado", () => {
+    const r = calcularEstadoGlobal({
+      estadosAreas: A("APROBADO", "DEVUELTO_POR_CI"),
+      liquidacionGenerada: true,
+      liquidado: true,
+    });
+    expect(r.estadoGlobal).toBe("PENDIENTE");
+  });
+
+  it("hayDevolucion es true solo con DEVUELTO_POR_CI, distinto de hayRechazo", () => {
+    const r = calcularEstadoGlobal({
+      estadosAreas: A("APROBADO", "DEVUELTO_POR_CI"),
+      liquidacionGenerada: false,
+      liquidado: false,
+    });
+    expect(r.hayDevolucion).toBe(true);
+    expect(r.hayRechazo).toBe(false);
+  });
+
+  it("hayRechazo es true solo con NO_APROBADO, distinto de hayDevolucion", () => {
+    const r = calcularEstadoGlobal({
+      estadosAreas: A("APROBADO", "NO_APROBADO"),
+      liquidacionGenerada: false,
+      liquidado: false,
+    });
+    expect(r.hayRechazo).toBe(true);
+    expect(r.hayDevolucion).toBe(false);
+  });
+
+  it("hayDevolucion y hayRechazo pueden ser ambos true (una devuelta y otra rechazada)", () => {
+    const r = calcularEstadoGlobal({
+      estadosAreas: A("DEVUELTO_POR_CI", "NO_APROBADO"),
+      liquidacionGenerada: false,
+      liquidado: false,
+    });
+    expect(r.hayDevolucion).toBe(true);
+    expect(r.hayRechazo).toBe(true);
+  });
+
+  it("sin DEVUELTO_POR_CI ni NO_APROBADO, ambos flags en false", () => {
+    const r = calcularEstadoGlobal({
+      estadosAreas: A("APROBADO", "NO_APLICA"),
+      liquidacionGenerada: false,
+      liquidado: false,
+    });
+    expect(r.hayRechazo).toBe(false);
+    expect(r.hayDevolucion).toBe(false);
+  });
 });

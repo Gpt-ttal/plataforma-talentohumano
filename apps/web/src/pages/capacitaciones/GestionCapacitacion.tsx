@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Link } from "react-router-dom"
 import { toast } from "sonner"
 import {
@@ -103,7 +104,10 @@ export function GestionCapacitacion({ capacitacion: c }: { capacitacion: Capacit
 }
 
 function ExportarButton({ id, titulo }: { id: string; titulo: string }) {
+  const [descargando, setDescargando] = useState(false)
+
   async function exportar() {
+    setDescargando(true)
     try {
       const blob = await apiCapacitaciones.exportarAsistencias(id)
       const url = URL.createObjectURL(blob)
@@ -116,6 +120,8 @@ function ExportarButton({ id, titulo }: { id: string; titulo: string }) {
       URL.revokeObjectURL(url)
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "No se pudo exportar.")
+    } finally {
+      setDescargando(false)
     }
   }
 
@@ -123,9 +129,10 @@ function ExportarButton({ id, titulo }: { id: string; titulo: string }) {
     <button
       type="button"
       onClick={() => void exportar()}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-silver-200 bg-white/85 px-3 py-1.5 text-xs font-semibold text-navy-700 shadow-luxe transition hover:border-gold-300 hover:text-navy-900"
+      disabled={descargando}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-silver-200 bg-white/85 px-3 py-1.5 text-xs font-semibold text-navy-700 shadow-luxe transition hover:border-gold-300 hover:text-navy-900 disabled:cursor-not-allowed disabled:opacity-60"
     >
-      <span aria-hidden>↓</span> Exportar asistencias
+      <span aria-hidden>↓</span> {descargando ? "Exportando…" : "Exportar asistencias"}
     </button>
   )
 }

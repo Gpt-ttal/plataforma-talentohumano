@@ -18,6 +18,8 @@ type IconName =
   | "archive"
   | "area"
   | "badge"
+  | "book"
+  | "calendar"
   | "chevronLeft"
   | "chevronRight"
   | "close"
@@ -25,6 +27,7 @@ type IconName =
   | "file"
   | "graduation"
   | "menu"
+  | "upload"
   | "users"
 
 interface NavItem {
@@ -45,13 +48,14 @@ const routeLabels: { path: string; title: string; section: string }[] = [
   { path: "/usuarios", title: "Usuarios", section: "Administracion" },
   { path: "/areas", title: "Catalogo de areas", section: "Administracion" },
   { path: "/paz-y-salvo/mi-area", title: "Mi area", section: "Operacion" },
-  { path: "/paz-y-salvo/talento-humano", title: "Talento Humano", section: "Paz y Salvo" },
   { path: "/paz-y-salvo/control-interno", title: "Control Interno", section: "Paz y Salvo" },
   { path: "/paz-y-salvo/avance", title: "Avance por area", section: "Paz y Salvo" },
-  { path: "/paz-y-salvo/funcionarios", title: "Funcionarios", section: "Gestion" },
   { path: "/archivo", title: "Archivo institucional", section: "Administracion" },
   { path: "/personal", title: "Administracion de personal", section: "Administracion" },
-  { path: "/capacitaciones", title: "Capacitaciones", section: "Formacion" },
+  { path: "/desvinculaciones/importacion", title: "Importacion masiva", section: "Administracion" },
+  { path: "/capacitaciones", title: "Eventos", section: "Formacion" },
+  { path: "/cursos", title: "Cursos", section: "Formacion" },
+  { path: "/planificador", title: "Planificador", section: "Formacion" },
   { path: "/inicio", title: "Panel de control", section: "Plataforma" },
 ]
 
@@ -60,6 +64,8 @@ function iconPath(name: IconName): string {
     archive: "M3 7h18M5 7v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7M3 7l1.5-3h15L21 7M9 12h6",
     area: "M3 21h18M5 21V5a2 2 0 0 1 2-2h7v18M14 8h5a2 2 0 0 1 2 2v11M8 7h2M8 11h2M8 15h2M17 12h1M17 16h1",
     badge: "M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1ZM8 10m-2 0a2 2 0 1 0 4 0 2 2 0 1 0-4 0M5 16c.5-1.5 1.7-2 3-2s2.5.5 3 2M14 9h5M14 13h5",
+    book: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z",
+    calendar: "M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM16 2v4M8 2v4M3 10h18",
     chevronLeft: "M15 18l-6-6 6-6",
     chevronRight: "M9 18l6-6-6-6",
     close: "M18 6 6 18M6 6l12 12",
@@ -67,6 +73,7 @@ function iconPath(name: IconName): string {
     file: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6ZM14 2v6h6M8 13h8M8 17h5",
     graduation: "M22 10v6M2 10l10-5 10 5-10 5-10-5ZM6 12v5c3.33 1.67 6.67 1.67 10 0v-5",
     menu: "M4 6h16M4 12h16M4 18h16",
+    upload: "M12 16V4M6 10l6-6 6 6M4 20h16",
     users: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
   }[name]
 }
@@ -112,13 +119,6 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
         title: "Paz y Salvo",
         items: [
           {
-            href: "/paz-y-salvo/funcionarios",
-            label: "Funcionarios",
-            icon: "file",
-            active: (p) => p.startsWith("/paz-y-salvo/funcionarios"),
-            status: "live",
-          },
-          {
             href: "/paz-y-salvo/avance",
             label: "Avance por area",
             icon: "dashboard",
@@ -126,8 +126,8 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
             status: "live",
           },
           {
-            href: "/paz-y-salvo/mi-area",
-            label: "Bandejas por area",
+            href: "/paz-y-salvo/mi-area?area=1",
+            label: "Activos fijos",
             icon: "area",
             active: (p) => p.startsWith("/paz-y-salvo/mi-area"),
             status: "live",
@@ -140,9 +140,23 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
         items: [
           {
             href: "/capacitaciones",
-            label: "Capacitaciones",
+            label: "Eventos",
             icon: "graduation",
             active: (p) => p.startsWith("/capacitaciones"),
+            status: "live",
+          },
+          {
+            href: "/cursos",
+            label: "Cursos",
+            icon: "book",
+            active: (p) => p.startsWith("/cursos"),
+            status: "live",
+          },
+          {
+            href: "/planificador",
+            label: "Planificador",
+            icon: "calendar",
+            active: (p) => p.startsWith("/planificador"),
             status: "live",
           },
         ],
@@ -170,6 +184,13 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
             label: "Archivo",
             icon: "archive",
             active: (p) => p.startsWith("/archivo"),
+            status: "live",
+          },
+          {
+            href: "/desvinculaciones/importacion",
+            label: "Importacion masiva",
+            icon: "upload",
+            active: (p) => p.startsWith("/desvinculaciones"),
             status: "live",
           },
           {
@@ -204,13 +225,6 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
         title: "Paz y Salvo",
         items: [
           {
-            href: "/paz-y-salvo/talento-humano",
-            label: "Talento Humano",
-            icon: "file",
-            active: (p) => p.startsWith("/paz-y-salvo/talento-humano"),
-            status: "live",
-          },
-          {
             href: "/paz-y-salvo/avance",
             label: "Avance por area",
             icon: "dashboard",
@@ -225,9 +239,23 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
         items: [
           {
             href: "/capacitaciones",
-            label: "Capacitaciones",
+            label: "Eventos",
             icon: "graduation",
             active: (p) => p.startsWith("/capacitaciones"),
+            status: "live",
+          },
+          {
+            href: "/cursos",
+            label: "Cursos",
+            icon: "book",
+            active: (p) => p.startsWith("/cursos"),
+            status: "live",
+          },
+          {
+            href: "/planificador",
+            label: "Planificador",
+            icon: "calendar",
+            active: (p) => p.startsWith("/planificador"),
             status: "live",
           },
         ],
@@ -248,6 +276,13 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
             label: "Archivo",
             icon: "archive",
             active: (p) => p.startsWith("/archivo"),
+            status: "live",
+          },
+          {
+            href: "/desvinculaciones/importacion",
+            label: "Importacion masiva",
+            icon: "upload",
+            active: (p) => p.startsWith("/desvinculaciones"),
             status: "live",
           },
         ],
@@ -289,9 +324,23 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
         items: [
           {
             href: "/capacitaciones",
-            label: "Capacitaciones",
+            label: "Eventos",
             icon: "graduation",
             active: (p) => p.startsWith("/capacitaciones"),
+            status: "live",
+          },
+          {
+            href: "/cursos",
+            label: "Cursos",
+            icon: "book",
+            active: (p) => p.startsWith("/cursos"),
+            status: "live",
+          },
+          {
+            href: "/planificador",
+            label: "Planificador",
+            icon: "calendar",
+            active: (p) => p.startsWith("/planificador"),
             status: "live",
           },
         ],

@@ -1,4 +1,4 @@
-import type { Funcionario, ResultadoMutacion, Usuario } from "@pys/shared"
+import type { ResultadoMutacion, Usuario } from "@pys/shared"
 import type { FuncionarioRepo } from "../../domain/ports/FuncionarioRepo.js"
 import {
   ErrorAutorizacion,
@@ -7,28 +7,27 @@ import {
 } from "../errors.js"
 
 /**
- * Talento Humano (o el SUPERADMIN) genera la liquidación: marca el hito de TH y
- * avisa a Control Interno.
+ * Control Interno (o el SUPERADMIN) valida el caso: marca el hito penúltimo.
+ *
+ * Gestión de Desvinculaciones: guard invertido respecto al proceso original —
+ * ahora Control Interno valida (penúltimo hito) y Talento Humano cierra
+ * oficialmente (`registrarLiquidacion`, último hito). El nombre técnico del
+ * caso de uso/hito no cambia (evita migrar el enum de BD); el renombre de
+ * presentación ("Validado por Control Interno") vive en `shared/src/ui.ts`.
  *
  * Guardas:
- *  - Rol ∈ {TALENTO_HUMANO, SUPERADMIN} → si no, 403.
+ *  - Rol ∈ {CONTROL_INTERNO, SUPERADMIN} → si no, 403.
  *  - Transición: solo válido cuando el funcionario está LISTO_PARA_LIQUIDAR
  *    (todas las áreas al día). El repo NO valida esto; la guarda vive aquí.
- *
- * La notificación a Control Interno es best-effort: si falla, el cambio de estado
- * queda igual registrado (es la fuente de verdad).
  */
-export function generarLiquidacion(deps: {
-  repo: FuncionarioRepo
-  notificar?: (funcionario: Funcionario) => Promise<void>
-}) {
+export function generarLiquidacion(deps: { repo: FuncionarioRepo }) {
   return async (
     usuario: Usuario,
     funcionarioId: string,
   ): Promise<ResultadoMutacion> => {
-    if (usuario.rol !== "TALENTO_HUMANO" && usuario.rol !== "SUPERADMIN") {
+    if (usuario.rol !== "CONTROL_INTERNO" && usuario.rol !== "SUPERADMIN") {
       throw new ErrorAutorizacion(
-        "Solo Talento Humano puede generar la liquidación.",
+        "Solo Control Interno puede validar el caso.",
       )
     }
 
@@ -42,19 +41,6 @@ export function generarLiquidacion(deps: {
       )
     }
 
-    const resultado = await deps.repo.generarLiquidacion(
-      funcionarioId,
-      usuario.nombre,
-    )
-
-    if (deps.notificar) {
-      try {
-        await deps.notificar(detalle.funcionario)
-      } catch (e) {
-        console.error("[generarLiquidacion] fallo al notificar a Control Interno:", e)
-      }
-    }
-
-    return resultado
+    return deps.repo.generarLiquidacion(funcionarioId, usuario.nombre)
   }
 }

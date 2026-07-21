@@ -52,12 +52,12 @@ describe("rutaInicialPorRol", () => {
 });
 
 describe("rutaOficinaPorRol", () => {
-  it("SUPERADMIN entra al catálogo de supervisión", () => {
-    expect(rutaOficinaPorRol("SUPERADMIN")).toBe("/paz-y-salvo/funcionarios");
+  it("SUPERADMIN entra a la matriz de avance", () => {
+    expect(rutaOficinaPorRol("SUPERADMIN")).toBe("/paz-y-salvo/avance");
   });
 
-  it("TALENTO_HUMANO entra a su oficina dedicada", () => {
-    expect(rutaOficinaPorRol("TALENTO_HUMANO")).toBe("/paz-y-salvo/talento-humano");
+  it("TALENTO_HUMANO entra a la matriz de avance", () => {
+    expect(rutaOficinaPorRol("TALENTO_HUMANO")).toBe("/paz-y-salvo/avance");
   });
 
   it("CONTROL_INTERNO entra a su oficina dedicada", () => {

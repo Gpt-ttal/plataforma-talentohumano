@@ -3,6 +3,7 @@ import { crearRequireAuth } from "../src/interface/middleware/requireAuth"
 import { requireRol } from "../src/interface/middleware/requireRol"
 import { requireActivo } from "../src/interface/middleware/requireActivo"
 import { errorHandler } from "../src/interface/middleware/errorHandler"
+import { logger } from "../src/infrastructure/logging/logger"
 import {
   ErrorAutenticacion,
   ErrorAutorizacion,
@@ -40,6 +41,27 @@ describe("crearRequireAuth", () => {
     const next = vi.fn()
     await mw(req, hacerRes(), next)
     expect(next.mock.calls[0][0]).toBeInstanceOf(ErrorAutenticacion)
+  })
+
+  it("token inválido → loguea la causa real, sin filtrar el detalle al cliente", async () => {
+    const errorReal = new Error("JWKS inalcanzable")
+    const errSpy = vi.spyOn(logger, "error").mockImplementation(() => undefined as never)
+    const mw = crearRequireAuth({
+      verificar: vi.fn().mockRejectedValue(errorReal),
+      asegurar: vi.fn(),
+    })
+    const req: any = { headers: { authorization: "Bearer xxx" } }
+    const next = vi.fn()
+    await mw(req, hacerRes(), next)
+
+    expect(errSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ err: errorReal }),
+      expect.any(String),
+    )
+    const err = next.mock.calls[0][0]
+    expect(err).toBeInstanceOf(ErrorAutenticacion)
+    expect(err.message).toBe("Token inválido o expirado.")
+    errSpy.mockRestore()
   })
 
   it("token válido → carga req.usuario y llama next() sin error", async () => {
@@ -139,9 +161,9 @@ describe("errorHandler", () => {
   })
 
   it("error sin status → 500 genérico", () => {
-    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    const errSpy = vi.spyOn(logger, "error").mockImplementation(() => undefined as never)
     const res = hacerRes()
-    errorHandler(new Error("boom"), {} as any, res, vi.fn())
+    errorHandler(new Error("boom"), { method: "GET", originalUrl: "/x" } as any, res, vi.fn())
     expect(res.status).toHaveBeenCalledWith(500)
     errSpy.mockRestore()
   })

@@ -11,10 +11,13 @@ import { LiquidarButton } from "./LiquidarButton"
  * Cuerpo del detalle de un funcionario (datos + áreas + historial + acciones).
  * Reutilizable en el modal interceptado y en la página directa /funcionarios/:id.
  *
- * Gating por rol (presentación — el backend aplica las guardas reales):
- * - GenerarLiquidacionButton: LISTO_PARA_LIQUIDAR + TH/SA
- * - LiquidarButton: LIQUIDACION_GENERADA + CI/SA
+ * Gating por rol (presentación — el backend aplica las guardas reales). Gestión
+ * de Desvinculaciones invirtió los guardas: Control Interno valida el penúltimo
+ * hito, Talento Humano cierra oficialmente:
+ * - GenerarLiquidacionButton: LISTO_PARA_LIQUIDAR + CI/SA
+ * - LiquidarButton: LIQUIDACION_GENERADA + TH/SA
  * - AccionesArea (via AreaList.puedeGestionar): solo SUPERADMIN en el catálogo
+ * - DevolverAreaButton (via AreaList.puedeDevolver): CI/SA
  *
  * Token remap legado → Sello:
  * - bg-institucional-light / text-institucional-dark → Avatar component
@@ -38,11 +41,13 @@ export function DetalleFuncionario({ detalle }: { detalle: FuncionarioDetalle })
 
   const mostrarGenerar =
     f.estadoGlobal === "LISTO_PARA_LIQUIDAR" &&
-    tieneRol("TALENTO_HUMANO", "SUPERADMIN")
+    tieneRol("CONTROL_INTERNO", "SUPERADMIN")
 
   const mostrarLiquidar =
     f.estadoGlobal === "LIQUIDACION_GENERADA" &&
-    tieneRol("CONTROL_INTERNO", "SUPERADMIN")
+    tieneRol("TALENTO_HUMANO", "SUPERADMIN")
+
+  const puedeDevolver = tieneRol("CONTROL_INTERNO", "SUPERADMIN")
 
   return (
     <div className="space-y-6">
@@ -150,6 +155,7 @@ export function DetalleFuncionario({ detalle }: { detalle: FuncionarioDetalle })
           funcionarioId={f.id}
           aprobaciones={aprobaciones}
           puedeGestionar={esSuperadmin}
+          puedeDevolver={puedeDevolver}
         />
       </section>
 

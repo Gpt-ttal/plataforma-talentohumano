@@ -14,10 +14,8 @@ import type {
   VistaSupervision,
 } from "@pys/shared"
 import { useFuncionarios } from "../../hooks/useFuncionarios"
-import { useRole } from "../../hooks/useRole"
 import { Avatar } from "../../components/ui/Avatar"
 import { EstadoGlobalPill } from "../../components/ui/EstadoPill"
-import { Segmented } from "../../components/ui/Segmented"
 import { Buscador } from "../../components/ui/Buscador"
 import { ChipFiltro } from "../../components/ui/ChipFiltro"
 import { Paginacion } from "../../components/ui/Paginacion"
@@ -28,14 +26,6 @@ import { HeaderMetaDot, PageHeader } from "../../components/ui/PageHeader"
 import { SpotSinResultados } from "../../components/ui/spot/Spots"
 import { GenerarLiquidacionButton } from "./GenerarLiquidacionButton"
 import { LiquidarButton } from "./LiquidarButton"
-
-// Ruta dedicada (oficina) de cada vista de supervisión. Fuente única para el
-// Segmented del superadmin; cada wrapper de página pasa su propia ruta como basePath.
-const RUTA_POR_VISTA: Record<VistaSupervision, string> = {
-  todos: "/paz-y-salvo/funcionarios",
-  th: "/paz-y-salvo/talento-humano",
-  ci: "/paz-y-salvo/control-interno",
-}
 
 /** Texto y estado accionable de cada vista de supervisión. */
 const VISTA_CFG: Record<
@@ -57,24 +47,25 @@ const VISTA_CFG: Record<
   th: {
     titulo: "Talento Humano",
     intro:
-      "Genera la liquidación de los colaboradores cuyas áreas ya dieron el visto bueno; al hacerlo, Control Interno recibe el aviso.",
-    estadoAccionable: "LISTO_PARA_LIQUIDAR",
-    bandeja: "Listos para generar liquidación",
+      "Cierra oficialmente el trámite: registra el paz y salvo (estado terminal) de los colaboradores ya validados por Control Interno. Este cierre es el último paso del proceso.",
+    estadoAccionable: "LIQUIDACION_GENERADA",
+    bandeja: "Esperan tu cierre (paz y salvo)",
   },
   ci: {
     titulo: "Control Interno",
     intro:
-      "Finaliza el trámite: registra el paz y salvo (estado terminal) de los colaboradores cuya liquidación ya generó Talento Humano. Este cierre es el último paso del proceso.",
-    estadoAccionable: "LIQUIDACION_GENERADA",
-    bandeja: "Esperan tu cierre (paz y salvo)",
+      "Valida la liquidación de los colaboradores cuyas áreas ya dieron el visto bueno; al hacerlo, Talento Humano recibe el aviso para el cierre oficial.",
+    estadoAccionable: "LISTO_PARA_LIQUIDAR",
+    bandeja: "Listos para validar liquidación",
   },
 }
 
 /**
  * Catálogo de funcionarios de una oficina. La `vista` y la `basePath` llegan por
- * prop (cada ruta dedicada monta su wrapper): SA supervisa el catálogo completo en
- * `/paz-y-salvo/funcionarios`, TH y CI tienen su propia página. Los filtros vienen de
- * la URL (`useSearchParams`) y los datos de `useFuncionarios`. La ruta hija `:id` se
+ * prop. Único consumidor: `ControlInternoPage` (`vista="ci"`) — los catálogos
+ * dedicados de SA y TH se retiraron por redundancia con la Matriz de Avance
+ * (`/paz-y-salvo/avance`), que ahora es su oficina. Los filtros vienen de la URL
+ * (`useSearchParams`) y los datos de `useFuncionarios`. La ruta hija `:id` se
  * monta vía `<Outlet/>` como modal encima.
  */
 export function CatalogoFuncionarios({
@@ -84,7 +75,6 @@ export function CatalogoFuncionarios({
   vista: VistaSupervision
   basePath: string
 }) {
-  const { esSuperadmin } = useRole()
   const [searchParams] = useSearchParams()
 
   const sp = Object.fromEntries(searchParams)
@@ -119,20 +109,6 @@ export function CatalogoFuncionarios({
           </>
         }
       />
-
-      {/* Toggle de supervisión: solo el superadmin alterna entre oficinas; cada
-          opción navega a la ruta dedicada preservando búsqueda y filtro. */}
-      {esSuperadmin && (
-        <Segmented
-          etiqueta="Vista de supervisión"
-          activo={vista}
-          opciones={[
-            { value: "todos", label: "Todo", href: hrefCon(RUTA_POR_VISTA.todos, { q: filtro.q, estado: filtro.estado }) },
-            { value: "th", label: "Talento Humano", href: hrefCon(RUTA_POR_VISTA.th, { q: filtro.q, estado: filtro.estado }) },
-            { value: "ci", label: "Control Interno", href: hrefCon(RUTA_POR_VISTA.ci, { q: filtro.q, estado: filtro.estado }) },
-          ]}
-        />
-      )}
 
       {/* Bandeja destacada de la vista de rol. */}
       {cfg.estadoAccionable && (
@@ -223,12 +199,17 @@ function FilaCatalogo({ f, vista }: { f: Funcionario; vista: VistaSupervision })
   )
 }
 
-/** Acción de rol disponible en la fila, solo en el estado que le corresponde. */
+/**
+ * Acción de rol disponible en la fila, solo en el estado que le corresponde.
+ * Gestión de Desvinculaciones invirtió los guardas de rol: Control Interno
+ * ahora valida el penúltimo hito (generar liquidación), Talento Humano cierra
+ * oficialmente (registrar paz y salvo).
+ */
 function AccionRol({ f, vista }: { f: Funcionario; vista: VistaSupervision }) {
-  if (vista === "th" && f.estadoGlobal === "LISTO_PARA_LIQUIDAR") {
+  if (vista === "ci" && f.estadoGlobal === "LISTO_PARA_LIQUIDAR") {
     return <GenerarLiquidacionButton funcionarioId={f.id} compact />
   }
-  if (vista === "ci" && f.estadoGlobal === "LIQUIDACION_GENERADA") {
+  if (vista === "th" && f.estadoGlobal === "LIQUIDACION_GENERADA") {
     return <LiquidarButton funcionarioId={f.id} compact />
   }
   return null

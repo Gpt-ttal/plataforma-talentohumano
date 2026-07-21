@@ -2,10 +2,10 @@ import { asc, eq, sql } from "drizzle-orm"
 import type { AreaVistoBueno } from "@pys/shared"
 import { estadoInicialAreaNueva } from "@pys/shared"
 import type { AreaRepo } from "../../domain/ports/AreaRepo.js"
-import { ErrorNoEncontrado } from "../../application/errors.js"
+import { ErrorNoEncontrado, ErrorValidacion } from "../../application/errors.js"
 import { db } from "./client.js"
 import { aprobaciones, areas, funcionarios } from "./schema.js"
-import { recomputarEstado, type Ejecutor } from "./recomputarEstado.js"
+import { recomputarEstadoEnLote, type Ejecutor } from "./recomputarEstado.js"
 
 function mapArea(r: typeof areas.$inferSelect): AreaVistoBueno {
   return {
@@ -34,6 +34,17 @@ export const areaRepository: AreaRepo = {
 
   async crearArea(nombre: string): Promise<AreaVistoBueno[]> {
     return db.transaction(async (tx) => {
+      // Idempotencia a nivel de aplicación: doble clic/reintento con el mismo
+      // nombre (normalizado) no crea 2 áreas ni repite el backfill masivo.
+      const yaExiste = await tx
+        .select({ id: areas.id })
+        .from(areas)
+        .where(sql`lower(trim(${areas.nombre})) = lower(trim(${nombre}))`)
+        .limit(1)
+      if (yaExiste.length > 0) {
+        throw new ErrorValidacion("Ya existe un área con ese nombre.")
+      }
+
       // Orden = max + 1 (1 si el catálogo está vacío).
       const [agg] = await tx
         .select({ max: sql<number | null>`max(${areas.orden})` })
@@ -60,8 +71,12 @@ export const areaRepository: AreaRepo = {
           })),
         )
         // Recalcular: un funcionario en proceso gana un área PENDIENTE → vuelve a
-        // PENDIENTE; uno cerrado gana NO_APLICA → sigue a paz y salvo.
-        for (const f of fRows) await recomputarEstado(f.id, tx)
+        // PENDIENTE; uno cerrado gana NO_APLICA → sigue a paz y salvo. En lote:
+        // 2 lecturas + escrituras agrupadas, no 3 queries por funcionario.
+        await recomputarEstadoEnLote(
+          fRows.map((f) => f.id),
+          tx,
+        )
       }
 
       return listarTodas(tx)
@@ -128,7 +143,10 @@ export const areaRepository: AreaRepo = {
         .selectDistinct({ funcionarioId: aprobaciones.funcionarioId })
         .from(aprobaciones)
         .where(eq(aprobaciones.areaId, id))
-      for (const a of afectados) await recomputarEstado(a.funcionarioId, tx)
+      await recomputarEstadoEnLote(
+        afectados.map((a) => a.funcionarioId),
+        tx,
+      )
 
       return listarTodas(tx)
     })

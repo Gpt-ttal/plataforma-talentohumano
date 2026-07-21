@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest"
 import type { Usuario } from "@pys/shared"
 import { cambiarEstadoArea } from "../src/application/funcionarios/cambiarEstadoArea"
+import { devolverCasoAArea } from "../src/application/funcionarios/devolverCasoAArea"
 import {
   ErrorAutorizacion,
   ErrorNoEncontrado,
@@ -127,5 +128,103 @@ describe("cambiarEstadoArea (guarda de área + validación)", () => {
     const uc = cambiarEstadoArea({ repo })
     const r = await uc(superadmin, { funcionarioId: "f1", areaId: "cualquiera", estado: "NO_APLICA" })
     expect(r.estadoGlobal).toBe("LISTO_PARA_LIQUIDAR")
+  })
+})
+
+describe("devolverCasoAArea (Control Interno devuelve a un área puntual)", () => {
+  const controlInterno: Usuario = {
+    id: "ci",
+    email: "ci@americana.edu.co",
+    nombre: "Control Interno",
+    rol: "CONTROL_INTERNO",
+    areaId: null,
+    estado: "ACTIVO",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  }
+
+  it("rechaza a AREA (no puede devolver casos)", async () => {
+    const repo = { devolverCasoAArea: vi.fn() } as any
+    const uc = devolverCasoAArea({ repo })
+    await expect(
+      uc(usuarioArea("a1"), "f1", { areaId: "a1", observacion: "Falta soporte." }),
+    ).rejects.toBeInstanceOf(ErrorAutorizacion)
+    expect(repo.devolverCasoAArea).not.toHaveBeenCalled()
+  })
+
+  it("rechaza a TALENTO_HUMANO (no valida áreas)", async () => {
+    const repo = { devolverCasoAArea: vi.fn() } as any
+    const th = { ...superadmin, rol: "TALENTO_HUMANO" as const, id: "th" }
+    const uc = devolverCasoAArea({ repo })
+    await expect(
+      uc(th, "f1", { areaId: "a1", observacion: "Falta soporte." }),
+    ).rejects.toBeInstanceOf(ErrorAutorizacion)
+    expect(repo.devolverCasoAArea).not.toHaveBeenCalled()
+  })
+
+  it("exige observación (400 si viene vacía)", async () => {
+    const repo = { devolverCasoAArea: vi.fn() } as any
+    const uc = devolverCasoAArea({ repo })
+    await expect(
+      uc(controlInterno, "f1", { areaId: "a1", observacion: "   " }),
+    ).rejects.toBeInstanceOf(ErrorValidacion)
+    expect(repo.devolverCasoAArea).not.toHaveBeenCalled()
+  })
+
+  it("rechaza si el funcionario no existe (404)", async () => {
+    const repo = {
+      obtenerDetalle: vi.fn().mockResolvedValue(null),
+      devolverCasoAArea: vi.fn(),
+    } as any
+    const uc = devolverCasoAArea({ repo })
+    await expect(
+      uc(controlInterno, "noexiste", { areaId: "a1", observacion: "Falta soporte." }),
+    ).rejects.toBeInstanceOf(ErrorNoEncontrado)
+    expect(repo.devolverCasoAArea).not.toHaveBeenCalled()
+  })
+
+  it("rechaza si el trámite ya está cerrado (PAZ_Y_SALVO)", async () => {
+    const repo = {
+      obtenerDetalle: vi.fn().mockResolvedValue(detalleEn("PAZ_Y_SALVO")),
+      devolverCasoAArea: vi.fn(),
+    } as any
+    const uc = devolverCasoAArea({ repo })
+    await expect(
+      uc(controlInterno, "f1", { areaId: "a1", observacion: "Falta soporte." }),
+    ).rejects.toBeInstanceOf(ErrorValidacion)
+    expect(repo.devolverCasoAArea).not.toHaveBeenCalled()
+  })
+
+  it("Control Interno devuelve el caso y pasa el autor (nombre)", async () => {
+    const repo = {
+      obtenerDetalle: vi.fn().mockResolvedValue(detalleEn("LISTO_PARA_LIQUIDAR")),
+      devolverCasoAArea: vi
+        .fn()
+        .mockResolvedValue({ estadoGlobal: "PENDIENTE", hayRechazo: false, hayDevolucion: true }),
+    } as any
+    const uc = devolverCasoAArea({ repo })
+    const r = await uc(controlInterno, "f1", {
+      areaId: "a1",
+      observacion: "Encontré una inconsistencia en el soporte.",
+    })
+    expect(r.hayDevolucion).toBe(true)
+    expect(repo.devolverCasoAArea).toHaveBeenCalledWith({
+      funcionarioId: "f1",
+      areaId: "a1",
+      observacion: "Encontré una inconsistencia en el soporte.",
+      autor: "Control Interno",
+    })
+  })
+
+  it("SUPERADMIN también puede devolver el caso", async () => {
+    const repo = {
+      obtenerDetalle: vi.fn().mockResolvedValue(detalleEn("PENDIENTE")),
+      devolverCasoAArea: vi
+        .fn()
+        .mockResolvedValue({ estadoGlobal: "PENDIENTE", hayRechazo: false, hayDevolucion: true }),
+    } as any
+    const uc = devolverCasoAArea({ repo })
+    const r = await uc(superadmin, "f1", { areaId: "a1", observacion: "Motivo." })
+    expect(r.hayDevolucion).toBe(true)
   })
 })

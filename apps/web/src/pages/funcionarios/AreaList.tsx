@@ -1,5 +1,6 @@
 import type { AprobacionConArea } from "@pys/shared"
 import { AccionesArea } from "./AccionesArea"
+import { DevolverAreaButton } from "./DevolverAreaButton"
 import { EstadoAreaPill } from "../../components/ui/EstadoPill"
 
 /**
@@ -8,6 +9,10 @@ import { EstadoAreaPill } from "../../components/ui/EstadoPill"
  * `puedeGestionar`: si es `true` (solo SUPERADMIN en el catálogo) muestra la
  * botonera `AccionesArea`; si es `false` muestra cada área en modo solo lectura.
  * Los usuarios AREA gestionan sus áreas en /mi-área, no aquí.
+ *
+ * `puedeDevolver`: si es `true` (CI/SA) muestra "Devolver para revisión" sobre
+ * un área ya resuelta (APROBADO/NO_APROBADO) — independiente de `puedeGestionar`,
+ * Control Interno no gestiona el resto de acciones de área.
  *
  * Craft Sello-safe:
  * - Hover doble-señal: `shadow-luxe → shadow-luxe-lg` + `border-gold-300/40`.
@@ -18,10 +23,12 @@ export function AreaList({
   funcionarioId,
   aprobaciones,
   puedeGestionar = false,
+  puedeDevolver = false,
 }: {
   funcionarioId: string
   aprobaciones: AprobacionConArea[]
   puedeGestionar?: boolean
+  puedeDevolver?: boolean
 }) {
   return (
     <ul className="grid gap-3 sm:grid-cols-2">
@@ -49,6 +56,12 @@ export function AreaList({
                 areaId={ap.areaId}
                 estado={ap.estado}
               />
+            </div>
+          )}
+
+          {puedeDevolver && (ap.estado === "APROBADO" || ap.estado === "NO_APROBADO") && (
+            <div className="mt-3 border-t border-silver-100 pt-3">
+              <DevolverAreaButton funcionarioId={funcionarioId} areaId={ap.areaId} />
             </div>
           )}
         </li>

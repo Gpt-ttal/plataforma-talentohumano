@@ -4,18 +4,33 @@ import type {
   BucketGestion,
   CambiarEstadoAreaInput,
   CambiarEstadoUsuarioInput,
+  DevolverCasoAAreaInput,
+  LotePrevisualizacion,
+  ResultadoConfirmacionLote,
+  CapacitacionPlaneada,
   Capacitacion,
   CapacitacionDetalle,
   CapacitacionPublica,
   ColaGestionArea,
+  CrearCapacitacionPlaneadaInput,
+  CrearCursoInput,
+  CrearCursoModuloInput,
   CrearEmpleadoInput,
   CrearExperienciaInput,
   CrearFamiliarInput,
   CrearFormacionInput,
+  CrearLeccionInput,
+  Curso,
+  CursoDetalle,
+  CursoModulo,
+  CursoPublico,
   DatosPersonales,
   DatosSalariales,
+  EditarCapacitacionPlaneadaInput,
   EditarContractualInput,
+  EditarCursoInput,
   EditarEmpleadoInput,
+  EditarLeccionInput,
   Empleado,
   EmpleadoContractual,
   EmpleadoDetalle,
@@ -24,13 +39,19 @@ import type {
   Familiar,
   FiltroArchivo,
   FiltroCapacitaciones,
+  FiltroCapacitacionesPlaneadas,
   FiltroEmpleados,
   FiltroFuncionarios,
+  FiltroCursos,
   Formacion,
   Funcionario,
   FuncionarioDetalle,
   GuardarPersonalesInput,
   GuardarSalarialInput,
+  IngresarCursoInput,
+  IngresoCursoResultado,
+  InscritoConProgreso,
+  Leccion,
   MatrizGestion,
   MetricasDashboard,
   RegistrarAsistenciaInput,
@@ -113,11 +134,34 @@ async function requestBlob(path: string): Promise<Blob> {
   return res.blob()
 }
 
+/**
+ * Sube un archivo como `multipart/form-data` (sin fijar Content-Type: el
+ * navegador agrega el boundary). Único caso de uso hoy: importación masiva.
+ */
+async function requestMultipart<T>(path: string, form: FormData): Promise<T> {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: form,
+  })
+  if (!res.ok) {
+    if (res.status === 401) {
+      await supabase.auth.signOut().catch(() => {})
+    }
+    const payload = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new ApiError(res.status, payload.error ?? res.statusText)
+  }
+  return (await res.json()) as T
+}
+
 /** Cliente HTTP base: adjunta el JWT de Supabase y normaliza errores. */
 export const api = {
   get: <T>(path: string) => request<T>("GET", path),
   post: <T>(path: string, body?: unknown) => request<T>("POST", path, body),
   blob: (path: string) => requestBlob(path),
+  multipart: <T>(path: string, form: FormData) => requestMultipart<T>(path, form),
 }
 
 // ── Endpoints tipados (las formas coinciden con los casos de uso del backend) ──
@@ -155,6 +199,26 @@ export const apiFuncionarios = {
     api.post<ResultadoMutacion>(`/funcionarios/${id}/liquidacion`),
   registrarPazYSalvo: (id: string) =>
     api.post<ResultadoMutacion>(`/funcionarios/${id}/paz-y-salvo`),
+  devolverCasoAArea: (funcionarioId: string, input: DevolverCasoAAreaInput) =>
+    api.post<ResultadoMutacion>(
+      `/funcionarios/${funcionarioId}/areas/${input.areaId}/devolver`,
+      { observacion: input.observacion },
+    ),
+  archivarCaso: (id: string) =>
+    api.post<ResultadoMutacion>(`/funcionarios/${id}/archivar`),
+}
+
+/** Importación masiva de desvinculaciones (solo SA/TH). */
+export const apiDesvinculaciones = {
+  importar: (archivo: File) => {
+    const form = new FormData()
+    form.set("archivo", archivo)
+    return api.multipart<LotePrevisualizacion>("/desvinculaciones/importar", form)
+  },
+  confirmar: (loteId: string, filaIds: string[]) =>
+    api.post<ResultadoConfirmacionLote>(`/desvinculaciones/lotes/${loteId}/confirmar`, {
+      filaIds,
+    }),
 }
 
 export const apiMiArea = {
@@ -232,6 +296,96 @@ export const apiCapacitaciones = {
   abrirRegistro: (id: string) => api.post<Capacitacion>(`/capacitaciones/${id}/registro/abrir`),
   cerrarRegistro: (id: string) => api.post<Capacitacion>(`/capacitaciones/${id}/registro/cerrar`),
   exportarAsistencias: (id: string) => api.blob(`/capacitaciones/${id}/asistencias/export`),
+}
+
+/** Gestión autenticada de Cursos (SA/TH/SST). */
+export const apiCursos = {
+  listar: (filtro: FiltroCursos = {}) =>
+    api.get<ResultadoPaginado<Curso>>(
+      `/cursos${qs({
+        q: filtro.q,
+        ambito: filtro.ambito,
+        estado: filtro.estado,
+        pagina: filtro.pagina,
+        porPagina: filtro.porPagina,
+      })}`,
+    ),
+  crear: (input: CrearCursoInput) => api.post<Curso>("/cursos", input),
+  detalle: (id: string) => api.get<CursoDetalle>(`/cursos/${id}`),
+  editar: (id: string, input: EditarCursoInput) =>
+    request<Curso>("PATCH", `/cursos/${id}`, input),
+  abrirRegistro: (id: string) => api.post<Curso>(`/cursos/${id}/registro/abrir`),
+  cerrarRegistro: (id: string) => api.post<Curso>(`/cursos/${id}/registro/cerrar`),
+  inscritos: (id: string) => api.get<InscritoConProgreso[]>(`/cursos/${id}/inscritos`),
+  crearModulo: (cursoId: string, titulo: string) =>
+    api.post<CursoModulo>(`/cursos/${cursoId}/modulos`, { titulo }),
+  editarModulo: (cursoId: string, moduloId: string, titulo: string) =>
+    request<CursoModulo>("PATCH", `/cursos/${cursoId}/modulos/${moduloId}`, { titulo }),
+  moverModulo: (cursoId: string, moduloId: string, direccion: "subir" | "bajar") =>
+    api.post<CursoModulo[]>(`/cursos/${cursoId}/modulos/${moduloId}/mover`, { direccion }),
+  eliminarModulo: (cursoId: string, moduloId: string) =>
+    api.post<void>(`/cursos/${cursoId}/modulos/${moduloId}/eliminar`),
+  crearLeccion: (cursoId: string, moduloId: string, input: CrearLeccionInput) =>
+    api.post<Leccion>(`/cursos/${cursoId}/modulos/${moduloId}/lecciones`, input),
+  editarLeccion: (
+    cursoId: string,
+    moduloId: string,
+    leccionId: string,
+    input: EditarLeccionInput,
+  ) =>
+    request<Leccion>(
+      "PATCH",
+      `/cursos/${cursoId}/modulos/${moduloId}/lecciones/${leccionId}`,
+      input,
+    ),
+  moverLeccion: (
+    cursoId: string,
+    moduloId: string,
+    leccionId: string,
+    direccion: "subir" | "bajar",
+  ) =>
+    api.post<Leccion[]>(
+      `/cursos/${cursoId}/modulos/${moduloId}/lecciones/${leccionId}/mover`,
+      { direccion },
+    ),
+  eliminarLeccion: (cursoId: string, moduloId: string, leccionId: string) =>
+    api.post<void>(`/cursos/${cursoId}/modulos/${moduloId}/lecciones/${leccionId}/eliminar`),
+}
+
+/** API pública "tomar el curso por cédula" (sin auth requerida). */
+export const apiCursosPublico = {
+  info: (token: string) =>
+    fetch(`${BASE}/cursos/tomar/${token}`).then(async (r) => {
+      if (!r.ok) {
+        const payload = (await r.json().catch(() => ({}))) as { error?: string }
+        throw new ApiError(r.status, payload.error ?? r.statusText)
+      }
+      return r.json() as Promise<CursoPublico>
+    }),
+  ingresar: (token: string, datos: IngresarCursoInput) =>
+    fetch(`${BASE}/cursos/tomar/${token}/ingresar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(datos),
+    }).then(async (r) => {
+      if (!r.ok) {
+        const payload = (await r.json().catch(() => ({}))) as { error?: string }
+        throw new ApiError(r.status, payload.error ?? r.statusText)
+      }
+      return r.json() as Promise<IngresoCursoResultado>
+    }),
+  completar: (token: string, leccionId: string, documento: string) =>
+    fetch(`${BASE}/cursos/tomar/${token}/lecciones/${leccionId}/completar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documento }),
+    }).then(async (r) => {
+      if (!r.ok) {
+        const payload = (await r.json().catch(() => ({}))) as { error?: string }
+        throw new ApiError(r.status, payload.error ?? r.statusText)
+      }
+      return r.json() as Promise<IngresoCursoResultado>
+    }),
 }
 
 /** API pública para el formulario de asistencia (sin auth requerida). */
@@ -325,4 +479,25 @@ export const apiUsuarios = {
     }),
   cambiarEstado: (input: CambiarEstadoUsuarioInput) =>
     api.post<Usuario>(`/usuarios/${input.usuarioId}/estado`, { estado: input.estado }),
+}
+
+/** CRUD del Planificador (agenda anual de capacitaciones planeadas). */
+export const apiPlanificador = {
+  listar: (filtro: FiltroCapacitacionesPlaneadas = {}) =>
+    api.get<ResultadoPaginado<CapacitacionPlaneada>>(
+      `/planificador${qs({
+        q: filtro.q,
+        ambito: filtro.ambito,
+        estado: filtro.estado,
+        anio: filtro.anio,
+        mes: filtro.mes,
+        pagina: filtro.pagina,
+        porPagina: filtro.porPagina,
+      })}`,
+    ),
+  crear: (input: CrearCapacitacionPlaneadaInput) =>
+    api.post<CapacitacionPlaneada>("/planificador", input),
+  editar: (id: string, input: EditarCapacitacionPlaneadaInput) =>
+    request<CapacitacionPlaneada>("PATCH", `/planificador/${id}`, input),
+  eliminar: (id: string) => api.post<void>(`/planificador/${id}/eliminar`),
 }

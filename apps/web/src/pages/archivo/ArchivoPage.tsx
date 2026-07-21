@@ -12,6 +12,7 @@ import {
 import type { Funcionario } from "@pys/shared"
 import { apiArchivo, ApiError } from "../../lib/api"
 import { useArchivo } from "../../hooks/useArchivo"
+import { useArchivarCaso } from "../../hooks/useFuncionarios"
 import { Avatar } from "../../components/ui/Avatar"
 import { EstadoGlobalPill } from "../../components/ui/EstadoPill"
 import { Buscador } from "../../components/ui/Buscador"
@@ -240,14 +241,70 @@ function DetalleResumen({ f, dias }: { f: Funcionario; dias: number | null }) {
           etiqueta="Días de trámite"
           valor={dias === null ? "—" : `${dias} día${dias === 1 ? "" : "s"}`}
         />
+        <Dato
+          etiqueta="Archivado"
+          valor={f.archivadoEn ? formatFechaHora(f.archivadoEn) : "Sin archivar"}
+        />
       </dl>
-      <Link
-        to={f.id}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-navy-600 transition-colors hover:text-gold-600"
-      >
-        Ver expediente completo <span aria-hidden>→</span>
-      </Link>
+      <div className="flex flex-wrap items-center gap-4">
+        <Link
+          to={f.id}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-navy-600 transition-colors hover:text-gold-600"
+        >
+          Ver expediente completo <span aria-hidden>→</span>
+        </Link>
+        {!f.archivadoEn && <ArchivarButton funcionarioId={f.id} />}
+      </div>
     </div>
+  )
+}
+
+/** Archivado formal de un trámite ya cerrado. Solo visible si aún no se archivó. */
+function ArchivarButton({ funcionarioId }: { funcionarioId: string }) {
+  const m = useArchivarCaso()
+  const [confirmando, setConfirmando] = useState(false)
+
+  async function confirmar() {
+    try {
+      await m.mutateAsync(funcionarioId)
+      setConfirmando(false)
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "No se pudo archivar el trámite.")
+    }
+  }
+
+  if (confirmando) {
+    return (
+      <span className="inline-flex items-center gap-2">
+        <span className="text-xs font-medium text-navy-700">¿Archivar formalmente?</span>
+        <button
+          type="button"
+          onClick={() => void confirmar()}
+          disabled={m.isPending}
+          className="rounded-lg bg-navy-deep px-2.5 py-1 text-xs font-medium text-white ring-1 ring-navy-900/20 transition-all duration-200 hover:shadow-luxe disabled:opacity-50"
+        >
+          {m.isPending ? "Archivando…" : "Sí, archivar"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setConfirmando(false)}
+          disabled={m.isPending}
+          className="rounded-lg bg-white px-2.5 py-1 text-xs font-medium text-navy-600 ring-1 ring-silver-300 transition-colors hover:bg-silver-100 disabled:opacity-50"
+        >
+          Cancelar
+        </button>
+      </span>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setConfirmando(true)}
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-navy-600 transition-colors hover:text-gold-600"
+    >
+      Archivar
+    </button>
   )
 }
 

@@ -3,6 +3,7 @@ import { casos, requireAuth } from "../container.js"
 import { asyncHandler } from "../asyncHandler.js"
 import { requireRol } from "../middleware/requireRol.js"
 import { requireActivo } from "../middleware/requireActivo.js"
+import { paramUuid } from "../middleware/paramUuid.js"
 import { personalController } from "../controllers/personalController.js"
 
 const c = personalController(casos)
@@ -12,6 +13,11 @@ const c = personalController(casos)
  * en `/api/personal`.
  */
 export const personalRouter = Router()
+
+personalRouter.param("id", paramUuid("id"))
+personalRouter.param("familiarId", paramUuid("familiarId"))
+personalRouter.param("formacionId", paramUuid("formacionId"))
+personalRouter.param("experienciaId", paramUuid("experienciaId"))
 
 personalRouter.use(requireAuth, requireActivo, requireRol("SUPERADMIN", "TALENTO_HUMANO"))
 

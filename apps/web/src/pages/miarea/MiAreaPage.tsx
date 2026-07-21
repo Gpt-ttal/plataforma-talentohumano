@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from "react-router-dom"
-import { hrefCon, formatFecha } from "@pys/shared"
+import { hrefCon, formatFecha, rutaOficinaPorRol } from "@pys/shared"
 import type { AreaVistoBueno, BucketGestion, FilaGestionArea } from "@pys/shared"
 import { useRole } from "../../hooks/useRole"
 import { useAreas } from "../../hooks/useAreas"
@@ -25,7 +25,7 @@ const BASE = "/paz-y-salvo/mi-area"
  * de aprobación las autoriza el backend (`areaPermitida`); aquí solo se reflejan.
  */
 export function MiAreaPage() {
-  const { areaId, esSuperadmin } = useRole()
+  const { areaId, esSuperadmin, rol } = useRole()
   const { data: areas } = useAreas()
   const [searchParams] = useSearchParams()
 
@@ -160,6 +160,7 @@ export function MiAreaPage() {
                   fila={fila}
                   areaId={area.id}
                   esSuperadmin={esSuperadmin}
+                  oficinaSuperadmin={rol ? rutaOficinaPorRol(rol) : undefined}
                 />
               ))}
             </div>
@@ -183,10 +184,12 @@ function FilaMiArea({
   fila,
   areaId,
   esSuperadmin,
+  oficinaSuperadmin,
 }: {
   fila: FilaGestionArea
   areaId: string
   esSuperadmin: boolean
+  oficinaSuperadmin?: string
 }) {
   const { funcionario: f, estado } = fila
   return (
@@ -216,9 +219,9 @@ function FilaMiArea({
         {/* La ficha completa (todas las áreas + observaciones) es vista de
             supervisión: el backend (`obtenerDetalle`) solo la sirve a SA/TH/CI.
             El usuario AREA gestiona su visto bueno aquí mismo, sin la ficha. */}
-        {esSuperadmin && (
+        {esSuperadmin && oficinaSuperadmin && (
           <Link
-            to={`/paz-y-salvo/funcionarios/${f.id}`}
+            to={`${oficinaSuperadmin}/${f.id}`}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-navy-600 transition-colors hover:text-gold-600"
           >
             Ver ficha completa <span aria-hidden>→</span>

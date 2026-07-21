@@ -9,6 +9,7 @@ import {
   date,
   timestamp,
   unique,
+  jsonb,
 } from "drizzle-orm/pg-core"
 
 // ── Enums ──────────────────────────────────────────────────────────────────
@@ -18,6 +19,7 @@ export const estadoAreaEnum = pgEnum("estado_area", [
   "APROBADO",
   "NO_APLICA",
   "NO_APROBADO",
+  "DEVUELTO_POR_CI",
 ])
 
 export const estadoGlobalEnum = pgEnum("estado_global", [
@@ -64,6 +66,13 @@ export const tipoVinculacionEnum = pgEnum("tipo_vinculacion", [
 export const novedadTipoEnum = pgEnum("novedad_tipo", [
   "CAMBIO_CARGO",
   "EXTENSION_CONTRATO",
+])
+
+export const tipoContenidoLeccionEnum = pgEnum("tipo_contenido_leccion", ["TEXTO", "VIDEO"])
+export const estadoCapacitacionPlaneadaEnum = pgEnum("estado_capacitacion_planeada", [
+  "PLANEADA",
+  "EN_CURSO",
+  "COMPLETADA",
 ])
 
 // ── Hoja de vida 360° (Administración de Personal v2) ──
@@ -138,6 +147,7 @@ export const funcionarios = pgTable("funcionarios", {
   fechaLiquidacionGenerada: timestamp("fecha_liquidacion_generada", { withTimezone: true }),
   liquidacionGeneradaPor: text("liquidacion_generada_por"),
   liquidadoPor: text("liquidado_por"),
+  archivadoEn: timestamp("archivado_en", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })
@@ -231,6 +241,115 @@ export const asistencias = pgTable(
   (t) => [unique().on(t.capacitacionId, t.documento)],
 )
 
+// ── cursos ────────────────────────────────────────────────────────────────────
+
+export const cursos = pgTable("cursos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  titulo: text("titulo").notNull(),
+  descripcion: text("descripcion"),
+  ambito: ambitoCapacitacionEnum("ambito").notNull(),
+  token: text("token").notNull().unique(),
+  estadoRegistro: estadoRegistroEnum("estado_registro").notNull().default("BORRADOR"),
+  creadaPor: text("creada_por"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
+// ── curso_modulos ─────────────────────────────────────────────────────────────
+// Orden denso por curso, mismo patrón que `areas.orden`.
+
+export const cursoModulos = pgTable(
+  "curso_modulos",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    cursoId: uuid("curso_id")
+      .notNull()
+      .references(() => cursos.id, { onDelete: "cascade" }),
+    titulo: text("titulo").notNull(),
+    orden: integer("orden").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.cursoId, t.orden)],
+)
+
+// ── curso_lecciones ───────────────────────────────────────────────────────────
+
+export const cursoLecciones = pgTable(
+  "curso_lecciones",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    moduloId: uuid("modulo_id")
+      .notNull()
+      .references(() => cursoModulos.id, { onDelete: "cascade" }),
+    titulo: text("titulo").notNull(),
+    tipoContenido: tipoContenidoLeccionEnum("tipo_contenido").notNull(),
+    contenidoTexto: text("contenido_texto"),
+    urlVideo: text("url_video"),
+    orden: integer("orden").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.moduloId, t.orden)],
+)
+
+// ── inscripciones ─────────────────────────────────────────────────────────────
+// Idempotente por curso × documento, mismo patrón que `asistencias`.
+
+export const inscripciones = pgTable(
+  "inscripciones",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    cursoId: uuid("curso_id")
+      .notNull()
+      .references(() => cursos.id, { onDelete: "cascade" }),
+    documento: text("documento").notNull(),
+    nombre: text("nombre").notNull(),
+    correo: text("correo"),
+    iniciadaEn: timestamp("iniciada_en", { withTimezone: true }).notNull().defaultNow(),
+    ultimaActividadEn: timestamp("ultima_actividad_en", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [unique().on(t.cursoId, t.documento)],
+)
+
+// ── progreso_lecciones ────────────────────────────────────────────────────────
+// Existencia de fila = completada; idempotente por inscripción × lección.
+
+export const progresoLecciones = pgTable(
+  "progreso_lecciones",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    inscripcionId: uuid("inscripcion_id")
+      .notNull()
+      .references(() => inscripciones.id, { onDelete: "cascade" }),
+    leccionId: uuid("leccion_id")
+      .notNull()
+      .references(() => cursoLecciones.id, { onDelete: "cascade" }),
+    completadaEn: timestamp("completada_en", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.inscripcionId, t.leccionId)],
+)
+
+// ── capacitaciones_planeadas ──────────────────────────────────────────────────
+// Planificador liviano. `area_objetivo` es texto libre (sin FK a `areas`),
+// decisión de producto ya confirmada.
+
+export const capacitacionesPlaneadas = pgTable("capacitaciones_planeadas", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  titulo: text("titulo").notNull(),
+  areaObjetivo: text("area_objetivo"),
+  ambito: ambitoCapacitacionEnum("ambito").notNull(),
+  anio: integer("anio").notNull(),
+  mes: integer("mes").notNull(),
+  estado: estadoCapacitacionPlaneadaEnum("estado").notNull().default("PLANEADA"),
+  notas: text("notas"),
+  creadaPor: text("creada_por"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
 // ── novedades ───────────────────────────────────────────────────────────────────
 // Bitácora append-only del "Otro sí" ligero (cambio de cargo / extensión de
 // contrato). Cada novedad también aplica el cambio al empleado. Ver migración 0009.
@@ -247,6 +366,68 @@ export const novedades = pgTable("novedades", {
   autor: text("autor").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })
+
+/** Bitácora de auditoría institucional, genérica y append-only (0016). */
+export const eventosAuditoria = pgTable("eventos_auditoria", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  entidadTipo: text("entidad_tipo").notNull(),
+  entidadId: uuid("entidad_id").notNull(),
+  accion: text("accion").notNull(),
+  actorId: uuid("actor_id"),
+  actorNombre: text("actor_nombre").notNull(),
+  estadoAnterior: jsonb("estado_anterior"),
+  estadoNuevo: jsonb("estado_nuevo"),
+  observacion: text("observacion"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
+// ── Importación masiva de desvinculaciones (0017) ────────────────────────────
+
+export const loteEstadoEnum = pgEnum("lote_estado", [
+  "CARGADO",
+  "PREVISUALIZADO",
+  "CONFIRMADO_PARCIAL",
+  "CONFIRMADO_TOTAL",
+])
+
+export const filaLoteEstadoEnum = pgEnum("fila_lote_estado", [
+  "VALIDA",
+  "CON_ERROR",
+  "DUPLICADA",
+  "CONFIRMADA",
+  "DESCARTADA",
+])
+
+export const lotesImportacion = pgTable("lotes_importacion", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nombreArchivo: text("nombre_archivo").notNull(),
+  estado: loteEstadoEnum("estado").notNull().default("CARGADO"),
+  totalFilas: integer("total_filas").notNull().default(0),
+  filasConfirmadas: integer("filas_confirmadas").notNull().default(0),
+  creadoPor: text("creado_por").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const filasLote = pgTable(
+  "filas_lote",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    loteId: uuid("lote_id")
+      .notNull()
+      .references(() => lotesImportacion.id, { onDelete: "cascade" }),
+    numeroFila: integer("numero_fila").notNull(),
+    documento: text("documento").notNull(),
+    nombreCompleto: text("nombre_completo").notNull(),
+    fechaRetiro: date("fecha_retiro").notNull(),
+    cargo: text("cargo"),
+    estado: filaLoteEstadoEnum("estado").notNull(),
+    mensajeError: text("mensaje_error"),
+    funcionarioId: uuid("funcionario_id").references(() => funcionarios.id),
+  },
+  (t) => [unique().on(t.loteId, t.numeroFila)],
+)
 
 // ── Hoja de vida 360°: tablas satélite (migración 0010) ─────────────────────────
 // Reparten el expediente por afinidad y sensibilidad para no inflar `funcionarios`

@@ -2,6 +2,7 @@ import type { NextFunction, Request, RequestHandler, Response } from "express"
 import { ErrorAutenticacion, ErrorAutorizacion } from "../../application/errors.js"
 import type { ResultadoAlta } from "../../application/auth/asegurarUsuario.js"
 import type { ClaimsUsuario } from "../../infrastructure/auth/supabaseJwtVerifier.js"
+import { logger } from "../../infrastructure/logging/logger.js"
 
 export interface DepsRequireAuth {
   /** Verifica la firma del JWT y extrae los claims (sub/email/nombre). */
@@ -30,7 +31,12 @@ export function crearRequireAuth(deps: DepsRequireAuth): RequestHandler {
     let claims: ClaimsUsuario
     try {
       claims = await deps.verificar(token)
-    } catch {
+    } catch (e) {
+      // Loguear la causa real: distingue "JWT realmente vencido" de un fallo de
+      // infraestructura (SUPABASE_URL/JWKS inalcanzable) que dejaría a todos los
+      // logins fallando con este mismo 401 sin ningún rastro. El cliente sigue
+      // recibiendo el mismo mensaje genérico — nada se filtra al frontend.
+      logger.error({ err: e }, "requireAuth: fallo al verificar el token")
       return next(new ErrorAutenticacion("Token inválido o expirado."))
     }
 

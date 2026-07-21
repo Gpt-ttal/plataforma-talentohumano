@@ -19,7 +19,6 @@ import { ListaSkeleton } from "../../components/ui/ListaSkeleton"
 import { Paginacion } from "../../components/ui/Paginacion"
 import { SpotSinEmpleados } from "../../components/ui/spot/Spots"
 import { Icon } from "../../components/ui/dash/Icon"
-import { RegistrarEmpleadoForm } from "./RegistrarEmpleadoForm"
 
 const BASE = "/personal"
 
@@ -46,8 +45,6 @@ export function CatalogoPersonal() {
 
   return (
     <div className="space-y-7">
-      <RegistrarEmpleadoForm />
-
       <div className="premium-card flex flex-wrap items-end gap-3 rounded-xl px-4 py-4">
         <div className="flex-1">
           <Buscador placeholder="Buscar por nombre o documento…" />

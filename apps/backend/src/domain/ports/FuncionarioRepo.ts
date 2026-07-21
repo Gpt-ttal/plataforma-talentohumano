@@ -43,13 +43,30 @@ export interface CambiarEstadoAreaArgs {
 export interface ResultadoMutacion {
   estadoGlobal: Funcionario["estadoGlobal"]
   hayRechazo: boolean
+  hayDevolucion: boolean
+}
+
+export interface DevolverCasoAAreaArgs {
+  funcionarioId: string
+  areaId: string
+  /** Siempre obligatoria (se valida en el caso de uso). */
+  observacion: string
+  autor?: string
+}
+
+export interface ArchivarCasoResultado {
+  archivadoEn: string
 }
 
 export interface FuncionarioRepo {
-  listarFuncionarios(): Promise<Funcionario[]>
   listarGestionArea(areaId: string): Promise<FilaGestionArea[]>
   obtenerDetalle(funcionarioId: string): Promise<FuncionarioDetalle | null>
   cambiarEstadoArea(args: CambiarEstadoAreaArgs): Promise<ResultadoMutacion>
+  /**
+   * Control Interno devuelve el caso a un área puntual (`DEVUELTO_POR_CI`) para
+   * que lo revise de nuevo, dejando observación y evento de auditoría.
+   */
+  devolverCasoAArea(args: DevolverCasoAAreaArgs): Promise<ResultadoMutacion>
   /** Hito de Talento Humano: marca la liquidación como generada (avisa a CI). */
   generarLiquidacion(
     funcionarioId: string,
@@ -60,6 +77,12 @@ export interface FuncionarioRepo {
     funcionarioId: string,
     autor?: string,
   ): Promise<ResultadoMutacion>
+  /**
+   * Sella el archivado formal de un trámite ya cerrado (`PAZ_Y_SALVO`).
+   * UPDATE condicionado (idempotencia/TOCTOU): 0 filas si ya estaba archivado
+   * o si el estado cambió entre la lectura y la escritura.
+   */
+  archivarCaso(funcionarioId: string, autor?: string): Promise<ArchivarCasoResultado>
   obtenerMetricas(): Promise<MetricasDashboard>
   /** Catálogo de funcionarios con búsqueda + filtro de estado + paginación. */
   listarFuncionariosPaginado(

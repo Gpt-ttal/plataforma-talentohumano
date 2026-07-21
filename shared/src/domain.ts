@@ -4,7 +4,12 @@
  */
 
 /** Estado de una dependencia ("área de visto bueno") respecto a un funcionario. */
-export type EstadoArea = "PENDIENTE" | "APROBADO" | "NO_APLICA" | "NO_APROBADO";
+export type EstadoArea =
+  | "PENDIENTE"
+  | "APROBADO"
+  | "NO_APLICA"
+  | "NO_APROBADO"
+  | "DEVUELTO_POR_CI";
 
 /** Estado global (consolidado) del paz y salvo de un funcionario. */
 export type EstadoGlobal =
@@ -18,7 +23,14 @@ export const ESTADOS_AREA: readonly EstadoArea[] = [
   "APROBADO",
   "NO_APLICA",
   "NO_APROBADO",
+  "DEVUELTO_POR_CI",
 ] as const;
+
+/** Input para el caso de uso `devolverCasoAArea` (Control Interno → un área puntual). */
+export interface DevolverCasoAAreaInput {
+  areaId: string;
+  observacion: string;
+}
 
 export const ESTADOS_GLOBAL: readonly EstadoGlobal[] = [
   "PENDIENTE",
@@ -104,6 +116,8 @@ export interface Funcionario {
   fechaLiquidacion: string | null; // ISO datetime o null
   /** Autor (rol) del cierre/liquidación final. */
   liquidadoPor: string | null;
+  /** Sello de archivado formal (solo asignable si estadoGlobal='PAZ_Y_SALVO'). */
+  archivadoEn: string | null; // ISO datetime o null
   createdAt: string;
   updatedAt: string;
 }
@@ -173,6 +187,12 @@ export interface FiltroFuncionarios {
   q?: string;
   /** Filtro por estado global consolidado. */
   estado?: EstadoGlobal;
+  /**
+   * Área que bloquea al funcionario: esa área no está en `APROBADO` ni
+   * `NO_APLICA` (cubre `PENDIENTE`, `NO_APROBADO` y `DEVUELTO_POR_CI` en un
+   * solo parámetro). La Matriz de Avance lo usa para "quién espera a X".
+   */
+  areaBloqueante?: string;
   pagina?: number;
   porPagina?: number;
 }

@@ -1,3 +1,4 @@
+import { lazy, Suspense, type ReactNode } from "react"
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 import { QueryClientProvider } from "@tanstack/react-query"
 import { Toaster } from "sonner"
@@ -11,8 +12,6 @@ import { RoleSwitcher } from "./components/dev/RoleSwitcher"
 import { CallbackPage } from "./pages/auth/CallbackPage"
 import { LoginPage } from "./pages/login/LoginPage"
 import { PendientePage } from "./pages/pendiente/PendientePage"
-import { FuncionariosPage } from "./pages/funcionarios/FuncionariosPage"
-import { TalentoHumanoPage } from "./pages/funcionarios/TalentoHumanoPage"
 import { ControlInternoPage } from "./pages/funcionarios/ControlInternoPage"
 import { FuncionarioModal } from "./pages/funcionarios/FuncionarioModal"
 import { MiAreaPage } from "./pages/miarea/MiAreaPage"
@@ -27,6 +26,34 @@ import { CapacitacionModal } from "./pages/capacitaciones/CapacitacionModal"
 import { RegistroAsistenciaPage } from "./pages/asistencia/RegistroAsistenciaPage"
 import { PersonalPage } from "./pages/personal/PersonalPage"
 import { ExpedientePage } from "./pages/personal/ExpedientePage"
+import { ImportacionPage } from "./pages/desvinculaciones/ImportacionPage"
+// Cursos & Planificador se cargan bajo demanda: Tiptap (editor de lecciones) y su
+// vendor solo se descargan al entrar al módulo, no en el arranque ni en el login.
+const CursosPage = lazy(() =>
+  import("./pages/cursos/CursosPage").then((m) => ({ default: m.CursosPage })),
+)
+const CursoDetallePage = lazy(() =>
+  import("./pages/cursos/CursoDetallePage").then((m) => ({ default: m.CursoDetallePage })),
+)
+const PlanificadorPage = lazy(() =>
+  import("./pages/planificador/PlanificadorPage").then((m) => ({ default: m.PlanificadorPage })),
+)
+const TomarCursoPage = lazy(() =>
+  import("./pages/tomar-curso/TomarCursoPage").then((m) => ({ default: m.TomarCursoPage })),
+)
+
+/** Frontera de carga para las rutas diferidas (Cursos/Planificador/Tomar curso). */
+function Lazy({ children }: { children: ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="grid min-h-[40vh] place-items-center text-sm text-muted">Cargando…</div>
+      }
+    >
+      {children}
+    </Suspense>
+  )
+}
 
 function NoAccess() {
   return (
@@ -75,6 +102,15 @@ export function App() {
             <Route path="/no-access" element={<NoAccess />} />
             {/* Registro de asistencia por QR — sin auth, sin Layout */}
             <Route path="/asistencia/:token" element={<RegistroAsistenciaPage />} />
+            {/* Tomar curso por cédula — sin auth, sin Layout */}
+            <Route
+              path="/tomar-curso/:token"
+              element={
+                <Lazy>
+                  <TomarCursoPage />
+                </Lazy>
+              }
+            />
 
             {/* Protegidas (envueltas por el layout con sidebar por rol) */}
             <Route element={<Layout />}>
@@ -94,31 +130,6 @@ export function App() {
               {/* Módulo Paz y Salvo — el dashboard se fusionó en el Panel de
                   control (`/inicio`); la raíz del módulo redirige allí. */}
               <Route path="/paz-y-salvo" element={<Navigate to="/inicio" replace />} />
-
-              {/* Catálogo de supervisión — solo SUPERADMIN (TH y CI tienen oficina propia). */}
-              <Route
-                path="/paz-y-salvo/funcionarios"
-                element={
-                  <ProtectedRoute roles={["SUPERADMIN"]}>
-                    <FuncionariosPage />
-                  </ProtectedRoute>
-                }
-              >
-                {/* La hija hereda la guarda del padre vía Outlet (no lleva ProtectedRoute propio). */}
-                <Route path=":id" element={<FuncionarioModal />} />
-              </Route>
-
-              {/* Oficina de Talento Humano — genera liquidación. */}
-              <Route
-                path="/paz-y-salvo/talento-humano"
-                element={
-                  <ProtectedRoute roles={["SUPERADMIN", "TALENTO_HUMANO"]}>
-                    <TalentoHumanoPage />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path=":id" element={<FuncionarioModal />} />
-              </Route>
 
               {/* Oficina de Control Interno — finaliza el trámite (paz y salvo). */}
               <Route
@@ -140,7 +151,9 @@ export function App() {
                 }
               />
 
-              {/* Avance por área — matriz consolidada funcionario × área (supervisores). */}
+              {/* Avance por área — matriz consolidada funcionario × área. Oficina de
+                  SUPERADMIN y TALENTO_HUMANO (sus catálogos dedicados se retiraron por
+                  redundancia); CONTROL_INTERNO la usa solo como vista de supervisión. */}
               <Route
                 path="/paz-y-salvo/avance"
                 element={
@@ -148,7 +161,10 @@ export function App() {
                     <MatrizPage />
                   </ProtectedRoute>
                 }
-              />
+              >
+                {/* La hija hereda la guarda del padre vía Outlet. */}
+                <Route path=":id" element={<FuncionarioModal />} />
+              </Route>
 
               {/* Archivo institucional — plataforma de gestión (SA + TH). */}
               <Route
@@ -175,6 +191,41 @@ export function App() {
                 <Route path=":id" element={<CapacitacionModal />} />
               </Route>
 
+              {/* Cursos — SA, TH y SST. Página dedicada: `/cursos/:id` es hermana
+                  top-level (no hija anidada), por eso CursosPage no lleva <Outlet/>. */}
+              <Route
+                path="/cursos"
+                element={
+                  <ProtectedRoute roles={["SUPERADMIN", "TALENTO_HUMANO", "SST"]}>
+                    <Lazy>
+                      <CursosPage />
+                    </Lazy>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/cursos/:id"
+                element={
+                  <ProtectedRoute roles={["SUPERADMIN", "TALENTO_HUMANO", "SST"]}>
+                    <Lazy>
+                      <CursoDetallePage />
+                    </Lazy>
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Planificador de capacitaciones — SA, TH y SST */}
+              <Route
+                path="/planificador"
+                element={
+                  <ProtectedRoute roles={["SUPERADMIN", "TALENTO_HUMANO", "SST"]}>
+                    <Lazy>
+                      <PlanificadorPage />
+                    </Lazy>
+                  </ProtectedRoute>
+                }
+              />
+
               {/* Administración de Personal — maestro de empleados (SA + TH) */}
               <Route
                 path="/personal"
@@ -190,6 +241,16 @@ export function App() {
                 element={
                   <ProtectedRoute roles={["SUPERADMIN", "TALENTO_HUMANO"]}>
                     <ExpedientePage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Importación masiva de desvinculaciones — SA + TH */}
+              <Route
+                path="/desvinculaciones/importacion"
+                element={
+                  <ProtectedRoute roles={["SUPERADMIN", "TALENTO_HUMANO"]}>
+                    <ImportacionPage />
                   </ProtectedRoute>
                 }
               />

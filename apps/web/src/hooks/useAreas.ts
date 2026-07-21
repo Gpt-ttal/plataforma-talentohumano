@@ -40,6 +40,7 @@ function useMutacionArea<TArgs>(fn: (args: TArgs) => Promise<AreaVistoBueno[]>) 
       for (const key of [
         ["areas"],
         ["funcionarios"],
+        ["funcionario"],
         ["funcionarios-todos"],
         ["mi-area"],
         ["metricas"],

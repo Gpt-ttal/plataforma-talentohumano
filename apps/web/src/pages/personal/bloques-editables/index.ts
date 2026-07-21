@@ -1,0 +1,7 @@
+export { PersonalesEditor } from "./PersonalesEditor"
+export { ContractualEditor } from "./ContractualEditor"
+export { SalarialEditor } from "./SalarialEditor"
+export { FamiliaEditor } from "./FamiliaEditor"
+export { FormacionEditor } from "./FormacionEditor"
+export { ExperienciaEditor } from "./ExperienciaEditor"
+export { FotoEditor } from "./FotoEditor"

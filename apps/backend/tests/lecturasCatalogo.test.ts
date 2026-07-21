@@ -26,6 +26,14 @@ describe("listarFuncionarios (catálogo de supervisión)", () => {
     expect(r).toBe(pagina)
     expect(repo.listarFuncionariosPaginado).toHaveBeenCalledWith({ q: "ana", pagina: 2 })
   })
+
+  it("delega el filtro areaBloqueante (Avance por Área: quién espera a X)", async () => {
+    const pagina = { items: [], total: 0, pagina: 1, porPagina: 20, totalPaginas: 1 }
+    const repo = { listarFuncionariosPaginado: vi.fn().mockResolvedValue(pagina) } as any
+    const uc = listarFuncionarios({ repo })
+    await uc(hacerUsuario({ rol: "TALENTO_HUMANO" }), { areaBloqueante: "a1" })
+    expect(repo.listarFuncionariosPaginado).toHaveBeenCalledWith({ areaBloqueante: "a1" })
+  })
 })
 
 describe("obtenerMatriz (matriz funcionario × área — solo supervisores)", () => {

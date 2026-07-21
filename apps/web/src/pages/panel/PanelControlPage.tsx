@@ -180,7 +180,7 @@ function PanelHeader({
           </ActionLink>
         )}
         <ActionLink to={oficina} icon="file" primary>
-          Funcionarios
+          Avance por área
         </ActionLink>
       </div>
     </header>
@@ -251,8 +251,8 @@ export function PanelControlPage() {
   const [rango, setRango] = useState<RangoFecha>({ desde: "", hasta: "" })
 
   const firstName = usuario?.nombre?.split(/\s+/)[0] ?? "Usuario"
-  // Oficina del rol (el Panel solo lo ven SA y TH): los enlaces nunca apuntan a
-  // /paz-y-salvo/funcionarios (SA-only) para que TH no caiga en /no-access.
+  // Oficina del rol (el Panel solo lo ven SA y TH): ambos comparten la Matriz de
+  // Avance como oficina, así que los enlaces siempre resuelven a una ruta propia.
   const rolEfectivo: RolUsuario = rol ?? "SUPERADMIN"
   const oficina = rutaOficinaPorRol(rolEfectivo)
   const refetchAll = () => {
