@@ -22,10 +22,19 @@ import {
   moverAreaSchema,
   registrarAsistenciaSchema,
   renombrarAreaSchema,
+  registroIcebergSchema,
+  ingestaSyncSchema,
+  cargarLoteManualSyncSchema,
+  confirmarSyncSchema,
+  crearVacanteSchema,
+  editarVacanteSchema,
+  filtroVacantesSchema,
 } from "../src/schemas"
 
 const UUID_A = "11111111-1111-4111-8111-111111111111"
 const UUID_B = "22222222-2222-4222-8222-222222222222"
+
+const REGISTRO_MIN = { documento: "1234567890", nombreCompleto: "Ana Pérez" }
 
 describe("cambiarEstadoAreaSchema", () => {
   it("rechaza estado inválido", () => {
@@ -426,5 +435,111 @@ describe("filtroCapacitacionesPlaneadasSchema", () => {
   })
   it("rechaza estado inválido", () => {
     expect(filtroCapacitacionesPlaneadasSchema.safeParse({ estado: "PAUSADA" }).success).toBe(false)
+  })
+})
+
+// ── Sync de personal (Iceberg) ───────────────────────────────────────────────
+
+describe("registroIcebergSchema", () => {
+  it("acepta el registro mínimo (documento + nombre)", () => {
+    expect(registroIcebergSchema.safeParse(REGISTRO_MIN).success).toBe(true)
+  })
+  it("acepta salario/personas a cargo como texto o número (crudo)", () => {
+    expect(
+      registroIcebergSchema.safeParse({ ...REGISTRO_MIN, salario: "2.500.000", personasACargo: 2 })
+        .success,
+    ).toBe(true)
+  })
+  it("rechaza sin documento", () => {
+    expect(registroIcebergSchema.safeParse({ nombreCompleto: "Ana" }).success).toBe(false)
+  })
+  it("rechaza claves fuera de contrato (.strict)", () => {
+    expect(
+      registroIcebergSchema.safeParse({ ...REGISTRO_MIN, columnaDesconocida: "x" }).success,
+    ).toBe(false)
+  })
+})
+
+describe("ingestaSyncSchema / cargarLoteManualSyncSchema", () => {
+  it("acepta un lote con al menos un registro", () => {
+    expect(ingestaSyncSchema.safeParse({ registros: [REGISTRO_MIN] }).success).toBe(true)
+    expect(cargarLoteManualSyncSchema.safeParse({ registros: [REGISTRO_MIN] }).success).toBe(true)
+  })
+  it("rechaza un lote vacío", () => {
+    expect(ingestaSyncSchema.safeParse({ registros: [] }).success).toBe(false)
+  })
+  it("rechaza más de 1000 registros (tope de wall-clock/payload)", () => {
+    const registros = Array.from({ length: 1001 }, () => REGISTRO_MIN)
+    expect(ingestaSyncSchema.safeParse({ registros }).success).toBe(false)
+  })
+})
+
+describe("confirmarSyncSchema", () => {
+  it("acepta filaIds UUID no vacío", () => {
+    expect(confirmarSyncSchema.safeParse({ filaIds: [UUID_A] }).success).toBe(true)
+  })
+  it("rechaza filaIds vacío o no-UUID", () => {
+    expect(confirmarSyncSchema.safeParse({ filaIds: [] }).success).toBe(false)
+    expect(confirmarSyncSchema.safeParse({ filaIds: ["f1"] }).success).toBe(false)
+  })
+})
+
+describe("crearVacanteSchema", () => {
+  const VALIDO = { cargo: "Analista de Nómina", posiciones: 1, fechaRequerimiento: "2026-07-01" }
+
+  it("acepta el payload mínimo (solo lo requerido)", () => {
+    expect(crearVacanteSchema.safeParse(VALIDO).success).toBe(true)
+  })
+  it("acepta el payload completo con catálogos FK y enums", () => {
+    const r = crearVacanteSchema.safeParse({
+      ...VALIDO,
+      areaId: UUID_A,
+      modalidadId: UUID_B,
+      dedicacionId: UUID_B,
+      salario: 3_000_000,
+      aprobacion: "APROBADO",
+      fase: "RECLUTAMIENTO",
+      estado: "PENDIENTE",
+    })
+    expect(r.success).toBe(true)
+  })
+  it("rechaza posiciones menor a 1", () => {
+    expect(crearVacanteSchema.safeParse({ ...VALIDO, posiciones: 0 }).success).toBe(false)
+  })
+  it("rechaza cargo vacío o fecha de requerimiento faltante", () => {
+    expect(crearVacanteSchema.safeParse({ ...VALIDO, cargo: "" }).success).toBe(false)
+    expect(crearVacanteSchema.safeParse({ cargo: "X", posiciones: 1 }).success).toBe(false)
+  })
+  it("rechaza un estado o fase fuera del vocabulario", () => {
+    expect(crearVacanteSchema.safeParse({ ...VALIDO, estado: "XXX" }).success).toBe(false)
+    expect(crearVacanteSchema.safeParse({ ...VALIDO, fase: "XXX" }).success).toBe(false)
+  })
+  it("rechaza claves extra (.strict)", () => {
+    expect(crearVacanteSchema.safeParse({ ...VALIDO, extra: 1 }).success).toBe(false)
+  })
+})
+
+describe("editarVacanteSchema", () => {
+  it("acepta un patch parcial", () => {
+    expect(editarVacanteSchema.safeParse({ cargo: "Nuevo cargo" }).success).toBe(true)
+  })
+  it("acepta borrar un campo opcional con null", () => {
+    expect(editarVacanteSchema.safeParse({ jefe: null }).success).toBe(true)
+  })
+  it("rechaza un patch vacío (no-op)", () => {
+    expect(editarVacanteSchema.safeParse({}).success).toBe(false)
+  })
+})
+
+describe("filtroVacantesSchema", () => {
+  it("acepta el filtro vacío (todo opcional)", () => {
+    expect(filtroVacantesSchema.safeParse({}).success).toBe(true)
+  })
+  it("acepta q/estado/areaId/paginación válidos", () => {
+    const r = filtroVacantesSchema.safeParse({ q: "analista", estado: "PENDIENTE", areaId: UUID_A, pagina: "2" })
+    expect(r.success).toBe(true)
+  })
+  it("rechaza un estado fuera del vocabulario", () => {
+    expect(filtroVacantesSchema.safeParse({ estado: "XXX" }).success).toBe(false)
   })
 })

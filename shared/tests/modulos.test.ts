@@ -15,6 +15,13 @@ describe("MODULOS (registro declarativo)", () => {
     const ids = MODULOS.map((m) => m.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  it("sync-personal es PROXIMO mientras no tenga UI enrutada (no ACTIVO)", () => {
+    // Guarda contra un revert accidental: el backend existe pero no hay ruta web,
+    // así que el tile no debe anunciarse como operativo (rebotaría a /inicio).
+    const sync = MODULOS.find((m) => m.id === "sync-personal");
+    expect(sync?.estado).toBe("PROXIMO");
+  });
 });
 
 describe("modulosParaRol", () => {

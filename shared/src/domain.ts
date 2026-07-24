@@ -411,6 +411,62 @@ export const NIVELES_FORMACION: readonly NivelFormacion[] = [
   "POSTDOCTORADO",
 ] as const;
 
+// ── Atributos de Iceberg (sync de personal) ──────────────────────────────────
+// Tres ejes que llegan del maestro externo Iceberg y no existían en el 360° v1.
+// Viven en `domain.ts` (base del grafo de dependencias) para que las interfaces
+// del expediente y `sync.ts` los referencien sin ciclos.
+
+/** Tipo de documento de identidad (Iceberg). */
+export type TipoDocumento = "CC" | "CE" | "PASAPORTE" | "PEP" | "TI" | "NIT";
+
+export const TIPOS_DOCUMENTO: readonly TipoDocumento[] = [
+  "CC",
+  "CE",
+  "PASAPORTE",
+  "PEP",
+  "TI",
+  "NIT",
+] as const;
+
+/** Estado civil (Iceberg). */
+export type EstadoCivil =
+  | "SOLTERO"
+  | "CASADO"
+  | "UNION_LIBRE"
+  | "SEPARADO"
+  | "DIVORCIADO"
+  | "VIUDO";
+
+export const ESTADOS_CIVIL: readonly EstadoCivil[] = [
+  "SOLTERO",
+  "CASADO",
+  "UNION_LIBRE",
+  "SEPARADO",
+  "DIVORCIADO",
+  "VIUDO",
+] as const;
+
+/**
+ * Tipo de cuenta del "certificado bancario". PLACEHOLDER: el conjunto real se
+ * cierra al ver el payload de Iceberg; por ahora los dos tipos usuales en CO.
+ */
+export type TipoCuentaBancaria = "AHORROS" | "CORRIENTE";
+
+export const TIPOS_CUENTA_BANCARIA: readonly TipoCuentaBancaria[] = [
+  "AHORROS",
+  "CORRIENTE",
+] as const;
+
+/**
+ * Fondo/sede: catálogo fijo de sedes/fondos de la institución (estilo `areas`).
+ * Un empleado referencia uno por FK (`EmpleadoContractual.fondoSedeId`).
+ */
+export interface FondoSede {
+  id: string;
+  nombre: string;
+  activo: boolean;
+}
+
 /** Bloque contractual extendido en `funcionarios` (no sensible). */
 export interface EmpleadoContractual {
   areaId: string | null;
@@ -422,6 +478,15 @@ export interface EmpleadoContractual {
   fechaPrimerIngreso: string | null; // ISO date
   observacion: string | null;
   fotoPath: string | null;
+  // ── Atributos Iceberg (no sensibles) ──
+  tipoDocumento: TipoDocumento | null;
+  nacionalidad: string | null;
+  /** Centro de costos (CeCo) al que imputa el empleado. */
+  centroCostos: string | null;
+  /** Categoría (semántica libre por ahora; se contextualiza después). */
+  categoria: string | null;
+  /** FK al catálogo `fondos_sede` (nombre resuelto para la UI, no aquí). */
+  fondoSedeId: string | null;
 }
 
 /** Bloque personal (1-1). */
@@ -435,6 +500,10 @@ export interface DatosPersonales {
   barrio: string | null;
   municipio: string | null;
   correoPersonal: string | null;
+  // ── Atributos Iceberg ──
+  estadoCivil: EstadoCivil | null;
+  /** Lugar de residencia (ciudad/departamento; distinto de `direccion`). */
+  lugarResidencia: string | null;
 }
 
 /** Familiar a cargo (1-N). */
@@ -445,6 +514,8 @@ export interface Familiar {
   nombre: string;
   fechaNacimiento: string | null;
   genero: Genero | null;
+  /** "Persona a cargo" de Iceberg: el familiar depende económicamente. */
+  dependienteEconomico: boolean;
   createdAt: string;
 }
 
@@ -484,7 +555,22 @@ export interface DatosSalariales {
   valorEnLetras: string | null;
   honorarios: number | null;
   eps: string | null;
+  /** Fondo de pensión (AFP). */
   afp: string | null;
+  /** Fondo de cesantías (Iceberg lo trae junto a la pensión). */
+  fondoCesantias: string | null;
+}
+
+/**
+ * Bloque bancario (1-1, SENSIBLE) — el "certificado bancario". Estructura
+ * PLACEHOLDER: los campos se cierran al ver el payload real de Iceberg. Protegido
+ * por RLS `ve_bancario` + guarda de aplicación, igual que el salarial.
+ */
+export interface DatosBancarios {
+  banco: string | null;
+  tipoCuenta: TipoCuentaBancaria | null;
+  numeroCuenta: string | null;
+  titular: string | null;
 }
 
 /**
@@ -505,4 +591,8 @@ export interface ExpedienteCompleto {
   salarialVisible: boolean;
   /** Presente solo si `salarialVisible`; null = visible pero sin datos aún. */
   salarial?: DatosSalariales | null;
+  /** true si el actor puede ver el bloque bancario (aunque esté vacío). */
+  bancarioVisible: boolean;
+  /** Presente solo si `bancarioVisible`; null = visible pero sin datos aún. */
+  bancario?: DatosBancarios | null;
 }

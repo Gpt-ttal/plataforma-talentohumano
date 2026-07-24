@@ -7,6 +7,7 @@
 
 import type {
   EstadoArea,
+  EstadoCivil,
   EstadoGlobal,
   EstadoUsuario,
   EstadoVinculacion,
@@ -17,6 +18,8 @@ import type {
   Parentesco,
   Rol,
   TipoContrato,
+  TipoCuentaBancaria,
+  TipoDocumento,
   TipoVinculacion,
 } from "./domain.js";
 import type {
@@ -27,6 +30,9 @@ import type {
 import type { TipoContenidoLeccion } from "./cursos.js";
 import type { EstadoCapacitacionPlaneada } from "./planificador.js";
 import type { FilaLoteEstado } from "./desvinculaciones.js";
+import type { AccionDiff, OrigenLoteSync } from "./sync.js";
+import { FASES_VACANTE } from "./vacantes.js";
+import type { AprobacionPresupuestoVacante, EstadoVacante, FaseVacante, StatusVacante } from "./vacantes.js";
 
 export const ESTADO_GLOBAL_LABEL: Record<EstadoGlobal, string> = {
   PENDIENTE: "Pendiente",
@@ -316,6 +322,75 @@ export const NIVEL_FORMACION_LABEL: Record<NivelFormacion, string> = {
   POSTDOCTORADO: "Postdoctorado",
 };
 
+// ── Atributos Iceberg (hoja de vida 360°) ────────────────────────────────────
+
+/** Etiqueta legible del tipo de documento de identidad. */
+export const TIPO_DOCUMENTO_LABEL: Record<TipoDocumento, string> = {
+  CC: "Cédula de ciudadanía",
+  CE: "Cédula de extranjería",
+  PASAPORTE: "Pasaporte",
+  PEP: "Permiso especial de permanencia",
+  TI: "Tarjeta de identidad",
+  NIT: "NIT",
+};
+
+/** Etiqueta legible del estado civil. */
+export const ESTADO_CIVIL_LABEL: Record<EstadoCivil, string> = {
+  SOLTERO: "Soltero(a)",
+  CASADO: "Casado(a)",
+  UNION_LIBRE: "Unión libre",
+  SEPARADO: "Separado(a)",
+  DIVORCIADO: "Divorciado(a)",
+  VIUDO: "Viudo(a)",
+};
+
+/** Etiqueta legible del tipo de cuenta bancaria. */
+export const TIPO_CUENTA_BANCARIA_LABEL: Record<TipoCuentaBancaria, string> = {
+  AHORROS: "Ahorros",
+  CORRIENTE: "Corriente",
+};
+
+// ── Sync de personal (Iceberg) ───────────────────────────────────────────────
+// El estado de fila del lote reusa `filaLoteEstadoPill` (Semáforo Único). Lo
+// propio del sync es el ORIGEN del lote y la ACCIÓN por campo del diff.
+
+/** Etiqueta del origen del lote de sync. */
+export const ORIGEN_LOTE_SYNC_LABEL: Record<OrigenLoteSync, string> = {
+  SERVICIO: "Automático (Iceberg)",
+  MANUAL: "Carga manual",
+};
+
+/** Etiqueta de la acción de un campo en el diff de revisión. */
+export const ACCION_DIFF_LABEL: Record<AccionDiff, string> = {
+  CREA: "Nuevo",
+  ACTUALIZA: "Actualiza",
+  SIN_CAMBIO: "Sin cambio",
+  CONFLICTO_MANUAL: "Conflicto manual",
+};
+
+/**
+ * Color de la acción del diff (Regla del Semáforo Único, tokens del Sello):
+ * CREA = ok/verde (alta); ACTUALIZA = info/navy (cambio normal); SIN_CAMBIO =
+ * neutro (no se toca); CONFLICTO_MANUAL = oro (atención: pisa edición manual).
+ */
+export const ACCION_DIFF_BADGE: Record<AccionDiff, string> = {
+  CREA: "bg-estado-okBg text-estado-ok ring-1 ring-estado-ok/30",
+  ACTUALIZA: "bg-estado-infoBg text-estado-info ring-1 ring-estado-info/30",
+  SIN_CAMBIO: "bg-surface-2 text-muted ring-1 ring-border",
+  CONFLICTO_MANUAL: "bg-gold-50 text-gold-700 ring-1 ring-gold-300/60",
+};
+
+/** Pill de la acción del diff ya resuelta: className + etiqueta. */
+export function accionDiffPill(accion: AccionDiff): {
+  className: string;
+  label: string;
+} {
+  return {
+    className: `${PILL_BASE} ${ACCION_DIFF_BADGE[accion]}`,
+    label: ACCION_DIFF_LABEL[accion],
+  };
+}
+
 // ── Capacitaciones ───────────────────────────────────────────────────────────
 
 /** Etiqueta legible del ámbito de una capacitación. */
@@ -459,6 +534,171 @@ export function formatMoneda(valor: number | null | undefined): string {
     maximumFractionDigits: 0,
   });
 }
+
+// ── Vacantes ──────────────────────────────────────────────────────────────────
+
+/** Etiqueta legible del estado capturado del proceso de vacante. */
+export const ESTADO_VACANTE_LABEL: Record<EstadoVacante, string> = {
+  PENDIENTE: "Pendiente",
+  CONTRATADO: "Contratado",
+  CANCELADA: "Cancelada",
+  CERRADA_PROMOCION: "Cerrada por promoción",
+  PAUSADA: "Pausada",
+};
+
+/** Etiqueta legible del STATUS derivado (vigencia de la vacante). */
+export const STATUS_VACANTE_LABEL: Record<StatusVacante, string> = {
+  VIGENTE: "Vigente",
+  VENCIDA: "Vencida",
+  CUBIERTA: "Cubierta",
+  CERRADA: "Cerrada",
+};
+
+/**
+ * Color del STATUS derivado (Regla del Semáforo Único, tokens del Sello):
+ * VIGENTE = ok/verde (proceso activo y sano); VENCIDA = rechazo/rojo;
+ * CUBIERTA = info/navy (posición ya llena); CERRADA = neutro (histórico).
+ */
+export const STATUS_VACANTE_BADGE: Record<StatusVacante, string> = {
+  VIGENTE: "bg-estado-okBg text-estado-ok ring-1 ring-estado-ok/30",
+  VENCIDA: "bg-estado-rechazoBg text-estado-rechazo ring-1 ring-estado-rechazo/40",
+  CUBIERTA: "bg-estado-infoBg text-estado-info ring-1 ring-estado-info/30",
+  CERRADA: "bg-surface-2 text-muted ring-1 ring-border",
+};
+
+export const STATUS_VACANTE_DOT: Record<StatusVacante, string> = {
+  VIGENTE: "bg-estado-ok",
+  VENCIDA: "bg-estado-rechazo",
+  CUBIERTA: "bg-estado-info",
+  CERRADA: "bg-estado-pendiente",
+};
+
+/** Pill de STATUS de vacante ya resuelta: className + punto + etiqueta. */
+export function estadoVacantePill(status: StatusVacante): {
+  className: string;
+  dot: string;
+  label: string;
+} {
+  return {
+    className: `${PILL_BASE} ${STATUS_VACANTE_BADGE[status]}`,
+    dot: STATUS_VACANTE_DOT[status],
+    label: STATUS_VACANTE_LABEL[status],
+  };
+}
+
+/**
+ * Color del estado capturado del ciclo de vida (Regla del Semáforo Único):
+ * PENDIENTE = plata/neutro (en curso); CONTRATADO = ok/verde (objetivo cumplido);
+ * CANCELADA = rechazo/rojo; PAUSADA = oro (a la espera, hito); CERRADA_PROMOCION = info/azul.
+ */
+export const ESTADO_VACANTE_BADGE: Record<EstadoVacante, string> = {
+  PENDIENTE: "bg-surface-2 text-muted ring-1 ring-border",
+  CONTRATADO: "bg-estado-okBg text-estado-ok ring-1 ring-estado-ok/30",
+  CANCELADA: "bg-estado-rechazoBg text-estado-rechazo ring-1 ring-estado-rechazo/40",
+  PAUSADA: "bg-gold-50 text-gold-700 ring-1 ring-gold-300/60",
+  CERRADA_PROMOCION: "bg-estado-infoBg text-estado-info ring-1 ring-estado-info/30",
+};
+
+export const ESTADO_VACANTE_DOT: Record<EstadoVacante, string> = {
+  PENDIENTE: "bg-estado-pendiente",
+  CONTRATADO: "bg-estado-ok",
+  CANCELADA: "bg-estado-rechazo",
+  PAUSADA: "bg-estado-listo",
+  CERRADA_PROMOCION: "bg-estado-info",
+};
+
+/** Pill del estado capturado del ciclo de vida de la vacante ya resuelta. */
+export function estadoCapturadoVacantePill(estado: EstadoVacante): {
+  className: string;
+  dot: string;
+  label: string;
+} {
+  return {
+    className: `${PILL_BASE} ${ESTADO_VACANTE_BADGE[estado]}`,
+    dot: ESTADO_VACANTE_DOT[estado],
+    label: ESTADO_VACANTE_LABEL[estado],
+  };
+}
+
+/** Etiqueta legible de la aprobación presupuestal de la vacante. */
+export const APROBACION_VACANTE_LABEL: Record<AprobacionPresupuestoVacante, string> = {
+  SOLICITADO: "Solicitado",
+  EN_REVISION: "En revisión",
+  APROBADO: "Aprobado",
+  NO_APROBADO: "No aprobado",
+};
+
+/**
+ * Color de la aprobación presupuestal (Regla del Semáforo Único):
+ * SOLICITADO = plata/neutro; EN_REVISION = info/azul; APROBADO = ok/verde;
+ * NO_APROBADO = rechazo/rojo.
+ */
+export const APROBACION_VACANTE_BADGE: Record<AprobacionPresupuestoVacante, string> = {
+  SOLICITADO: "bg-surface-2 text-muted ring-1 ring-border",
+  EN_REVISION: "bg-estado-infoBg text-estado-info ring-1 ring-estado-info/30",
+  APROBADO: "bg-estado-okBg text-estado-ok ring-1 ring-estado-ok/30",
+  NO_APROBADO: "bg-estado-rechazoBg text-estado-rechazo ring-1 ring-estado-rechazo/40",
+};
+
+/** Pill de aprobación presupuestal ya resuelta: className + etiqueta (sin punto). */
+export function aprobacionVacantePill(aprobacion: AprobacionPresupuestoVacante): {
+  className: string;
+  label: string;
+} {
+  return {
+    className: `${PILL_BASE} ${APROBACION_VACANTE_BADGE[aprobacion]}`,
+    label: APROBACION_VACANTE_LABEL[aprobacion],
+  };
+}
+
+/** Etiqueta legible de cada fase del proceso de reclutamiento. */
+export const FASE_VACANTE_LABEL: Record<FaseVacante, string> = {
+  RECLUTAMIENTO: "Reclutamiento",
+  APROBACION_VICERRECTORIA: "Aprobación de Vicerrectoría",
+  PRUEBAS_IDONEIDAD: "Pruebas de idoneidad",
+  PRUEBAS_PSICOTECNICAS: "Pruebas psicotécnicas",
+  EXAMEN_MEDICO: "Examen médico",
+  POLIGRAFIA: "Poligrafía",
+  CONTRATACION: "Contratación",
+};
+
+/** Fase: un solo tono neutro-informativo (progreso, no semáforo de calidad). */
+export const FASE_VACANTE_BADGE = "bg-estado-infoBg text-estado-info ring-1 ring-estado-info/30";
+
+/** Pill de fase ya resuelta: className + etiqueta (fuera del stepper, ej. filtros/listas). */
+export function faseVacantePill(fase: FaseVacante): { className: string; label: string } {
+  return {
+    className: `${PILL_BASE} ${FASE_VACANTE_BADGE}`,
+    label: FASE_VACANTE_LABEL[fase],
+  };
+}
+
+/**
+ * Tono de cada nodo del stepper según su posición relativa a la fase actual
+ * (3 tonos, no 7 colores distintos). El oro queda reservado exclusivamente al
+ * paso "actual" (Regla del Sello) — nunca a un paso completado o pendiente.
+ */
+export const FASE_VACANTE_PASO_TONO: Record<"completado" | "actual" | "pendiente", string> = {
+  completado: "bg-estado-okBg text-estado-ok ring-1 ring-estado-ok/30",
+  actual: "bg-gold-50 text-gold-700 ring-1 ring-gold-400/60",
+  pendiente: "bg-surface-2 text-muted ring-1 ring-border",
+};
+
+/** Índice (0-based) de una fase dentro de la secuencia de las 7 — para el stepper. */
+export function indiceFaseVacante(fase: FaseVacante): number {
+  return FASES_VACANTE.indexOf(fase);
+}
+
+/**
+ * Color del STATUS derivado en HEX (para Recharts, que no admite clases
+ * Tailwind). Misma fuente de verdad que `STATUS_VACANTE_BADGE`/`_DOT`.
+ */
+export const COLOR_STATUS_VACANTE: Record<StatusVacante, string> = {
+  VIGENTE: "#16936A", // estado.ok
+  VENCIDA: "#A4231F", // estado.rechazo
+  CUBIERTA: "#3B6FD4", // estado.info
+  CERRADA: "#8B93A6", // estado.pendiente
+};
 
 /** Iniciales para el avatar del funcionario. */
 export function iniciales(nombre: string): string {

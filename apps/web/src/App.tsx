@@ -27,6 +27,9 @@ import { RegistroAsistenciaPage } from "./pages/asistencia/RegistroAsistenciaPag
 import { PersonalPage } from "./pages/personal/PersonalPage"
 import { ExpedientePage } from "./pages/personal/ExpedientePage"
 import { ImportacionPage } from "./pages/desvinculaciones/ImportacionPage"
+import { VacantesPage } from "./pages/vacantes/VacantesPage"
+import { VacantesResumenPage } from "./pages/vacantes/VacantesResumenPage"
+import { VacanteDetallePage } from "./pages/vacantes/VacanteDetallePage"
 // Cursos & Planificador se cargan bajo demanda: Tiptap (editor de lecciones) y su
 // vendor solo se descargan al entrar al módulo, no en el arranque ni en el login.
 const CursosPage = lazy(() =>
@@ -241,6 +244,33 @@ export function App() {
                 element={
                   <ProtectedRoute roles={["SUPERADMIN", "TALENTO_HUMANO"]}>
                     <ExpedientePage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Vacantes — seguimiento de procesos de contratación (SA + TH). Rutas
+                  hermanas top-level (mismo patrón que /personal + /personal/:id). */}
+              <Route
+                path="/vacantes"
+                element={
+                  <ProtectedRoute roles={["SUPERADMIN", "TALENTO_HUMANO"]}>
+                    <VacantesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/vacantes/resumen"
+                element={
+                  <ProtectedRoute roles={["SUPERADMIN", "TALENTO_HUMANO"]}>
+                    <VacantesResumenPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/vacantes/:id"
+                element={
+                  <ProtectedRoute roles={["SUPERADMIN", "TALENTO_HUMANO"]}>
+                    <VacanteDetallePage />
                   </ProtectedRoute>
                 }
               />

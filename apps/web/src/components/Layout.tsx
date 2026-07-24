@@ -19,6 +19,7 @@ type IconName =
   | "area"
   | "badge"
   | "book"
+  | "briefcase"
   | "calendar"
   | "chevronLeft"
   | "chevronRight"
@@ -52,6 +53,7 @@ const routeLabels: { path: string; title: string; section: string }[] = [
   { path: "/paz-y-salvo/avance", title: "Avance por area", section: "Paz y Salvo" },
   { path: "/archivo", title: "Archivo institucional", section: "Administracion" },
   { path: "/personal", title: "Administracion de personal", section: "Administracion" },
+  { path: "/vacantes", title: "Vacantes", section: "Administracion" },
   { path: "/desvinculaciones/importacion", title: "Importacion masiva", section: "Administracion" },
   { path: "/capacitaciones", title: "Eventos", section: "Formacion" },
   { path: "/cursos", title: "Cursos", section: "Formacion" },
@@ -65,6 +67,8 @@ function iconPath(name: IconName): string {
     area: "M3 21h18M5 21V5a2 2 0 0 1 2-2h7v18M14 8h5a2 2 0 0 1 2 2v11M8 7h2M8 11h2M8 15h2M17 12h1M17 16h1",
     badge: "M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1ZM8 10m-2 0a2 2 0 1 0 4 0 2 2 0 1 0-4 0M5 16c.5-1.5 1.7-2 3-2s2.5.5 3 2M14 9h5M14 13h5",
     book: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z",
+    briefcase:
+      "M4 7h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1ZM8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18",
     calendar: "M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM16 2v4M8 2v4M3 10h18",
     chevronLeft: "M15 18l-6-6 6-6",
     chevronRight: "M9 18l6-6-6-6",
@@ -119,6 +123,13 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
         title: "Paz y Salvo",
         items: [
           {
+            href: "/paz-y-salvo/control-interno",
+            label: "Control Interno",
+            icon: "file",
+            active: (p) => p.startsWith("/paz-y-salvo/control-interno"),
+            status: "live",
+          },
+          {
             href: "/paz-y-salvo/avance",
             label: "Avance por area",
             icon: "dashboard",
@@ -170,6 +181,13 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
             label: "Administracion de personal",
             icon: "badge",
             active: (p) => p.startsWith("/personal"),
+            status: "live",
+          },
+          {
+            href: "/vacantes",
+            label: "Vacantes",
+            icon: "briefcase",
+            active: (p) => p.startsWith("/vacantes"),
             status: "live",
           },
           {
@@ -269,6 +287,13 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
             label: "Administracion de personal",
             icon: "badge",
             active: (p) => p.startsWith("/personal"),
+            status: "live",
+          },
+          {
+            href: "/vacantes",
+            label: "Vacantes",
+            icon: "briefcase",
+            active: (p) => p.startsWith("/vacantes"),
             status: "live",
           },
           {

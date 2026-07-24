@@ -243,13 +243,13 @@ describe("obtenerExpedientePersonal (expediente 360°, solo SA/TH)", () => {
     ).rejects.toBeInstanceOf(ErrorNoEncontrado)
   })
 
-  it("SA/TH: pide el expediente CON el bloque salarial", async () => {
-    const expediente = { empleado: empleadoActivo, salarialVisible: true }
+  it("SA/TH: pide el expediente CON los bloques sensibles (salarial + bancario)", async () => {
+    const expediente = { empleado: empleadoActivo, salarialVisible: true, bancarioVisible: true }
     const repo = { obtenerExpediente: vi.fn().mockResolvedValue(expediente) } as any
     const uc = obtenerExpedientePersonal({ repo })
     const r = await uc(hacerUsuario({ rol: "SUPERADMIN" }), UUID)
     expect(r).toBe(expediente)
-    expect(repo.obtenerExpediente).toHaveBeenCalledWith(UUID, true)
+    expect(repo.obtenerExpediente).toHaveBeenCalledWith(UUID, true, true)
   })
 })
 

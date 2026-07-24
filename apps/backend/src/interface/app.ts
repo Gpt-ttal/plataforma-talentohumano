@@ -16,6 +16,7 @@ import { cursosRouter } from "./routes/cursos.routes.js"
 import { planificadorRouter } from "./routes/planificador.routes.js"
 import { personalRouter } from "./routes/personal.routes.js"
 import { desvinculacionesRouter } from "./routes/desvinculaciones.routes.js"
+import { vacantesRouter } from "./routes/vacantes.routes.js"
 
 /**
  * Ensambla la app Express: hardening (helmet), CORS al origen del frontend,
@@ -55,6 +56,7 @@ export function crearApp() {
   app.use("/api/planificador", planificadorRouter)
   app.use("/api/personal", personalRouter)
   app.use("/api/desvinculaciones", desvinculacionesRouter)
+  app.use("/api/vacantes", vacantesRouter)
   app.use("/api", catalogoRouter)
 
   app.use(errorHandler)

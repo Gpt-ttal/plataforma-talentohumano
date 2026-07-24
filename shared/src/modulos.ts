@@ -48,9 +48,30 @@ export const MODULOS: Modulo[] = [
     estado: "ACTIVO",
   },
   {
+    id: "sync-personal",
+    nombre: "Sincronización de Personal",
+    icono: "iceberg",
+    rutaBase: "/sync-personal",
+    nota: "Ingesta de datos de Iceberg con revisión",
+    rolesQueVen: ["SUPERADMIN", "TALENTO_HUMANO"],
+    // PROXIMO: el backend (dominio + repos) existe, pero aún no hay ruta en la
+    // web (`App.tsx`) ni router HTTP — el tile no debe presentarse como operativo
+    // o rebota a `/inicio`. Volver a "ACTIVO" solo cuando exista su UI enrutada.
+    estado: "PROXIMO",
+  },
+  {
+    id: "vacantes",
+    nombre: "Vacantes",
+    icono: "briefcase",
+    rutaBase: "/vacantes",
+    nota: "Seguimiento de procesos de contratación",
+    rolesQueVen: ["SUPERADMIN", "TALENTO_HUMANO"],
+    estado: "ACTIVO",
+  },
+  {
     id: "reportes",
     nombre: "Reportes",
-    icono: "briefcase",
+    icono: "chart-bar",
     rutaBase: "/reportes",
     nota: "Métricas y exportaciones del proceso",
     rolesQueVen: ["SUPERADMIN", "TALENTO_HUMANO"],

@@ -105,3 +105,18 @@ export { eliminarCapacitacionPlaneada } from "./planificador/eliminarCapacitacio
 // Importación masiva de desvinculaciones
 export { previsualizarImportacionDesvinculaciones } from "./desvinculaciones/previsualizarImportacionDesvinculaciones.js"
 export { confirmarImportacionParcial } from "./desvinculaciones/confirmarImportacionParcial.js"
+
+// Sync de personal (Iceberg): ingesta (servicio/manual) → revisión → confirmación
+export { ingestarLoteSync } from "./sync-personal/ingestarLoteSync.js"
+export { obtenerLoteSync } from "./sync-personal/obtenerLoteSync.js"
+export { confirmarSyncParcial } from "./sync-personal/confirmarSyncParcial.js"
+export { veBancario } from "./personal/obtenerExpedientePersonal.js"
+
+// Vacantes
+export { listarVacantes } from "./vacantes/listarVacantes.js"
+export { obtenerVacante } from "./vacantes/obtenerVacante.js"
+export { crearVacante } from "./vacantes/crearVacante.js"
+export { actualizarVacante } from "./vacantes/actualizarVacante.js"
+export { obtenerDashboardVacantes } from "./vacantes/obtenerDashboardVacantes.js"
+export { obtenerCatalogosVacantes } from "./vacantes/obtenerCatalogosVacantes.js"
+export { obtenerSugerenciasVacante } from "./vacantes/obtenerSugerenciasVacante.js"

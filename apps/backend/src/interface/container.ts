@@ -6,11 +6,13 @@ import { capacitacionRepository } from "../infrastructure/db/capacitacionReposit
 import { cursoRepository } from "../infrastructure/db/cursoRepository.js"
 import { planificadorRepository } from "../infrastructure/db/planificadorRepository.js"
 import { loteImportacionRepository } from "../infrastructure/db/loteImportacionRepository.js"
+import { vacanteRepository } from "../infrastructure/db/vacanteRepository.js"
 import { verificarJwt } from "../infrastructure/auth/supabaseJwtVerifier.js"
 import { supabaseStorage } from "../infrastructure/storage/supabaseStorage.js"
 import {
   abrirRegistro,
   abrirRegistroCurso,
+  actualizarVacante,
   archivarCaso,
   asegurarUsuario,
   asignarRol,
@@ -31,6 +33,7 @@ import {
   crearLeccionCurso,
   crearModuloCurso,
   crearUrlSubidaFoto,
+  crearVacante,
   devolverCasoAArea,
   editarCapacitacion,
   editarCapacitacionPlaneada,
@@ -63,13 +66,16 @@ import {
   listarGestionArea,
   listarInscritosCurso,
   listarUsuarios,
+  listarVacantes,
   marcarLeccionCompletadaCurso,
   moverArea,
   moverLeccionCurso,
   moverModuloCurso,
   obtenerDetalle,
   obtenerCapacitacionPublica,
+  obtenerCatalogosVacantes,
   obtenerCursoPublico,
+  obtenerDashboardVacantes,
   obtenerDetalleCapacitacion,
   obtenerDetalleCurso,
   obtenerEmpleado,
@@ -77,7 +83,9 @@ import {
   obtenerExpedientePersonal,
   obtenerMatriz,
   obtenerMetricas,
+  obtenerSugerenciasVacante,
   obtenerUrlFoto,
+  obtenerVacante,
   previsualizarImportacionDesvinculaciones,
   registrarAsistenciaPublica,
   registrarLiquidacion,
@@ -174,6 +182,13 @@ export const casos = {
     repo: loteImportacionRepository,
   }),
   confirmarImportacionParcial: confirmarImportacionParcial({ repo: loteImportacionRepository }),
+  listarVacantes: listarVacantes({ repo: vacanteRepository }),
+  obtenerVacante: obtenerVacante({ repo: vacanteRepository }),
+  crearVacante: crearVacante({ repo: vacanteRepository }),
+  actualizarVacante: actualizarVacante({ repo: vacanteRepository }),
+  obtenerDashboardVacantes: obtenerDashboardVacantes({ repo: vacanteRepository }),
+  obtenerCatalogosVacantes: obtenerCatalogosVacantes({ repo: vacanteRepository }),
+  obtenerSugerenciasVacante: obtenerSugerenciasVacante({ repo: vacanteRepository }),
 }
 
 export type Casos = typeof casos

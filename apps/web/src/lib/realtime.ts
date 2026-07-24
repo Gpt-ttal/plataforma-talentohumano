@@ -4,8 +4,9 @@ import { supabase } from "./supabase"
 
 /**
  * Sincronía en vivo multi-usuario. Un único canal por sesión autenticada,
- * suscrito a cambios en las tablas de Paz y Salvo, Cursos, Planificador, el
- * expediente 360° de Personal y la importación masiva de desvinculaciones.
+ * suscrito a cambios en las tablas de Paz y Salvo, Capacitaciones, Cursos,
+ * Planificador, Vacantes, el expediente 360° de Personal y la importación
+ * masiva de desvinculaciones.
  * Cada evento invalida las vistas de TanStack Query que dependen de esa
  * tabla → refetch solo de lo necesario.
  *
@@ -28,9 +29,16 @@ export function suscribirRealtime(qc: QueryClient): () => void {
     if (id) qc.invalidateQueries({ queryKey: ["funcionario", id] })
   }
   const invalidarCursos = () => qc.invalidateQueries({ queryKey: ["cursos"] })
+  const invalidarCapacitaciones = () => qc.invalidateQueries({ queryKey: ["capacitaciones"] })
   const invalidarPlanificador = () => qc.invalidateQueries({ queryKey: ["planificador"] })
   const invalidarPersonal = () => qc.invalidateQueries({ queryKey: ["personal"] })
   const invalidarImportacion = () => qc.invalidateQueries({ queryKey: ["importacion"] })
+  const invalidarVacantes = () => {
+    qc.invalidateQueries({ queryKey: ["vacantes"] })
+    // Contratar una vacante crea un funcionario (puente ADR-0009): el maestro de
+    // Personal debe refrescarse aunque el cambio se originara en Vacantes.
+    qc.invalidateQueries({ queryKey: ["personal"] })
+  }
 
   // Se avisa una sola vez por caída (bandera local) para no ser ruidoso en
   // reintentos sucesivos; se resetea en silencio al volver a SUBSCRIBED.
@@ -115,6 +123,17 @@ export function suscribirRealtime(qc: QueryClient): () => void {
       "postgres_changes",
       { event: "*", schema: "public", table: "filas_lote" },
       invalidarImportacion,
+    )
+    .on("postgres_changes", { event: "*", schema: "public", table: "vacantes" }, invalidarVacantes)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "capacitaciones" },
+      invalidarCapacitaciones,
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "asistencias" },
+      invalidarCapacitaciones,
     )
     .subscribe((status) => {
       if (status === "SUBSCRIBED") {

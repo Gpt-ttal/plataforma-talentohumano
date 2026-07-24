@@ -57,4 +57,16 @@ describe("Layout", () => {
     const link = screen.getByRole("link", { name: /Activos fijos/i })
     expect(link).toHaveAttribute("href", "/paz-y-salvo/mi-area?area=1")
   })
+
+  it("muestra a SUPERADMIN el acceso a Control Interno (ruta que ya tiene por rol)", () => {
+    useAuthMock.mockReturnValue({
+      usuario: usuario({ rol: "SUPERADMIN", areaId: null }),
+      logout: vi.fn(),
+    })
+
+    renderEn("/inicio")
+
+    const link = screen.getByRole("link", { name: /Control Interno/i })
+    expect(link).toHaveAttribute("href", "/paz-y-salvo/control-interno")
+  })
 })

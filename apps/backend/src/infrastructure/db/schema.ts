@@ -11,6 +11,7 @@ import {
   unique,
   jsonb,
 } from "drizzle-orm/pg-core"
+import { sql } from "drizzle-orm"
 
 // ── Enums ──────────────────────────────────────────────────────────────────
 
@@ -106,6 +107,58 @@ export const nivelFormacionEnum = pgEnum("nivel_formacion", [
   "POSTDOCTORADO",
 ])
 
+// ── Sync de personal (Iceberg, migración 0019) ──
+export const tipoDocumentoEnum = pgEnum("tipo_documento", [
+  "CC",
+  "CE",
+  "PASAPORTE",
+  "PEP",
+  "TI",
+  "NIT",
+])
+
+export const estadoCivilEnum = pgEnum("estado_civil", [
+  "SOLTERO",
+  "CASADO",
+  "UNION_LIBRE",
+  "SEPARADO",
+  "DIVORCIADO",
+  "VIUDO",
+])
+
+export const tipoCuentaBancariaEnum = pgEnum("tipo_cuenta_bancaria", [
+  "AHORROS",
+  "CORRIENTE",
+])
+
+export const origenLoteSyncEnum = pgEnum("origen_lote_sync", ["SERVICIO", "MANUAL"])
+
+// ── Vacantes (migración 0020) ──
+export const estadoVacanteEnum = pgEnum("estado_vacante", [
+  "PENDIENTE",
+  "CONTRATADO",
+  "CANCELADA",
+  "CERRADA_PROMOCION",
+  "PAUSADA",
+])
+
+export const faseVacanteEnum = pgEnum("fase_vacante", [
+  "RECLUTAMIENTO",
+  "APROBACION_VICERRECTORIA",
+  "PRUEBAS_IDONEIDAD",
+  "PRUEBAS_PSICOTECNICAS",
+  "EXAMEN_MEDICO",
+  "POLIGRAFIA",
+  "CONTRATACION",
+])
+
+export const aprobacionPresupuestoVacanteEnum = pgEnum("aprobacion_presupuesto_vacante", [
+  "SOLICITADO",
+  "EN_REVISION",
+  "APROBADO",
+  "NO_APROBADO",
+])
+
 // ── areas ──────────────────────────────────────────────────────────────────
 
 export const areas = pgTable("areas", {
@@ -142,6 +195,12 @@ export const funcionarios = pgTable("funcionarios", {
   fechaPrimerIngreso: date("fecha_primer_ingreso"),
   observacion: text("observacion"),
   fotoPath: text("foto_path"),
+  // ── Atributos Iceberg no sensibles (migración 0019) ──
+  tipoDocumento: tipoDocumentoEnum("tipo_documento"),
+  nacionalidad: text("nacionalidad"),
+  centroCostos: text("centro_costos"),
+  categoria: text("categoria"),
+  fondoSedeId: uuid("fondo_sede_id").references(() => fondosSede.id),
   estadoGlobal: estadoGlobalEnum("estado_global").notNull().default("PENDIENTE"),
   fechaLiquidacion: timestamp("fecha_liquidacion", { withTimezone: true }),
   fechaLiquidacionGenerada: timestamp("fecha_liquidacion_generada", { withTimezone: true }),
@@ -446,6 +505,9 @@ export const empleadoPersonales = pgTable("empleado_personales", {
   barrio: text("barrio"),
   municipio: text("municipio"),
   correoPersonal: text("correo_personal"),
+  // ── Atributos Iceberg (migración 0019) ──
+  estadoCivil: estadoCivilEnum("estado_civil"),
+  lugarResidencia: text("lugar_residencia"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -458,6 +520,8 @@ export const empleadoFamiliares = pgTable("empleado_familiares", {
   nombre: text("nombre").notNull(),
   fechaNacimiento: date("fecha_nacimiento"),
   genero: generoEnum("genero"),
+  // "Persona a cargo" de Iceberg: el familiar depende económicamente (0019).
+  dependienteEconomico: boolean("dependiente_economico").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -499,5 +563,177 @@ export const empleadoSalarial = pgTable("empleado_salarial", {
   honorarios: numeric("honorarios", { precision: 14, scale: 2 }),
   eps: text("eps"),
   afp: text("afp"),
+  // Fondo de cesantías (Iceberg lo trae junto a la pensión; migración 0019).
+  fondoCesantias: text("fondo_cesantias"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
+// ── Sync de personal (Iceberg, migración 0019) ───────────────────────────────
+// Catálogo de sedes (estilo `areas`), bloque bancario sensible (placeholder) y
+// staging (lote → filas) que reusa `lote_estado`/`fila_lote_estado` de 0017.
+
+export const fondosSede = pgTable("fondos_sede", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nombre: text("nombre").notNull().unique(),
+  activo: boolean("activo").notNull().default(true),
+})
+
+// SENSIBLE: RLS estricta (solo SA/TH, `ve_bancario`). Estructura PLACEHOLDER.
+export const empleadoBancario = pgTable("empleado_bancario", {
+  funcionarioId: uuid("funcionario_id")
+    .primaryKey()
+    .references(() => funcionarios.id, { onDelete: "cascade" }),
+  banco: text("banco"),
+  tipoCuenta: tipoCuentaBancariaEnum("tipo_cuenta"),
+  numeroCuenta: text("numero_cuenta"),
+  titular: text("titular"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const lotesSyncPersonal = pgTable("lotes_sync_personal", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  origen: origenLoteSyncEnum("origen").notNull(),
+  estado: loteEstadoEnum("estado").notNull().default("CARGADO"),
+  totalFilas: integer("total_filas").notNull().default(0),
+  filasConfirmadas: integer("filas_confirmadas").notNull().default(0),
+  creadoPor: text("creado_por").notNull(),
+  idempotencyKey: text("idempotency_key").unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
+// Una fila por registro de Iceberg, NORMALIZADO a columna-por-atributo.
+export const filasSyncPersonal = pgTable(
+  "filas_sync_personal",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    loteId: uuid("lote_id")
+      .notNull()
+      .references(() => lotesSyncPersonal.id, { onDelete: "cascade" }),
+    numeroFila: integer("numero_fila").notNull(),
+    // Identidad / core
+    documento: text("documento").notNull(),
+    nombreCompleto: text("nombre_completo").notNull(),
+    // Personales
+    genero: generoEnum("genero"),
+    tipoDocumento: tipoDocumentoEnum("tipo_documento"),
+    fechaExpedicion: date("fecha_expedicion"),
+    nacionalidad: text("nacionalidad"),
+    fechaNacimiento: date("fecha_nacimiento"),
+    lugarResidencia: text("lugar_residencia"),
+    direccion: text("direccion"),
+    telefono: text("telefono"),
+    barrio: text("barrio"),
+    estadoCivil: estadoCivilEnum("estado_civil"),
+    personasACargo: integer("personas_a_cargo"),
+    correo: text("correo"),
+    // Contractual
+    cargo: text("cargo"),
+    estadoContrato: text("estado_contrato"),
+    centroCostos: text("centro_costos"),
+    fondoSede: text("fondo_sede"),
+    fechaIngreso: date("fecha_ingreso"),
+    fechaFinContrato: date("fecha_fin_contrato"),
+    dependencia: text("dependencia"),
+    tipoEmpleado: tipoVinculacionEnum("tipo_empleado"),
+    tipoContrato: tipoContratoEnum("tipo_contrato"),
+    categoria: text("categoria"),
+    // Salarial (sensible)
+    salario: numeric("salario", { precision: 14, scale: 2 }),
+    eps: text("eps"),
+    fondoPensionCesantias: text("fondo_pension_cesantias"),
+    // Bancario (sensible, placeholder)
+    certificadoBancario: text("certificado_bancario"),
+    // Resultado de validación
+    estado: filaLoteEstadoEnum("estado").notNull(),
+    mensajeError: text("mensaje_error"),
+    funcionarioId: uuid("funcionario_id").references(() => funcionarios.id),
+  },
+  (t) => [unique().on(t.loteId, t.numeroFila)],
+)
+
+// ── Vacantes (migración 0020) ─────────────────────────────────────────────────
+// Catálogos con llave (estilo `fondos_sede`): `clave` (UPPER_SNAKE) es lo que el
+// dominio compara (`shared/src/vacantes.ts`), `nombre` es el display.
+
+export const vacanteModalidades = pgTable("vacante_modalidades", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clave: text("clave").notNull().unique(),
+  nombre: text("nombre").notNull(),
+  activo: boolean("activo").notNull().default(true),
+  orden: integer("orden").notNull(),
+})
+
+export const vacanteDedicaciones = pgTable("vacante_dedicaciones", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clave: text("clave").notNull().unique(),
+  nombre: text("nombre").notNull(),
+  activo: boolean("activo").notNull().default(true),
+  orden: integer("orden").notNull(),
+})
+
+export const vacanteEscalafones = pgTable("vacante_escalafones", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clave: text("clave").notNull().unique(),
+  nombre: text("nombre").notNull(),
+  activo: boolean("activo").notNull().default(true),
+  orden: integer("orden").notNull(),
+})
+
+export const vacanteMotivos = pgTable("vacante_motivos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clave: text("clave").notNull().unique(),
+  nombre: text("nombre").notNull(),
+  activo: boolean("activo").notNull().default(true),
+  orden: integer("orden").notNull(),
+})
+
+export const vacanteFuentes = pgTable("vacante_fuentes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clave: text("clave").notNull().unique(),
+  nombre: text("nombre").notNull(),
+  activo: boolean("activo").notNull().default(true),
+  orden: integer("orden").notNull(),
+})
+
+// Catálogo dedicado de área/programa (migración 0021) — `areas` es el
+// catálogo de dependencias que dan visto bueno en paz y salvo, un dominio
+// distinto y sin traslape con el área/programa de una vacante.
+export const vacanteAreas = pgTable("vacante_areas", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clave: text("clave").notNull().unique(),
+  nombre: text("nombre").notNull(),
+  activo: boolean("activo").notNull().default(true),
+  orden: integer("orden").notNull(),
+})
+
+// Solo campos CAPTURADOS. Los derivados (STATUS, días para vencer, días en
+// proceso, avisos) NUNCA se persisten — se recalculan en cada lectura vía
+// `derivarVacante`/`evaluarFila` (`shared/src/vacantes.ts`).
+export const vacantes = pgTable("vacantes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  requerimiento: text("requerimiento")
+    .notNull()
+    .default(sql`('REQ-' || lpad(nextval('vacantes_requerimiento_seq')::text, 6, '0'))`),
+  cargo: text("cargo").notNull(),
+  posiciones: integer("posiciones").notNull().default(1),
+  areaId: uuid("area_id").references(() => vacanteAreas.id),
+  modalidadId: uuid("modalidad_id").references(() => vacanteModalidades.id),
+  dedicacionId: uuid("dedicacion_id").references(() => vacanteDedicaciones.id),
+  escalafonId: uuid("escalafon_id").references(() => vacanteEscalafones.id),
+  motivoId: uuid("motivo_id").references(() => vacanteMotivos.id),
+  fuenteId: uuid("fuente_id").references(() => vacanteFuentes.id),
+  jefe: text("jefe"),
+  reemplazo: text("reemplazo"),
+  nombreNuevo: text("nombre_nuevo"),
+  salario: numeric("salario", { precision: 14, scale: 2 }),
+  aprobacion: aprobacionPresupuestoVacanteEnum("aprobacion"),
+  fechaAprobacion: date("fecha_aprobacion"),
+  fechaRequerimiento: date("fecha_requerimiento").notNull(),
+  fase: faseVacanteEnum("fase").notNull().default("RECLUTAMIENTO"),
+  estado: estadoVacanteEnum("estado").notNull().default("PENDIENTE"),
+  fechaContratacion: date("fecha_contratacion"),
+  cedula: text("cedula"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })

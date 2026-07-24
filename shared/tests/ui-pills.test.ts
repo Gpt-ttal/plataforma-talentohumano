@@ -2,17 +2,28 @@ import { describe, expect, it } from "vitest";
 import { ESTADOS_AREA, ESTADOS_GLOBAL, ROLES_USUARIO } from "../src/domain";
 import { ESTADOS_REGISTRO } from "../src/capacitaciones";
 import { ESTADOS_CAPACITACION_PLANEADA } from "../src/planificador";
+import { APROBACION_VACANTE_LABEL, FASE_VACANTE_LABEL, STATUS_VACANTE_LABEL } from "../src/ui";
+import { APROBACIONES_PRESUPUESTO_VACANTE, ESTADOS_VACANTE, FASES_VACANTE } from "../src/vacantes";
+import type { StatusVacante } from "../src/vacantes";
 import {
   ESTADO_AREA_LABEL,
   ESTADO_CAP_PLANEADA_LABEL,
   ESTADO_GLOBAL_LABEL,
   ESTADO_REGISTRO_LABEL,
+  ESTADO_VACANTE_LABEL,
   ROL_LABEL,
+  aprobacionVacantePill,
   estadoAreaPill,
   estadoCapacitacionPlaneadaPill,
+  estadoCapturadoVacantePill,
   estadoGlobalPill,
   estadoRegistroPill,
+  estadoVacantePill,
+  faseVacantePill,
+  indiceFaseVacante,
 } from "../src/ui";
+
+const STATUS_VACANTE: readonly StatusVacante[] = ["VIGENTE", "VENCIDA", "CUBIERTA", "CERRADA"];
 
 /**
  * Las pills se centralizan en ui.ts con clases LITERALES (Tailwind no admite
@@ -86,6 +97,68 @@ describe("estadoCapacitacionPlaneadaPill", () => {
     expect(estadoCapacitacionPlaneadaPill("COMPLETADA").className).toContain(
       "estado-info",
     );
+  });
+});
+
+describe("estadoVacantePill", () => {
+  it("cubre todos los STATUS de vacante con className, dot y etiqueta", () => {
+    for (const s of STATUS_VACANTE) {
+      const pill = estadoVacantePill(s);
+      expect(pill.className.length).toBeGreaterThan(0);
+      expect(pill.dot.length).toBeGreaterThan(0);
+      expect(pill.label).toBe(STATUS_VACANTE_LABEL[s]);
+    }
+  });
+
+  it("VIGENTE usa el verde 'ok'; VENCIDA el rojo 'rechazo'", () => {
+    expect(estadoVacantePill("VIGENTE").className).toContain("estado-ok");
+    expect(estadoVacantePill("VENCIDA").className).toContain("estado-rechazo");
+  });
+});
+
+describe("estadoCapturadoVacantePill", () => {
+  it("cubre todos los estados capturados con className, dot y etiqueta", () => {
+    for (const e of ESTADOS_VACANTE) {
+      const pill = estadoCapturadoVacantePill(e);
+      expect(pill.className.length).toBeGreaterThan(0);
+      expect(pill.dot.length).toBeGreaterThan(0);
+      expect(pill.label).toBe(ESTADO_VACANTE_LABEL[e]);
+    }
+  });
+
+  it("CONTRATADO usa el verde 'ok'; CANCELADA el rojo 'rechazo'", () => {
+    expect(estadoCapturadoVacantePill("CONTRATADO").className).toContain("estado-ok");
+    expect(estadoCapturadoVacantePill("CANCELADA").className).toContain("estado-rechazo");
+  });
+});
+
+describe("aprobacionVacantePill", () => {
+  it("cubre todas las aprobaciones presupuestales con className y etiqueta", () => {
+    for (const a of APROBACIONES_PRESUPUESTO_VACANTE) {
+      const pill = aprobacionVacantePill(a);
+      expect(pill.className.length).toBeGreaterThan(0);
+      expect(pill.label).toBe(APROBACION_VACANTE_LABEL[a]);
+    }
+  });
+
+  it("APROBADO usa el verde 'ok'; NO_APROBADO el rojo 'rechazo'", () => {
+    expect(aprobacionVacantePill("APROBADO").className).toContain("estado-ok");
+    expect(aprobacionVacantePill("NO_APROBADO").className).toContain("estado-rechazo");
+  });
+});
+
+describe("faseVacantePill / indiceFaseVacante", () => {
+  it("cubre todas las fases con className y etiqueta", () => {
+    for (const f of FASES_VACANTE) {
+      const pill = faseVacantePill(f);
+      expect(pill.className.length).toBeGreaterThan(0);
+      expect(pill.label).toBe(FASE_VACANTE_LABEL[f]);
+    }
+  });
+
+  it("respeta el orden secuencial de las 7 fases (RECLUTAMIENTO primero, CONTRATACION última)", () => {
+    expect(indiceFaseVacante("RECLUTAMIENTO")).toBe(0);
+    expect(indiceFaseVacante("CONTRATACION")).toBe(FASES_VACANTE.length - 1);
   });
 });
 

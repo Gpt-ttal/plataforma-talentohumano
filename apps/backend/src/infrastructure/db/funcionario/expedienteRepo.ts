@@ -3,6 +3,7 @@ import type {
   CrearExperienciaInput,
   CrearFamiliarInput,
   CrearFormacionInput,
+  DatosBancarios,
   DatosPersonales,
   DatosSalariales,
   EditarContractualInput,
@@ -18,6 +19,7 @@ import type { FuncionarioRepo } from "../../../domain/ports/FuncionarioRepo.js"
 import { ErrorNoEncontrado } from "../../../application/errors.js"
 import { db } from "../client.js"
 import {
+  empleadoBancario,
   empleadoExperiencia,
   empleadoFamiliares,
   empleadoFormacion,
@@ -44,6 +46,11 @@ function mapContractual(r: FuncionarioRow): EmpleadoContractual {
     fechaPrimerIngreso: r.fechaPrimerIngreso ?? null,
     observacion: r.observacion ?? null,
     fotoPath: r.fotoPath ?? null,
+    tipoDocumento: r.tipoDocumento ?? null,
+    nacionalidad: r.nacionalidad ?? null,
+    centroCostos: r.centroCostos ?? null,
+    categoria: r.categoria ?? null,
+    fondoSedeId: r.fondoSedeId ?? null,
   }
 }
 
@@ -52,6 +59,7 @@ type FamiliarRow = typeof empleadoFamiliares.$inferSelect
 type FormacionRow = typeof empleadoFormacion.$inferSelect
 type ExperienciaRow = typeof empleadoExperiencia.$inferSelect
 type SalarialRow = typeof empleadoSalarial.$inferSelect
+type BancarioRow = typeof empleadoBancario.$inferSelect
 
 /** `numeric` de pg vuelve como string; lo convertimos a número (o null). */
 function numOrNull(v: string | null): number | null {
@@ -74,6 +82,8 @@ function mapPersonales(r: PersonalesRow): DatosPersonales {
     barrio: r.barrio ?? null,
     municipio: r.municipio ?? null,
     correoPersonal: r.correoPersonal ?? null,
+    estadoCivil: r.estadoCivil ?? null,
+    lugarResidencia: r.lugarResidencia ?? null,
   }
 }
 
@@ -85,6 +95,7 @@ function mapFamiliar(r: FamiliarRow): Familiar {
     nombre: r.nombre,
     fechaNacimiento: r.fechaNacimiento ?? null,
     genero: r.genero ?? null,
+    dependienteEconomico: r.dependienteEconomico,
     createdAt: r.createdAt.toISOString(),
   }
 }
@@ -124,6 +135,16 @@ function mapSalarial(r: SalarialRow): DatosSalariales {
     honorarios: numOrNull(r.honorarios),
     eps: r.eps ?? null,
     afp: r.afp ?? null,
+    fondoCesantias: r.fondoCesantias ?? null,
+  }
+}
+
+function mapBancario(r: BancarioRow): DatosBancarios {
+  return {
+    banco: r.banco ?? null,
+    tipoCuenta: r.tipoCuenta ?? null,
+    numeroCuenta: r.numeroCuenta ?? null,
+    titular: r.titular ?? null,
   }
 }
 
@@ -161,6 +182,7 @@ export const expedienteRepo: Pick<
   async obtenerExpediente(
     id: string,
     incluyeSalarial: boolean,
+    incluyeBancario: boolean,
   ): Promise<ExpedienteCompleto | null> {
     const [row] = await db
       .select()
@@ -198,6 +220,7 @@ export const expedienteRepo: Pick<
       experiencia: expRows.map(mapExperiencia),
       novedades: novRows.map(mapNovedad),
       salarialVisible: incluyeSalarial,
+      bancarioVisible: incluyeBancario,
     }
 
     if (incluyeSalarial) {
@@ -207,6 +230,15 @@ export const expedienteRepo: Pick<
         .where(eq(empleadoSalarial.funcionarioId, id))
         .limit(1)
       expediente.salarial = salRow ? mapSalarial(salRow) : null
+    }
+
+    if (incluyeBancario) {
+      const [bancRow] = await db
+        .select()
+        .from(empleadoBancario)
+        .where(eq(empleadoBancario.funcionarioId, id))
+        .limit(1)
+      expediente.bancario = bancRow ? mapBancario(bancRow) : null
     }
 
     return expediente

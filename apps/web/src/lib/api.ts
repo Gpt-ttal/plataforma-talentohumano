@@ -4,6 +4,7 @@ import type {
   BucketGestion,
   CambiarEstadoAreaInput,
   CambiarEstadoUsuarioInput,
+  CatalogoVacanteItem,
   DevolverCasoAAreaInput,
   LotePrevisualizacion,
   ResultadoConfirmacionLote,
@@ -20,10 +21,12 @@ import type {
   CrearFamiliarInput,
   CrearFormacionInput,
   CrearLeccionInput,
+  CrearVacanteInput,
   Curso,
   CursoDetalle,
   CursoModulo,
   CursoPublico,
+  DashboardVacantes,
   DatosPersonales,
   DatosSalariales,
   EditarCapacitacionPlaneadaInput,
@@ -31,6 +34,7 @@ import type {
   EditarCursoInput,
   EditarEmpleadoInput,
   EditarLeccionInput,
+  EditarVacanteInput,
   Empleado,
   EmpleadoContractual,
   EmpleadoDetalle,
@@ -43,11 +47,13 @@ import type {
   FiltroEmpleados,
   FiltroFuncionarios,
   FiltroCursos,
+  FiltroVacantes,
   Formacion,
   Funcionario,
   FuncionarioDetalle,
   GuardarPersonalesInput,
   GuardarSalarialInput,
+  HallazgoVacante,
   IngresarCursoInput,
   IngresoCursoResultado,
   InscritoConProgreso,
@@ -59,7 +65,11 @@ import type {
   ResultadoMutacion,
   ResultadoPaginado,
   ResultadoRegistro,
+  SugerenciasVacante,
+  SugerenciasVacanteInput,
   Usuario,
+  Vacante,
+  VacanteDerivada,
 } from "@pys/shared"
 import { supabase } from "./supabase"
 
@@ -160,6 +170,7 @@ async function requestMultipart<T>(path: string, form: FormData): Promise<T> {
 export const api = {
   get: <T>(path: string) => request<T>("GET", path),
   post: <T>(path: string, body?: unknown) => request<T>("POST", path, body),
+  patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, body),
   blob: (path: string) => requestBlob(path),
   multipart: <T>(path: string, form: FormData) => requestMultipart<T>(path, form),
 }
@@ -500,4 +511,45 @@ export const apiPlanificador = {
   editar: (id: string, input: EditarCapacitacionPlaneadaInput) =>
     request<CapacitacionPlaneada>("PATCH", `/planificador/${id}`, input),
   eliminar: (id: string) => api.post<void>(`/planificador/${id}/eliminar`),
+}
+
+/**
+ * Catálogos del módulo de Vacantes (modalidad/dedicación/escalafón/motivo/
+ * fuente + áreas). No vive en `@pys/shared`: es la forma ad hoc que devuelve
+ * `GET /vacantes/catalogos` (espejo de `CatalogosVacantes` en
+ * `apps/backend/src/domain/ports/VacanteRepo.ts` + las áreas fusionadas por
+ * el caso de uso).
+ */
+export interface CatalogosVacantes {
+  modalidades: CatalogoVacanteItem[]
+  dedicaciones: CatalogoVacanteItem[]
+  escalafones: CatalogoVacanteItem[]
+  motivos: CatalogoVacanteItem[]
+  fuentes: CatalogoVacanteItem[]
+  areas: AreaVistoBueno[]
+}
+
+/** Seguimiento de procesos de contratación (Vacantes) — solo SA/TH. */
+export const apiVacantes = {
+  listar: (filtro: FiltroVacantes = {}) =>
+    api.get<ResultadoPaginado<VacanteDerivada>>(
+      `/vacantes${qs({
+        q: filtro.q,
+        estado: filtro.estado,
+        areaId: filtro.areaId,
+        pagina: filtro.pagina,
+        porPagina: filtro.porPagina,
+      })}`,
+    ),
+  detalle: (id: string) => api.get<VacanteDerivada>(`/vacantes/${id}`),
+  crear: (input: CrearVacanteInput) =>
+    api.post<Vacante & { avisos: HallazgoVacante[] }>("/vacantes", input),
+  editar: (id: string, input: EditarVacanteInput) =>
+    api.patch<Vacante & { avisos: HallazgoVacante[] }>(`/vacantes/${id}`, input),
+  dashboard: () => api.get<DashboardVacantes>("/vacantes/dashboard"),
+  catalogos: () => api.get<CatalogosVacantes>("/vacantes/catalogos"),
+  sugerencias: (input: SugerenciasVacanteInput) =>
+    api.get<SugerenciasVacante>(
+      `/vacantes/sugerencias${qs({ areaId: input.areaId, cargo: input.cargo })}`,
+    ),
 }

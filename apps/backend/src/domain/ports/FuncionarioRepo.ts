@@ -136,13 +136,15 @@ export interface FuncionarioRepo {
   obtenerEmpleado(id: string): Promise<EmpleadoDetalle | null>
   /**
    * Expediente 360°: el empleado + todos sus bloques satélite (personales,
-   * familiares, formación, experiencia, novedades) + contractual. El bloque
-   * salarial (sensible) solo se incluye si `incluyeSalarial`; en ese caso
-   * `salarialVisible = true`. `null` si el empleado no existe.
+   * familiares, formación, experiencia, novedades) + contractual. Los bloques
+   * sensibles se incluyen solo si su flag lo permite: `incluyeSalarial` →
+   * `salarialVisible = true`; `incluyeBancario` → `bancarioVisible = true`.
+   * `null` si el empleado no existe.
    */
   obtenerExpediente(
     id: string,
     incluyeSalarial: boolean,
+    incluyeBancario: boolean,
   ): Promise<ExpedienteCompleto | null>
 
   // ── Hoja de vida 360°: captura por bloque satélite (Sprint 2) ───────────────

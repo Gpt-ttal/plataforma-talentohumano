@@ -42,6 +42,16 @@ import { TIPOS_CONTENIDO_LECCION } from "./cursos.js"
 import type { TipoContenidoLeccion } from "./cursos.js"
 import { ESTADOS_CAPACITACION_PLANEADA } from "./planificador.js"
 import type { EstadoCapacitacionPlaneada } from "./planificador.js"
+import {
+  APROBACIONES_PRESUPUESTO_VACANTE,
+  ESTADOS_VACANTE,
+  FASES_VACANTE,
+} from "./vacantes.js"
+import type {
+  AprobacionPresupuestoVacante,
+  EstadoVacante,
+  FaseVacante,
+} from "./vacantes.js"
 
 // Los `as unknown as [T, ...T[]]` preservan el tipo literal del enum (p. ej.
 // `EstadoArea`), no `string`, para que `z.infer` produzca las uniones del dominio
@@ -743,3 +753,164 @@ export const crearUrlSubidaFotoSchema = z
   .object({ extension: z.string().trim().min(1).max(10) })
   .strict()
 export type CrearUrlSubidaFotoInput = z.infer<typeof crearUrlSubidaFotoSchema>
+
+// ── Sync de personal (Iceberg) ───────────────────────────────────────────────
+// Contrato HTTP CRUDO: exactamente los 28 atributos autorizados, con nuestras
+// claves camelCase (n8n mapea Iceberg → este shape). Es la ENTRADA de la capa
+// anticorrupción (ACL): aquí NO se normalizan enums ni fechas — solo se valida la
+// forma. La normalización a columnas tipadas (`FilaSync`) ocurre en el backend.
+// `documento`/`nombreCompleto` son la identidad mínima; el resto es opcional
+// porque no todo registro trae todo. `.strict()` rechaza claves fuera de contrato
+// (detecta deriva temprano). Números y fechas llegan como texto crudo y se
+// parsean en la ACL (evita el borde `coerce("") → 0`).
+const textoCrudo = (max: number) => z.string().trim().max(max).nullable().optional()
+const numeroCrudo = z.union([z.string(), z.number()]).nullable().optional()
+
+export const registroIcebergSchema = z
+  .object({
+    documento: z.string().trim().min(3).max(30),
+    nombreCompleto: z.string().trim().min(2).max(160),
+    sexo: textoCrudo(40),
+    tipoDocumento: textoCrudo(40),
+    fechaExpedicion: textoCrudo(40),
+    nacionalidad: textoCrudo(80),
+    fechaNacimiento: textoCrudo(40),
+    lugarResidencia: textoCrudo(160),
+    direccion: textoCrudo(200),
+    telefono: textoCrudo(40),
+    barrio: textoCrudo(120),
+    estadoCivil: textoCrudo(40),
+    personasACargo: numeroCrudo,
+    correo: textoCrudo(200),
+    cargo: textoCrudo(160),
+    estadoContrato: textoCrudo(80),
+    centroCostos: textoCrudo(80),
+    fondoSede: textoCrudo(160),
+    fechaIngreso: textoCrudo(40),
+    fechaFinContrato: textoCrudo(40),
+    dependencia: textoCrudo(160),
+    tipoEmpleado: textoCrudo(80),
+    tipoContrato: textoCrudo(80),
+    salario: numeroCrudo,
+    categoria: textoCrudo(120),
+    eps: textoCrudo(120),
+    fondoPensionCesantias: textoCrudo(160),
+    certificadoBancario: textoCrudo(500),
+  })
+  .strict()
+export type RegistroIcebergCrudo = z.infer<typeof registroIcebergSchema>
+
+// Ingesta de servicio (n8n → endpoint con API key). Un lote acotado de registros;
+// `max(1000)` protege el wall-clock serverless y el límite de payload.
+export const ingestaSyncSchema = z
+  .object({
+    registros: z.array(registroIcebergSchema).min(1).max(1000),
+  })
+  .strict()
+export type IngestaSyncInput = z.infer<typeof ingestaSyncSchema>
+
+// Carga manual (TH captura en la firma presencial). Mismo contrato crudo; suele
+// ser 1 registro pero se admite el mismo rango que el servicio.
+export const cargarLoteManualSyncSchema = z
+  .object({
+    registros: z.array(registroIcebergSchema).min(1).max(1000),
+  })
+  .strict()
+export type CargarLoteManualSyncInput = z.infer<typeof cargarLoteManualSyncSchema>
+
+// Confirmar (parcial o total) las filas VALIDA seleccionadas de un lote de sync.
+// Espejo de `confirmarImportacionParcialSchema`.
+export const confirmarSyncSchema = z
+  .object({
+    filaIds: z.array(z.string().uuid()).min(1),
+  })
+  .strict()
+export type ConfirmarSyncInput = z.infer<typeof confirmarSyncSchema>
+
+// ── Vacantes ──────────────────────────────────────────────────────────────────
+// Alta/edición del proceso de vacante + filtro del catálogo + sugerencias de
+// autocompletar. Los catálogos (modalidad/dedicación/escalafón/motivo/fuente)
+// viajan como FK (`*Id`, uuid) — el caso de uso resuelve la `clave` para que el
+// dominio (`evaluarFila`/`derivarVacante`) compare valores canónicos. `estado`
+// y `fase` sí son enums de máquina de estados (la lógica los recorre exhaustivamente).
+
+const estadoVacanteEnum = z.enum(ESTADOS_VACANTE as unknown as [EstadoVacante, ...EstadoVacante[]])
+const faseVacanteEnum = z.enum(FASES_VACANTE as unknown as [FaseVacante, ...FaseVacante[]])
+const aprobacionVacanteEnum = z.enum(
+  APROBACIONES_PRESUPUESTO_VACANTE as unknown as [
+    AprobacionPresupuestoVacante,
+    ...AprobacionPresupuestoVacante[],
+  ],
+)
+
+export const crearVacanteSchema = z
+  .object({
+    cargo: z.string().trim().min(2).max(200),
+    posiciones: z.coerce.number().int().min(1),
+    areaId: z.string().uuid().optional(),
+    modalidadId: z.string().uuid().optional(),
+    dedicacionId: z.string().uuid().optional(),
+    escalafonId: z.string().uuid().optional(),
+    motivoId: z.string().uuid().optional(),
+    fuenteId: z.string().uuid().optional(),
+    jefe: z.string().trim().max(200).optional(),
+    reemplazo: z.string().trim().max(200).optional(),
+    nombreNuevo: z.string().trim().max(200).optional(),
+    salario: z.coerce.number().min(0).optional(),
+    aprobacion: aprobacionVacanteEnum.optional(),
+    fechaAprobacion: fechaIso.optional(),
+    fechaRequerimiento: fechaIso,
+    fase: faseVacanteEnum.optional(),
+    estado: estadoVacanteEnum.optional(),
+    fechaContratacion: fechaIso.optional(),
+    cedula: z.string().trim().max(20).optional(),
+  })
+  .strict()
+export type CrearVacanteInput = z.infer<typeof crearVacanteSchema>
+
+// Edición: mismo shape, todo opcional y nullable (borra el campo con `null`).
+// `estado`/`fase` NO son nullable (la máquina de estados siempre exige un valor).
+export const editarVacanteSchema = z
+  .object({
+    cargo: z.string().trim().min(2).max(200).optional(),
+    posiciones: z.coerce.number().int().min(1).optional(),
+    areaId: z.string().uuid().nullable().optional(),
+    modalidadId: z.string().uuid().nullable().optional(),
+    dedicacionId: z.string().uuid().nullable().optional(),
+    escalafonId: z.string().uuid().nullable().optional(),
+    motivoId: z.string().uuid().nullable().optional(),
+    fuenteId: z.string().uuid().nullable().optional(),
+    jefe: z.string().trim().max(200).nullable().optional(),
+    reemplazo: z.string().trim().max(200).nullable().optional(),
+    nombreNuevo: z.string().trim().max(200).nullable().optional(),
+    salario: z.coerce.number().min(0).nullable().optional(),
+    aprobacion: aprobacionVacanteEnum.nullable().optional(),
+    fechaAprobacion: fechaIso.nullable().optional(),
+    fechaRequerimiento: fechaIso.optional(),
+    fase: faseVacanteEnum.optional(),
+    estado: estadoVacanteEnum.optional(),
+    fechaContratacion: fechaIso.nullable().optional(),
+    cedula: z.string().trim().max(20).nullable().optional(),
+  })
+  .strict()
+  .refine((o) => Object.keys(o).length > 0, {
+    message: "Debe modificar al menos un campo.",
+  })
+export type EditarVacanteInput = z.infer<typeof editarVacanteSchema>
+
+export const filtroVacantesSchema = z.object({
+  q: z.string().optional(),
+  estado: estadoVacanteEnum.optional(),
+  areaId: z.string().uuid().optional(),
+  pagina: z.coerce.number().int().min(1).optional(),
+  porPagina: z.coerce.number().int().min(1).max(100).optional(),
+})
+export type FiltroVacantesInput = z.infer<typeof filtroVacantesSchema>
+
+// Autocompletar: a partir de área/cargo, sugiere jefe/dedicación/modalidad de
+// vacantes previas equivalentes.
+export const sugerenciasVacanteSchema = z.object({
+  areaId: z.string().uuid().optional(),
+  cargo: z.string().trim().min(1).optional(),
+})
+export type SugerenciasVacanteInput = z.infer<typeof sugerenciasVacanteSchema>
