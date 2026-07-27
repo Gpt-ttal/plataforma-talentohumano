@@ -40,6 +40,10 @@
   --estado-infoBg: 232 239 252;
   --estado-paz: 30 122 82;
   --estado-pazBg: 227 242 234;
+  /* Aviso ámbar (7º dominio semántico): advertencia informativa, distinta del
+     oro-hito. Devuelve significado al oro reservándolo a acción/hito. */
+  --estado-aviso: 180 83 9;
+  --estado-avisoBg: 254 243 199;
 
   --chart-axis: 105 112 128;
   --chart-grid: 224 228 236;
@@ -73,6 +77,8 @@ html.dark {
   --estado-infoBg: 21 35 56;
   --estado-paz: 101 218 160;
   --estado-pazBg: 16 40 30;
+  --estado-aviso: 251 191 36;
+  --estado-avisoBg: 55 41 12;
 
   --chart-axis: 154 166 182;
   --chart-grid: 39 49 63;

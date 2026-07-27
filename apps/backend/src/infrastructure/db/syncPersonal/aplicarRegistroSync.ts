@@ -81,6 +81,24 @@ export async function aplicarRegistroSync(
     .limit(1)
   const creado = !actual
 
+  // Un empleado retirado/en trámite/archivado (`fecha_retiro` seteada) tiene su
+  // maestro CONGELADO para el circuito de Paz y Salvo: un sync rezagado NO debe
+  // mutar sus datos descriptivos. Se omite y se audita.
+  if (actual && actual.fechaRetiro !== null) {
+    await registrarEvento(
+      {
+        entidadTipo: "funcionario",
+        entidadId: actual.id,
+        accion: "SYNC_OMITIDO_RETIRADO",
+        actorNombre: autor?.trim() || "Sync de Personal",
+        estadoNuevo: { documento: fila.documento },
+        metadata: { loteFilaId: fila.id, origen: "SYNC" },
+      },
+      ex,
+    )
+    return { funcionarioId: actual.id, creado: false }
+  }
+
   // Fondo/sede: nombre → FK. Sin match → null (best-effort) + se audita abajo.
   let fondoSedeId: string | null = null
   let fondoSedeSinMatch = false
@@ -100,8 +118,10 @@ export async function aplicarRegistroSync(
   patchFunc.nombreCompleto = fila.nombreCompleto
   anotar("nombreCompleto", actual?.nombreCompleto, fila.nombreCompleto)
   if (trae(fila.cargo)) {
+    // `cargo` lo administra Personal por novedad auditada: el sync lo usa como
+    // fuente inicial en el ALTA pero NO lo pisa en un empleado existente (se
+    // excluye del patch de update abajo). Por eso no se audita como sobrescritura.
     patchFunc.cargo = fila.cargo
-    anotar("cargo", actual?.cargo, fila.cargo)
   }
   if (trae(fila.dependencia)) {
     patchFunc.areaOrigen = fila.dependencia
@@ -124,8 +144,9 @@ export async function aplicarRegistroSync(
     anotar("fechaIngreso", actual?.fechaIngreso, fila.fechaIngreso)
   }
   if (trae(fila.fechaFinContrato)) {
+    // Igual que `cargo`: fuente inicial en el ALTA, no se pisa en update
+    // (Personal la administra por novedad auditada).
     patchFunc.fechaFinContrato = fila.fechaFinContrato
-    anotar("fechaFinContrato", actual?.fechaFinContrato, fila.fechaFinContrato)
   }
   if (trae(fila.tipoDocumento)) {
     patchFunc.tipoDocumento = fila.tipoDocumento
@@ -151,7 +172,12 @@ export async function aplicarRegistroSync(
   let funcionarioId: string
   if (actual) {
     funcionarioId = actual.id
-    await ex.update(funcionarios).set(patchFunc).where(eq(funcionarios.id, actual.id))
+    // Personal administra `cargo` y `fechaFinContrato` vía novedad auditada; el
+    // sync NO los pisa en un empleado ya existente (sí los toma en el alta).
+    const patchUpdate = { ...patchFunc }
+    delete patchUpdate.cargo
+    delete patchUpdate.fechaFinContrato
+    await ex.update(funcionarios).set(patchUpdate).where(eq(funcionarios.id, actual.id))
   } else {
     // Alta nueva (maestro): NO inicia trámite (fecha_retiro NULL). `cargo`/`areaOrigen`
     // son NOT NULL en el esquema; si Iceberg no los trae, placeholder vacío.

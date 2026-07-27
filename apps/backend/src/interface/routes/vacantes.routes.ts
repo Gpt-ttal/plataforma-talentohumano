@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { casos, requireAuth } from "../container.js"
+import { casos, requireAuth, requirePermiso } from "../container.js"
 import { asyncHandler } from "../asyncHandler.js"
 import { requireRol } from "../middleware/requireRol.js"
 import { requireActivo } from "../middleware/requireActivo.js"
@@ -13,6 +13,7 @@ export const vacantesRouter = Router()
 
 vacantesRouter.param("id", paramUuid("id"))
 vacantesRouter.use(requireAuth, requireActivo)
+vacantesRouter.use(requirePermiso("vacantes"))
 
 const ROLES_VACANTES = ["SUPERADMIN", "TALENTO_HUMANO"] as const
 

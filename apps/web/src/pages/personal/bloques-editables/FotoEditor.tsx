@@ -50,13 +50,15 @@ export function FotoEditor({
         <img
           src={foto.url}
           alt={nombre}
+          loading="lazy"
+          decoding="async"
           className="h-14 w-14 shrink-0 rounded-lg object-cover shadow-sm ring-1 ring-gold-200/60"
         />
       ) : (
         <Avatar nombre={nombre} size="lg" />
       )}
       <div className="flex flex-col gap-1">
-        <label className="cursor-pointer text-xs font-semibold text-navy-700 hover:text-gold-600 dark:text-foreground">
+        <label className="inline-flex min-h-[44px] cursor-pointer items-center text-sm font-semibold text-navy-700 hover:text-gold-600 dark:text-foreground">
           {isLoading && tieneFoto ? "Cargando…" : pending ? "Subiendo…" : "Cambiar foto"}
           <input
             type="file"
@@ -71,12 +73,16 @@ export function FotoEditor({
             type="button"
             onClick={() => void quitar()}
             disabled={pending}
-            className="text-left text-xs font-medium text-silver-600 hover:text-estado-rechazo"
+            className="inline-flex min-h-[44px] items-center text-left text-sm font-medium text-silver-600 hover:text-estado-rechazo"
           >
             Quitar foto
           </button>
         )}
-        {error && <p className="max-w-[12rem] text-xs text-estado-rechazo">{error}</p>}
+        {error && (
+          <p role="alert" className="max-w-[12rem] text-sm text-estado-rechazo">
+            {error}
+          </p>
+        )}
       </div>
     </div>
   )

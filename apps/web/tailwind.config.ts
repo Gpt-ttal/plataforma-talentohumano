@@ -80,6 +80,8 @@ const config: Config = {
           infoBg: "rgb(var(--estado-infoBg) / <alpha-value>)",
           paz: "rgb(var(--estado-paz) / <alpha-value>)",
           pazBg: "rgb(var(--estado-pazBg) / <alpha-value>)",
+          aviso: "rgb(var(--estado-aviso) / <alpha-value>)",
+          avisoBg: "rgb(var(--estado-avisoBg) / <alpha-value>)",
         },
       },
       fontFamily: {

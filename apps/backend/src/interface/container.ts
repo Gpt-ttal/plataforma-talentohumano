@@ -1,6 +1,8 @@
 import { env } from "../config/env.js"
 import { areaRepository } from "../infrastructure/db/areaRepository.js"
 import { usuarioRepository } from "../infrastructure/db/usuarioRepository.js"
+import { preaprobacionRepository } from "../infrastructure/db/preaprobacionRepository.js"
+import { permisoRepository } from "../infrastructure/db/permisoRepository.js"
 import { funcionarioRepository } from "../infrastructure/db/funcionarioRepository.js"
 import { capacitacionRepository } from "../infrastructure/db/capacitacionRepository.js"
 import { cursoRepository } from "../infrastructure/db/cursoRepository.js"
@@ -12,7 +14,9 @@ import { supabaseStorage } from "../infrastructure/storage/supabaseStorage.js"
 import {
   abrirRegistro,
   abrirRegistroCurso,
+  actualizarPermisosRol,
   actualizarVacante,
+  cargarMatriz,
   archivarCaso,
   asegurarUsuario,
   asignarRol,
@@ -33,8 +37,10 @@ import {
   crearLeccionCurso,
   crearModuloCurso,
   crearUrlSubidaFoto,
+  crearPreaprobado,
   crearVacante,
   devolverCasoAArea,
+  eliminarPreaprobado,
   editarCapacitacion,
   editarCapacitacionPlaneada,
   editarContractual,
@@ -65,7 +71,10 @@ import {
   listarFuncionarios,
   listarGestionArea,
   listarInscritosCurso,
+  listarMatrizPermisos,
+  listarPreaprobados,
   listarUsuarios,
+  modulosVisibles,
   listarVacantes,
   marcarLeccionCompletadaCurso,
   moverArea,
@@ -93,6 +102,7 @@ import {
   renombrarArea,
 } from "../application/index.js"
 import { crearRequireAuth } from "./middleware/requireAuth.js"
+import { crearRequirePermiso } from "./middleware/requirePermiso.js"
 
 /**
  * Composition root: inyecta los repos Drizzle en los casos de uso y arma el
@@ -102,9 +112,14 @@ import { crearRequireAuth } from "./middleware/requireAuth.js"
  */
 const asegurar = asegurarUsuario({
   repo: usuarioRepository,
+  preRepo: preaprobacionRepository,
   superadminEmail: env.SUPERADMIN_EMAIL,
   dominioPermitido: env.DOMINIO_PERMITIDO,
 })
+
+// Loader de la matriz de permisos (lectura fresca por request, con fallback a la
+// semilla de MODULOS mientras la 0023 no esté aplicada).
+const cargador = cargarMatriz({ repo: permisoRepository })
 
 export const casos = {
   listarFuncionarios: listarFuncionarios({ repo: funcionarioRepository }),
@@ -128,6 +143,12 @@ export const casos = {
   asignarRol: asignarRol({ repo: usuarioRepository }),
   cambiarEstadoUsuario: cambiarEstadoUsuario({ repo: usuarioRepository }),
   listarUsuarios: listarUsuarios({ repo: usuarioRepository }),
+  listarPreaprobados: listarPreaprobados({ repo: preaprobacionRepository }),
+  crearPreaprobado: crearPreaprobado({ repo: preaprobacionRepository }),
+  eliminarPreaprobado: eliminarPreaprobado({ repo: preaprobacionRepository }),
+  listarMatrizPermisos: listarMatrizPermisos({ cargador }),
+  actualizarPermisosRol: actualizarPermisosRol({ repo: permisoRepository }),
+  modulosVisibles: modulosVisibles({ cargador }),
   listarCapacitaciones: listarCapacitaciones({ repo: capacitacionRepository }),
   crearCapacitacion: crearCapacitacion({ repo: capacitacionRepository }),
   obtenerDetalleCapacitacion: obtenerDetalleCapacitacion({ repo: capacitacionRepository }),
@@ -194,3 +215,9 @@ export const casos = {
 export type Casos = typeof casos
 
 export const requireAuth = crearRequireAuth({ verificar: verificarJwt, asegurar })
+
+/**
+ * `requirePermiso(moduloId, nivel)` — se monta DESPUÉS de `requireRol` en cada
+ * router de módulo. Suma a la guarda de rol: la matriz solo puede restar acceso.
+ */
+export const requirePermiso = crearRequirePermiso({ nivelDe: cargador.nivelDe })

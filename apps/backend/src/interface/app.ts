@@ -8,6 +8,8 @@ import { errorHandler } from "./middleware/errorHandler.js"
 import { authRouter } from "./routes/auth.routes.js"
 import { funcionariosRouter } from "./routes/funcionarios.routes.js"
 import { usuariosRouter } from "./routes/usuarios.routes.js"
+import { preaprobadosRouter } from "./routes/preaprobados.routes.js"
+import { permisosRouter } from "./routes/permisos.routes.js"
 import { catalogoRouter } from "./routes/catalogo.routes.js"
 import { areasRouter } from "./routes/areas.routes.js"
 import { archivoRouter } from "./routes/archivo.routes.js"
@@ -48,7 +50,10 @@ export function crearApp() {
   app.use("/api", rateLimit({ windowMs: 60_000, limit: 120 }))
   app.use("/api/auth", authRouter)
   app.use("/api/funcionarios", funcionariosRouter)
+  // Antes de `/api/usuarios` para que la ruta más específica gane el match.
+  app.use("/api/usuarios/preaprobados", preaprobadosRouter)
   app.use("/api/usuarios", usuariosRouter)
+  app.use("/api/permisos", permisosRouter)
   app.use("/api/areas", areasRouter)
   app.use("/api/archivo", archivoRouter)
   app.use("/api/capacitaciones", capacitacionesRouter)

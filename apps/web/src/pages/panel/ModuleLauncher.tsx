@@ -3,6 +3,7 @@ import { modulosParaRol, rutaOficinaPorRol } from "@pys/shared"
 import type { Modulo, RolUsuario } from "@pys/shared"
 import { Icon } from "../../components/ui/dash/Icon"
 import type { IconName } from "../../components/ui/dash/Icon"
+import { useModulosVisibles } from "../../hooks/usePermisos"
 
 /**
  * Lanzador de módulos compacto del Panel. Conserva la visión de "App madre"
@@ -66,7 +67,11 @@ function ModuloProximamente({ titulo, icono }: { titulo: string; icono: IconName
 }
 
 export function ModuleLauncher({ rol }: { rol: RolUsuario }) {
-  const modulos = modulosParaRol(rol)
+  // La matriz RBAC solo FILTRA lo que el rol ya vería; `null` (cargando/fallo) = todo.
+  const visibles = useModulosVisibles()
+  const modulos = modulosParaRol(rol).filter(
+    (m) => !visibles || visibles.has(m.id),
+  )
   return (
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {modulos.map((mod) =>

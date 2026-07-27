@@ -4,14 +4,11 @@ import { toast } from "sonner"
 import { ApiError } from "../../lib/api"
 import { useCrearVacante, useSugerenciasVacante, useVacantesCatalogos } from "../../hooks/useVacantes"
 import { Modal } from "../../components/ui/Modal"
-
-const inputCls =
-  "rounded-lg border border-silver-300 bg-white px-3 py-2 text-sm text-navy-800 focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400 disabled:opacity-50 dark:bg-surface-2 dark:text-foreground dark:border-border"
-const labelTextCls = "text-[11px] font-semibold uppercase tracking-wide text-silver-600"
+import { inputCls, labelTextCls } from "../personal/bloques-editables/compartido"
 
 function SugeridoBadge() {
   return (
-    <span className="ml-1.5 rounded-full bg-gold-50 px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-gold-700">
+    <span className="ml-1.5 rounded-full bg-estado-infoBg px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-estado-info">
       Sugerido
     </span>
   )
@@ -118,14 +115,17 @@ export function NuevaVacanteModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Modal onClose={onClose} ariaLabel="Nueva vacante">
+    <Modal onClose={onClose} ariaLabelledby="titulo-nueva-vacante">
       <div className="space-y-4">
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-silver-600">
+        <h2 id="titulo-nueva-vacante" className="font-display text-lg font-semibold text-navy-900 dark:text-foreground">
           Nueva vacante
-        </span>
+        </h2>
 
         {error && (
-          <div className="flex items-center justify-between gap-3 rounded-lg bg-estado-rechazoBg px-3 py-2 text-sm text-estado-rechazo">
+          <div
+            role="alert"
+            className="flex items-center justify-between gap-3 rounded-lg bg-estado-rechazoBg px-3 py-2 text-sm text-estado-rechazo"
+          >
             <span>{error}</span>
             <button
               type="button"
@@ -258,7 +258,7 @@ export function NuevaVacanteModal({ onClose }: { onClose: () => void }) {
           type="button"
           disabled={!puedeCrear}
           onClick={() => void enviar()}
-          className="inline-flex items-center gap-2 rounded-lg bg-navy-deep px-4 py-2 text-sm font-semibold text-white shadow-luxe ring-1 ring-gold/40 transition hover:shadow-gold disabled:opacity-50"
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-navy-deep px-4 py-2 text-sm font-semibold text-white shadow-luxe ring-1 ring-gold/40 transition hover:shadow-gold disabled:opacity-50"
         >
           {crear.isPending && (
             <span

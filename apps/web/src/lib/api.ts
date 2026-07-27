@@ -5,6 +5,7 @@ import type {
   CambiarEstadoAreaInput,
   CambiarEstadoUsuarioInput,
   CatalogoVacanteItem,
+  CeldaPermiso,
   DevolverCasoAAreaInput,
   LotePrevisualizacion,
   ResultadoConfirmacionLote,
@@ -21,6 +22,7 @@ import type {
   CrearFamiliarInput,
   CrearFormacionInput,
   CrearLeccionInput,
+  CrearPreaprobadoInput,
   CrearVacanteInput,
   Curso,
   CursoDetalle,
@@ -60,7 +62,10 @@ import type {
   Leccion,
   MatrizGestion,
   MetricasDashboard,
+  NivelPermiso,
+  Preaprobacion,
   RegistrarAsistenciaInput,
+  RolUsuario,
   RegistrarNovedadInput,
   ResultadoMutacion,
   ResultadoPaginado,
@@ -170,6 +175,7 @@ async function requestMultipart<T>(path: string, form: FormData): Promise<T> {
 export const api = {
   get: <T>(path: string) => request<T>("GET", path),
   post: <T>(path: string, body?: unknown) => request<T>("POST", path, body),
+  put: <T>(path: string, body?: unknown) => request<T>("PUT", path, body),
   patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, body),
   blob: (path: string) => requestBlob(path),
   multipart: <T>(path: string, form: FormData) => requestMultipart<T>(path, form),
@@ -490,6 +496,24 @@ export const apiUsuarios = {
     }),
   cambiarEstado: (input: CambiarEstadoUsuarioInput) =>
     api.post<Usuario>(`/usuarios/${input.usuarioId}/estado`, { estado: input.estado }),
+}
+
+/** RBAC editable (matriz rol × módulo). `matriz`/`actualizarRol` solo SUPERADMIN. */
+export const apiPermisos = {
+  matriz: () => api.get<CeldaPermiso[]>("/permisos"),
+  actualizarRol: (rol: RolUsuario, celdas: { moduloId: string; nivel: NivelPermiso }[]) =>
+    api.put<void>(`/permisos/${rol}`, { celdas }),
+  /** Módulos visibles para el usuario autenticado (cualquier rol activo). */
+  mios: () => api.get<string[]>("/permisos/mios"),
+}
+
+/** Allowlist de acceso (pre-aprobación por correo) — solo SUPERADMIN. */
+export const apiPreaprobados = {
+  listar: () => api.get<Preaprobacion[]>("/usuarios/preaprobados"),
+  crear: (input: CrearPreaprobadoInput) =>
+    api.post<Preaprobacion>("/usuarios/preaprobados", input),
+  eliminar: (email: string) =>
+    api.post<void>("/usuarios/preaprobados/eliminar", { email }),
 }
 
 /** CRUD del Planificador (agenda anual de capacitaciones planeadas). */

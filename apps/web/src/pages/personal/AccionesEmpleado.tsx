@@ -4,9 +4,8 @@ import { NOVEDAD_TIPO_LABEL, TIPO_VINCULACION_LABEL, TIPOS_VINCULACION } from "@
 import type { Empleado, NovedadTipo, TipoVinculacion } from "@pys/shared"
 import { ApiError } from "../../lib/api"
 import { useEditarEmpleado, useFinalizarContrato, useRegistrarNovedad } from "../../hooks/usePersonal"
-
-const inputCls =
-  "rounded-lg border border-silver-300 bg-white px-3 py-2 text-sm text-navy-800 focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400 disabled:opacity-50 dark:bg-surface-2 dark:text-foreground dark:border-border"
+import { useGuardaCierre } from "../../components/ui/Modal"
+import { CampoForm, inputCls, MensajeError } from "./bloques-editables/compartido"
 
 /**
  * Acciones de gestión del empleado, todas con confirmación inline (sin modales
@@ -37,6 +36,7 @@ function ActualizarDatos({ empleado: e }: { empleado: Empleado }) {
   const [correoInstitucional, setCorreoInstitucional] = useState(e.correoInstitucional ?? "")
   const [telefono, setTelefono] = useState(e.telefono ?? "")
   const [error, setError] = useState<string | null>(null)
+  useGuardaCierre(abierto, "empleado-actualizar")
 
   function reset() {
     setNombreCompleto(e.nombreCompleto)
@@ -82,7 +82,7 @@ function ActualizarDatos({ empleado: e }: { empleado: Empleado }) {
       <button
         type="button"
         onClick={() => setAbierto(true)}
-        className="w-full rounded-lg border border-silver-300 px-4 py-2 text-sm font-semibold text-navy-700 transition hover:border-gold-400 dark:border-border dark:text-foreground"
+        className="inline-flex min-h-[44px] w-full items-center justify-center rounded-lg border border-silver-300 px-4 py-2 text-sm font-semibold text-navy-700 transition hover:border-gold-400 dark:border-border dark:text-foreground"
       >
         Actualizar datos
       </button>
@@ -92,44 +92,54 @@ function ActualizarDatos({ empleado: e }: { empleado: Empleado }) {
   return (
     <div className="space-y-3 rounded-lg border border-silver-300 p-3 dark:border-border">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <input
-          value={nombreCompleto}
-          maxLength={160}
-          onChange={(ev) => setNombreCompleto(ev.target.value)}
-          placeholder="Nombre completo"
-          disabled={editar.isPending}
-          className={inputCls}
-        />
-        <select
-          value={tipoVinculacion}
-          onChange={(ev) => setTipoVinculacion(ev.target.value as TipoVinculacion)}
-          disabled={editar.isPending}
-          className={inputCls}
-        >
-          {TIPOS_VINCULACION.map((t) => (
-            <option key={t} value={t}>
-              {TIPO_VINCULACION_LABEL[t]}
-            </option>
-          ))}
-        </select>
-        <input
-          value={cargo}
-          maxLength={160}
-          onChange={(ev) => setCargo(ev.target.value)}
-          placeholder="Cargo"
-          disabled={editar.isPending}
-          className={inputCls}
-        />
-        <input
-          value={areaOrigen}
-          maxLength={160}
-          onChange={(ev) => setAreaOrigen(ev.target.value)}
-          placeholder="Área actual"
-          disabled={editar.isPending}
-          className={inputCls}
-        />
-        <label className="flex flex-col gap-1">
-          <span className="text-[11px] uppercase tracking-wide text-silver-600">Fecha de ingreso</span>
+        <CampoForm label="Nombre completo">
+          <input
+            value={nombreCompleto}
+            maxLength={160}
+            onChange={(ev) => setNombreCompleto(ev.target.value)}
+            placeholder="Nombre y apellidos"
+            disabled={editar.isPending}
+            aria-invalid={!!error}
+            className={inputCls}
+          />
+        </CampoForm>
+        <CampoForm label="Tipo de vínculo">
+          <select
+            value={tipoVinculacion}
+            onChange={(ev) => setTipoVinculacion(ev.target.value as TipoVinculacion)}
+            disabled={editar.isPending}
+            className={inputCls}
+          >
+            {TIPOS_VINCULACION.map((t) => (
+              <option key={t} value={t}>
+                {TIPO_VINCULACION_LABEL[t]}
+              </option>
+            ))}
+          </select>
+        </CampoForm>
+        <CampoForm label="Cargo">
+          <input
+            value={cargo}
+            maxLength={160}
+            onChange={(ev) => setCargo(ev.target.value)}
+            placeholder="p. ej. Analista"
+            disabled={editar.isPending}
+            aria-invalid={!!error}
+            className={inputCls}
+          />
+        </CampoForm>
+        <CampoForm label="Área actual">
+          <input
+            value={areaOrigen}
+            maxLength={160}
+            onChange={(ev) => setAreaOrigen(ev.target.value)}
+            placeholder="p. ej. Sistemas"
+            disabled={editar.isPending}
+            aria-invalid={!!error}
+            className={inputCls}
+          />
+        </CampoForm>
+        <CampoForm label="Fecha de ingreso">
           <input
             type="date"
             value={fechaIngreso}
@@ -137,9 +147,8 @@ function ActualizarDatos({ empleado: e }: { empleado: Empleado }) {
             disabled={editar.isPending}
             className={inputCls}
           />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-[11px] uppercase tracking-wide text-silver-600">Fin de contrato</span>
+        </CampoForm>
+        <CampoForm label="Fin de contrato">
           <input
             type="date"
             value={fechaFinContrato}
@@ -147,31 +156,35 @@ function ActualizarDatos({ empleado: e }: { empleado: Empleado }) {
             disabled={editar.isPending}
             className={inputCls}
           />
-        </label>
-        <input
-          type="email"
-          value={correoInstitucional}
-          maxLength={200}
-          onChange={(ev) => setCorreoInstitucional(ev.target.value)}
-          placeholder="Correo institucional"
-          disabled={editar.isPending}
-          className={inputCls}
-        />
-        <input
-          value={telefono}
-          maxLength={40}
-          onChange={(ev) => setTelefono(ev.target.value)}
-          placeholder="Teléfono"
-          disabled={editar.isPending}
-          className={inputCls}
-        />
+        </CampoForm>
+        <CampoForm label="Correo institucional">
+          <input
+            type="email"
+            value={correoInstitucional}
+            maxLength={200}
+            onChange={(ev) => setCorreoInstitucional(ev.target.value)}
+            placeholder="nombre@americana.edu.co"
+            disabled={editar.isPending}
+            className={inputCls}
+          />
+        </CampoForm>
+        <CampoForm label="Teléfono">
+          <input
+            value={telefono}
+            maxLength={40}
+            onChange={(ev) => setTelefono(ev.target.value)}
+            placeholder="Opcional"
+            disabled={editar.isPending}
+            className={inputCls}
+          />
+        </CampoForm>
       </div>
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={() => void confirmar()}
           disabled={editar.isPending}
-          className="rounded-lg bg-navy-deep px-3 py-2 text-sm font-semibold text-white shadow-luxe ring-1 ring-gold/40 disabled:opacity-50"
+          className="inline-flex min-h-[44px] items-center rounded-lg bg-navy-deep px-3 py-2 text-sm font-semibold text-white shadow-luxe ring-1 ring-gold/40 disabled:opacity-50"
         >
           {editar.isPending ? "Guardando…" : "Guardar cambios"}
         </button>
@@ -182,12 +195,12 @@ function ActualizarDatos({ empleado: e }: { empleado: Empleado }) {
             setAbierto(false)
           }}
           disabled={editar.isPending}
-          className="rounded-lg px-3 py-2 text-sm font-semibold text-silver-600 hover:text-navy-800"
+          className="inline-flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm font-semibold text-silver-600 hover:text-navy-800"
         >
           Cancelar
         </button>
       </div>
-      {error && <p className="text-xs text-estado-rechazo">{error}</p>}
+      <MensajeError>{error}</MensajeError>
     </div>
   )
 }
@@ -199,6 +212,7 @@ function FinalizarContrato({ id }: { id: string }) {
   const [confirmando, setConfirmando] = useState(false)
   const [fechaRetiro, setFechaRetiro] = useState("")
   const [error, setError] = useState<string | null>(null)
+  useGuardaCierre(confirmando, "empleado-finalizar")
 
   async function confirmar() {
     setError(null)
@@ -220,7 +234,7 @@ function FinalizarContrato({ id }: { id: string }) {
       <button
         type="button"
         onClick={() => setConfirmando(true)}
-        className="w-full rounded-lg border border-estado-rechazo/40 bg-estado-rechazo/5 px-4 py-2 text-sm font-semibold text-estado-rechazo transition hover:bg-estado-rechazo/10"
+        className="inline-flex min-h-[44px] w-full items-center justify-center rounded-lg border border-estado-rechazo/40 bg-estado-rechazo/5 px-4 py-2 text-sm font-semibold text-estado-rechazo transition hover:bg-estado-rechazo/10"
       >
         Finalizar contrato
       </button>
@@ -232,19 +246,22 @@ function FinalizarContrato({ id }: { id: string }) {
       <p className="text-sm font-medium text-estado-rechazo">
         Esta acción es irreversible: fija la fecha de retiro y abre el trámite de Paz y Salvo.
       </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          type="date"
-          value={fechaRetiro}
-          onChange={(ev) => setFechaRetiro(ev.target.value)}
-          disabled={finalizar.isPending}
-          className={inputCls}
-        />
+      <div className="flex flex-wrap items-end gap-2">
+        <CampoForm label="Fecha de retiro">
+          <input
+            type="date"
+            value={fechaRetiro}
+            onChange={(ev) => setFechaRetiro(ev.target.value)}
+            disabled={finalizar.isPending}
+            aria-invalid={!!error}
+            className={inputCls}
+          />
+        </CampoForm>
         <button
           type="button"
           onClick={() => void confirmar()}
           disabled={finalizar.isPending}
-          className="rounded-lg bg-estado-rechazo px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="inline-flex min-h-[44px] items-center rounded-lg bg-estado-rechazo px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
           {finalizar.isPending ? "Confirmando…" : "Confirmar"}
         </button>
@@ -252,12 +269,12 @@ function FinalizarContrato({ id }: { id: string }) {
           type="button"
           onClick={() => setConfirmando(false)}
           disabled={finalizar.isPending}
-          className="rounded-lg px-3 py-2 text-sm font-semibold text-silver-600 hover:text-navy-800"
+          className="inline-flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm font-semibold text-silver-600 hover:text-navy-800"
         >
           Cancelar
         </button>
       </div>
-      {error && <p className="text-xs text-estado-rechazo">{error}</p>}
+      <MensajeError>{error}</MensajeError>
     </div>
   )
 }
@@ -272,6 +289,7 @@ function OtroSi({ id }: { id: string }) {
   const [nuevoCargo, setNuevoCargo] = useState("")
   const [nuevaFechaFin, setNuevaFechaFin] = useState("")
   const [error, setError] = useState<string | null>(null)
+  useGuardaCierre(abierto, "empleado-otrosi")
 
   async function confirmar() {
     setError(null)
@@ -310,7 +328,7 @@ function OtroSi({ id }: { id: string }) {
       <button
         type="button"
         onClick={() => setAbierto(true)}
-        className="w-full rounded-lg border border-silver-300 px-4 py-2 text-sm font-semibold text-navy-700 transition hover:border-gold-400 dark:border-border dark:text-foreground"
+        className="inline-flex min-h-[44px] w-full items-center justify-center rounded-lg border border-silver-300 px-4 py-2 text-sm font-semibold text-navy-700 transition hover:border-gold-400 dark:border-border dark:text-foreground"
       >
         Registrar otro sí
       </button>
@@ -320,48 +338,59 @@ function OtroSi({ id }: { id: string }) {
   return (
     <div className="space-y-2 rounded-lg border border-silver-300 p-3 dark:border-border">
       <div className="flex flex-wrap gap-2">
-        <select
-          value={tipo}
-          onChange={(ev) => setTipo(ev.target.value as NovedadTipo)}
-          disabled={registrar.isPending}
-          className={inputCls}
-        >
-          <option value="CAMBIO_CARGO">{NOVEDAD_TIPO_LABEL.CAMBIO_CARGO}</option>
-          <option value="EXTENSION_CONTRATO">{NOVEDAD_TIPO_LABEL.EXTENSION_CONTRATO}</option>
-        </select>
+        <CampoForm label="Tipo de novedad">
+          <select
+            value={tipo}
+            onChange={(ev) => setTipo(ev.target.value as NovedadTipo)}
+            disabled={registrar.isPending}
+            className={inputCls}
+          >
+            <option value="CAMBIO_CARGO">{NOVEDAD_TIPO_LABEL.CAMBIO_CARGO}</option>
+            <option value="EXTENSION_CONTRATO">{NOVEDAD_TIPO_LABEL.EXTENSION_CONTRATO}</option>
+          </select>
+        </CampoForm>
         {tipo === "CAMBIO_CARGO" ? (
-          <input
-            value={nuevoCargo}
-            onChange={(ev) => setNuevoCargo(ev.target.value)}
-            placeholder="Nuevo cargo"
-            disabled={registrar.isPending}
-            className={inputCls}
-          />
+          <CampoForm label="Nuevo cargo">
+            <input
+              value={nuevoCargo}
+              onChange={(ev) => setNuevoCargo(ev.target.value)}
+              placeholder="p. ej. Coordinador"
+              disabled={registrar.isPending}
+              aria-invalid={!!error}
+              className={inputCls}
+            />
+          </CampoForm>
         ) : (
-          <input
-            type="date"
-            value={nuevaFechaFin}
-            onChange={(ev) => setNuevaFechaFin(ev.target.value)}
-            disabled={registrar.isPending}
-            className={inputCls}
-          />
+          <CampoForm label="Nueva fecha de fin">
+            <input
+              type="date"
+              value={nuevaFechaFin}
+              onChange={(ev) => setNuevaFechaFin(ev.target.value)}
+              disabled={registrar.isPending}
+              aria-invalid={!!error}
+              className={inputCls}
+            />
+          </CampoForm>
         )}
       </div>
-      <textarea
-        value={motivo}
-        onChange={(ev) => setMotivo(ev.target.value)}
-        placeholder="Motivo…"
-        rows={2}
-        maxLength={500}
-        disabled={registrar.isPending}
-        className={`${inputCls} w-full resize-none`}
-      />
+      <CampoForm label="Motivo">
+        <textarea
+          value={motivo}
+          onChange={(ev) => setMotivo(ev.target.value)}
+          placeholder="Describe el motivo de la novedad"
+          rows={2}
+          maxLength={500}
+          disabled={registrar.isPending}
+          aria-invalid={!!error}
+          className={`${inputCls} w-full resize-none`}
+        />
+      </CampoForm>
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={() => void confirmar()}
           disabled={registrar.isPending}
-          className="rounded-lg bg-navy-deep px-3 py-2 text-sm font-semibold text-white shadow-luxe ring-1 ring-gold/40 disabled:opacity-50"
+          className="inline-flex min-h-[44px] items-center rounded-lg bg-navy-deep px-3 py-2 text-sm font-semibold text-white shadow-luxe ring-1 ring-gold/40 disabled:opacity-50"
         >
           {registrar.isPending ? "Guardando…" : "Guardar"}
         </button>
@@ -369,12 +398,12 @@ function OtroSi({ id }: { id: string }) {
           type="button"
           onClick={() => setAbierto(false)}
           disabled={registrar.isPending}
-          className="rounded-lg px-3 py-2 text-sm font-semibold text-silver-600 hover:text-navy-800"
+          className="inline-flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm font-semibold text-silver-600 hover:text-navy-800"
         >
           Cancelar
         </button>
       </div>
-      {error && <p className="text-xs text-estado-rechazo">{error}</p>}
+      <MensajeError>{error}</MensajeError>
     </div>
   )
 }

@@ -182,6 +182,87 @@ describe.skipIf(!DB)("sync de personal — reparto al expediente (integración)"
     expect(claves).not.toContain("fondoCesantias")
   })
 
+  it("empleado retirado no se muta: el sync se omite y se audita SYNC_OMITIDO_RETIRADO", async () => {
+    const d = doc()
+    const [retirado] = await db
+      .insert(funcionarios)
+      .values({
+        documento: d,
+        nombreCompleto: "Sync Integración",
+        cargo: "Auxiliar",
+        areaOrigen: "AreaVieja",
+        fechaRetiro: "2026-01-01",
+      })
+      .returning({ id: funcionarios.id })
+
+    const lote = await repo.crearLoteConFilas(
+      "MANUAL",
+      [hacerRegistro(1, d, { cargo: "Analista", dependencia: "AreaNueva", telefono: "999" })],
+      [],
+      "Test",
+      null,
+    )
+    lotesCreados.add(lote.id)
+    await repo.confirmarParcial(lote.id, [lote.filas[0]!.id], "Laura TH")
+
+    const [despues] = await db.select().from(funcionarios).where(eq(funcionarios.id, retirado!.id))
+    expect(despues?.cargo, "un retirado no debe ser mutado por el sync").toBe("Auxiliar")
+    expect(despues?.areaOrigen).toBe("AreaVieja")
+    expect(despues?.telefono).toBeNull()
+
+    const eventos = await db
+      .select()
+      .from(eventosAuditoria)
+      .where(eq(eventosAuditoria.entidadId, retirado!.id))
+    expect(
+      eventos.some((e) => e.accion === "SYNC_OMITIDO_RETIRADO"),
+      "debe auditar la omisión por retiro",
+    ).toBe(true)
+  })
+
+  it("no pisa campos que Personal administra (cargo, fechaFinContrato); sí actualiza el resto", async () => {
+    const d = doc()
+    const [existente] = await db
+      .insert(funcionarios)
+      .values({
+        documento: d,
+        nombreCompleto: "Sync Integración",
+        cargo: "Auxiliar",
+        areaOrigen: "X",
+        fechaFinContrato: "2026-12-31",
+        telefono: "111",
+      })
+      .returning({ id: funcionarios.id })
+
+    const lote = await repo.crearLoteConFilas(
+      "MANUAL",
+      [
+        hacerRegistro(1, d, {
+          cargo: "Analista",
+          fechaFinContrato: "2027-06-30",
+          telefono: "999",
+          eps: "Sura",
+        }),
+      ],
+      [],
+      "Test",
+      null,
+    )
+    lotesCreados.add(lote.id)
+    await repo.confirmarParcial(lote.id, [lote.filas[0]!.id], "Laura TH")
+
+    const [despues] = await db.select().from(funcionarios).where(eq(funcionarios.id, existente!.id))
+    expect(despues?.cargo, "Personal administra cargo; el sync no lo pisa").toBe("Auxiliar")
+    expect(despues?.fechaFinContrato, "Personal administra fechaFinContrato").toBe("2026-12-31")
+    expect(despues?.telefono, "campos descriptivos sí se actualizan").toBe("999")
+
+    const [sal] = await db
+      .select()
+      .from(empleadoSalarial)
+      .where(eq(empleadoSalarial.funcionarioId, existente!.id))
+    expect(sal?.eps).toBe("Sura")
+  })
+
   it("fallo parcial: una fila inválida no aborta el lote; la válida se confirma", async () => {
     const dA = doc()
     const dB = doc()

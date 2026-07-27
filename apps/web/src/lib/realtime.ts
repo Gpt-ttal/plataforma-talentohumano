@@ -1,12 +1,13 @@
 import type { QueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
+import { invalidarVistasTramite } from "../hooks/useFuncionarios"
 import { supabase } from "./supabase"
 
 /**
  * Sincronía en vivo multi-usuario. Un único canal por sesión autenticada,
  * suscrito a cambios en las tablas de Paz y Salvo, Capacitaciones, Cursos,
- * Planificador, Vacantes, el expediente 360° de Personal y la importación
- * masiva de desvinculaciones.
+ * Planificador, Vacantes, el expediente 360° de Personal, la importación
+ * masiva de desvinculaciones y los catálogos de Áreas y Usuarios.
  * Cada evento invalida las vistas de TanStack Query que dependen de esa
  * tabla → refetch solo de lo necesario.
  *
@@ -18,16 +19,12 @@ import { supabase } from "./supabase"
  * desmontaje).
  */
 export function suscribirRealtime(qc: QueryClient): () => void {
-  const invalidarTramite = (id?: string) => {
-    qc.invalidateQueries({ queryKey: ["funcionarios"] })
-    qc.invalidateQueries({ queryKey: ["funcionarios-todos"] })
-    qc.invalidateQueries({ queryKey: ["metricas"] })
-    qc.invalidateQueries({ queryKey: ["matriz"] })
-    qc.invalidateQueries({ queryKey: ["mi-area"] })
-    qc.invalidateQueries({ queryKey: ["archivo"] })
-    qc.invalidateQueries({ queryKey: ["personal"] })
-    if (id) qc.invalidateQueries({ queryKey: ["funcionario", id] })
-  }
+  // Fuente ÚNICA de invalidación de trámite: se delega en el mismo helper que
+  // usan las mutaciones (`invalidarVistasTramite`) para que el realtime y las
+  // mutaciones nunca diverjan. Cubre además `["expediente"]` (Archivo) e invalida
+  // `["funcionario"]` por prefijo (todos los detalles), así que ya no hace falta
+  // extraer el id del payload.
+  const invalidarTramite = () => invalidarVistasTramite(qc)
   const invalidarCursos = () => qc.invalidateQueries({ queryKey: ["cursos"] })
   const invalidarCapacitaciones = () => qc.invalidateQueries({ queryKey: ["capacitaciones"] })
   const invalidarPlanificador = () => qc.invalidateQueries({ queryKey: ["planificador"] })
@@ -39,6 +36,15 @@ export function suscribirRealtime(qc: QueryClient): () => void {
     // Personal debe refrescarse aunque el cambio se originara en Vacantes.
     qc.invalidateQueries({ queryKey: ["personal"] })
   }
+  const invalidarAreas = () => {
+    qc.invalidateQueries({ queryKey: ["areas"] })
+    qc.invalidateQueries({ queryKey: ["areas-admin"] })
+    // Renombrar/reordenar cambia columnas de la matriz y la cola de Mi Área sin
+    // tocar `funcionarios`; refréscalas también.
+    qc.invalidateQueries({ queryKey: ["matriz"] })
+    qc.invalidateQueries({ queryKey: ["mi-area"] })
+  }
+  const invalidarUsuarios = () => qc.invalidateQueries({ queryKey: ["usuarios"] })
 
   // Se avisa una sola vez por caída (bandera local) para no ser ruidoso en
   // reintentos sucesivos; se resetea en silencio al volver a SUBSCRIBED.
@@ -49,18 +55,12 @@ export function suscribirRealtime(qc: QueryClient): () => void {
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "funcionarios" },
-      (payload) => {
-        const fila = (payload.new ?? payload.old) as { id?: string } | null
-        invalidarTramite(fila?.id)
-      },
+      invalidarTramite,
     )
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "aprobaciones" },
-      (payload) => {
-        const fila = (payload.new ?? payload.old) as { funcionario_id?: string } | null
-        invalidarTramite(fila?.funcionario_id)
-      },
+      invalidarTramite,
     )
     .on("postgres_changes", { event: "*", schema: "public", table: "cursos" }, invalidarCursos)
     .on(
@@ -135,6 +135,10 @@ export function suscribirRealtime(qc: QueryClient): () => void {
       { event: "*", schema: "public", table: "asistencias" },
       invalidarCapacitaciones,
     )
+    // Requiere `areas`/`usuarios` en la publicación realtime (ALTER PUBLICATION,
+    // gated). Sin eso la suscripción es inocua: simplemente no recibe eventos.
+    .on("postgres_changes", { event: "*", schema: "public", table: "areas" }, invalidarAreas)
+    .on("postgres_changes", { event: "*", schema: "public", table: "usuarios" }, invalidarUsuarios)
     .subscribe((status) => {
       if (status === "SUBSCRIBED") {
         avisoMostrado = false

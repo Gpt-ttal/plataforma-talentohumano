@@ -10,7 +10,8 @@ import {
 } from "@pys/shared"
 import type { EstadoVacante, FaseVacante, Vacante, VacanteEvaluable } from "@pys/shared"
 import { useEditarVacante } from "../../hooks/useVacantes"
-import { inputCls, mensajeError } from "../personal/bloques-editables/compartido"
+import { useGuardaCierre } from "../../components/ui/Modal"
+import { inputCls, MensajeError, mensajeError } from "../personal/bloques-editables/compartido"
 import { FaseVacanteStepper } from "./FaseVacanteStepper"
 
 /**
@@ -73,14 +74,18 @@ function AvanceFase({ vacante }: { vacante: Vacante }) {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-foreground">Avance del proceso</h3>
+      <h3 className="text-sm font-semibold text-foreground">Fase actual</h3>
       <FaseVacanteStepper
         faseActual={vacante.fase}
         onAvanzar={avanzar}
         onRetroceder={retroceder}
         cargando={editar.isPending}
       />
-      {error && <p className="rounded-lg bg-estado-rechazoBg px-3 py-2 text-sm text-estado-rechazo">{error}</p>}
+      {error && (
+        <p role="alert" className="rounded-lg bg-estado-rechazoBg px-3 py-2 text-sm text-estado-rechazo">
+          {error}
+        </p>
+      )}
     </div>
   )
 }
@@ -92,6 +97,7 @@ function MarcarEstado({ vacante }: { vacante: Vacante }) {
   const [nuevoEstado, setNuevoEstado] = useState<EstadoVacante>(vacante.estado)
   const [confirmando, setConfirmando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  useGuardaCierre(confirmando, "vacante-marcar-estado")
 
   async function confirmar() {
     setError(null)
@@ -115,6 +121,7 @@ function MarcarEstado({ vacante }: { vacante: Vacante }) {
             setConfirmando(false)
           }}
           disabled={editar.isPending}
+          aria-label="Nuevo estado del proceso"
           className={inputCls}
         >
           {ESTADOS_VACANTE.map((e) => (
@@ -127,7 +134,7 @@ function MarcarEstado({ vacante }: { vacante: Vacante }) {
           <button
             type="button"
             onClick={() => setConfirmando(true)}
-            className="rounded-lg border border-gold-300 bg-gold-50 px-3 py-2 text-sm font-semibold text-gold-700"
+            className="inline-flex min-h-[44px] items-center rounded-lg border border-gold-300 bg-gold-50 px-3 py-2 text-sm font-semibold text-gold-700"
           >
             Marcar como {ESTADO_VACANTE_LABEL[nuevoEstado]}
           </button>
@@ -142,7 +149,7 @@ function MarcarEstado({ vacante }: { vacante: Vacante }) {
             type="button"
             onClick={() => void confirmar()}
             disabled={editar.isPending}
-            className="rounded-md bg-navy-deep px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+            className="inline-flex min-h-[44px] items-center rounded-md bg-navy-deep px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
           >
             {editar.isPending ? "Guardando…" : "Sí, confirmar"}
           </button>
@@ -150,13 +157,13 @@ function MarcarEstado({ vacante }: { vacante: Vacante }) {
             type="button"
             onClick={() => setConfirmando(false)}
             disabled={editar.isPending}
-            className="rounded-md px-3 py-1.5 text-xs font-semibold text-silver-600"
+            className="inline-flex min-h-[44px] items-center rounded-md px-3 py-1.5 text-xs font-semibold text-silver-600"
           >
             Cancelar
           </button>
         </div>
       )}
-      {error && <p className="text-xs text-estado-rechazo">{error}</p>}
+      <MensajeError>{error}</MensajeError>
     </div>
   )
 }

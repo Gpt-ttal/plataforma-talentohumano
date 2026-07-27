@@ -40,6 +40,9 @@ import type {
 } from "./capacitaciones.js"
 import { TIPOS_CONTENIDO_LECCION } from "./cursos.js"
 import type { TipoContenidoLeccion } from "./cursos.js"
+import { MODULOS } from "./modulos.js"
+import { NIVELES_PERMISO } from "./permisosRbac.js"
+import type { NivelPermiso } from "./permisosRbac.js"
 import { ESTADOS_CAPACITACION_PLANEADA } from "./planificador.js"
 import type { EstadoCapacitacionPlaneada } from "./planificador.js"
 import {
@@ -112,6 +115,55 @@ export const cambiarEstadoUsuarioSchema = z
   })
   .strict()
 export type CambiarEstadoUsuarioInput = z.infer<typeof cambiarEstadoUsuarioSchema>
+
+// ── Allowlist de acceso (pre-aprobación por correo, migración 0022) ────────────
+// El correo se normaliza (trim + minúsculas) en la frontera: la allowlist se llavea
+// por email y los correos no distinguen caja. El invariante rol↔área (un AREA lleva
+// área; el resto no) lo revalida el caso de uso con `errorInvarianteUsuario`.
+
+export const crearPreaprobadoSchema = z
+  .object({
+    email: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .email("Correo inválido."),
+    rol: z.enum(ROLES_USUARIO as unknown as [RolUsuario, ...RolUsuario[]]),
+    areaId: z.string().uuid().nullable().optional(),
+    estado: z
+      .enum(ESTADOS_USUARIO as unknown as [EstadoUsuario, ...EstadoUsuario[]])
+      .optional(),
+  })
+  .strict()
+export type CrearPreaprobadoInput = z.infer<typeof crearPreaprobadoSchema>
+
+export const eliminarPreaprobadoSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().email("Correo inválido."),
+  })
+  .strict()
+export type EliminarPreaprobadoInput = z.infer<typeof eliminarPreaprobadoSchema>
+
+// ── RBAC editable (permisos rol × módulo, migración 0023) ──────────────────────
+// El `moduloId` se refina contra los IDs reales de `MODULOS` (código, no BD) para
+// no aceptar celdas de un módulo inexistente. El nivel se valida contra el enum.
+// El rol objetivo viaja en la ruta (`PUT /:rol`), no en el body.
+
+const MODULO_IDS = MODULOS.map((m) => m.id) as [string, ...string[]]
+
+export const celdaPermisoSchema = z
+  .object({
+    moduloId: z.enum(MODULO_IDS),
+    nivel: z.enum(NIVELES_PERMISO as unknown as [NivelPermiso, ...NivelPermiso[]]),
+  })
+  .strict()
+
+export const actualizarPermisosRolSchema = z
+  .object({
+    celdas: z.array(celdaPermisoSchema),
+  })
+  .strict()
+export type ActualizarPermisosRolInput = z.infer<typeof actualizarPermisosRolSchema>
 
 export const filtroFuncionariosSchema = z.object({
   q: z.string().optional(),
@@ -629,6 +681,15 @@ export type FiltroEmpleadosInput = z.infer<typeof filtroEmpleadosSchema>
 // Cada bloque valida su forma con `.strict()`. Los enums se tipan con las uniones
 // del dominio (no `string`). Fechas ISO reusan `fechaIso`. Todos los campos
 // opcionales son `.nullable().optional()` para permitir crear/borrar por bloque.
+//
+// Campos SYNC-ONLY (poblados por el Sync de Personal desde Iceberg, NO editables a
+// mano por diseño — su ausencia aquí es intencional, no un olvido):
+//   • `funcionarios`: `tipoDocumento`, `nacionalidad`, `centroCostos`, `categoria`,
+//     `fondoSedeId`.
+//   • personales: `estadoCivil`, `lugarResidencia`.
+//   • salarial: `fondoCesantias` y los `DatosBancarios`.
+// `cargo` y `fechaFinContrato` sí los administra Personal (novedad auditada) y el
+// sync no los pisa en un empleado existente (ver `aplicarRegistroSync`).
 
 const tipoContratoEnum = z.enum(
   TIPOS_CONTRATO as unknown as [TipoContrato, ...TipoContrato[]],

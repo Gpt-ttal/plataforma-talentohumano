@@ -258,6 +258,45 @@ export const usuarios = pgTable("usuarios", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })
 
+// ── usuarios_preaprobados (allowlist de acceso por correo, migración 0022) ──────
+// Espejo de 0022. Llaveada por email (la PK de `usuarios` = auth uid, desconocido
+// antes del primer login). El backend consulta con fallback: si la tabla aún no
+// existe (0022 sin aplicar), preserva el autoregistro histórico.
+
+export const usuariosPreaprobados = pgTable("usuarios_preaprobados", {
+  email: text("email").primaryKey(),
+  rol: rolUsuarioEnum("rol").notNull(),
+  areaId: uuid("area_id").references(() => areas.id),
+  estado: estadoUsuarioEnum("estado").notNull().default("ACTIVO"),
+  invitadoPor: uuid("invitado_por").references(() => usuarios.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
+// ── permisos_rol_modulo (RBAC editable, migración 0023) ─────────────────────────
+// Matriz rol × módulo con nivel de acceso por celda. `moduloId` es text libre (los
+// módulos viven en `MODULOS`, código; validado en la aplicación). El backend lee
+// con fallback: sin tabla (0023 sin aplicar) → matriz semilla derivada de MODULOS.
+
+export const nivelPermisoEnum = pgEnum("nivel_permiso", [
+  "NINGUNO",
+  "LECTURA",
+  "ESCRITURA",
+  "ADMIN",
+])
+
+export const permisosRolModulo = pgTable(
+  "permisos_rol_modulo",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    rol: rolUsuarioEnum("rol").notNull(),
+    moduloId: text("modulo_id").notNull(),
+    nivel: nivelPermisoEnum("nivel").notNull().default("NINGUNO"),
+    actualizadoPor: uuid("actualizado_por").references(() => usuarios.id),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ rolModulo: unique().on(t.rol, t.moduloId) }),
+)
+
 // ── capacitaciones ────────────────────────────────────────────────────────────
 
 export const capacitaciones = pgTable("capacitaciones", {

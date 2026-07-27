@@ -1,7 +1,9 @@
 # Diccionario de Datos
 
 Basado 1:1 en [`apps/backend/src/infrastructure/db/schema.ts`](../../apps/backend/src/infrastructure/db/schema.ts)
-(espejo Drizzle de las migraciones `0001`–`0018` y `0020`, que son la fuente de verdad del esquema real).
+(espejo Drizzle de las migraciones `0001`–`0023` — la `0019` (Sync de Personal), `0022`
+(`usuarios_preaprobados`) y `0023` (`permisos_rol_modulo`) están en el espejo pero **NO aplicadas a
+prod** (con fallback en el backend hasta autorización); `schema.ts` es la fuente de verdad del esquema real).
 Si este documento y `schema.ts` difieren, **`schema.ts` manda** — regenerar esta tabla.
 
 Convenciones: todos los `id` son `uuid` PK con `defaultRandom()` salvo que se indique. `created_at`/
@@ -26,6 +28,7 @@ Convenciones: todos los `id` son `uuid` PK con `defaultRandom()` salvo que se in
 | `estado_global` | PENDIENTE · LISTO_PARA_LIQUIDAR · LIQUIDACION_GENERADA · PAZ_Y_SALVO |
 | `rol_usuario` | SUPERADMIN · TALENTO_HUMANO · CONTROL_INTERNO · AREA · SST |
 | `estado_usuario` | PENDIENTE · ACTIVO · INACTIVO |
+| `nivel_permiso` (0023, no aplicada) | NINGUNO · LECTURA · ESCRITURA · ADMIN |
 | `ambito_capacitacion` | TH · SST |
 | `estado_registro_capacitacion` | BORRADOR · ABIERTO · CERRADO |
 | `tipo_vinculo` | PLANTA · CONTRATISTA · EXTERNO |
@@ -118,6 +121,35 @@ Convenciones: todos los `id` son `uuid` PK con `defaultRandom()` salvo que se in
 | `area_id` | uuid FK→areas | sí | requerido solo para rol AREA activo (invariante) |
 | `estado` | enum `estado_usuario` | no | default `PENDIENTE` |
 | `created_at` / `updated_at` | timestamptz | no | |
+
+### `usuarios_preaprobados` — allowlist de acceso por correo (0022, **NO aplicada**, deny-directo)
+> Migración `0022` escrita + espejada en Drizzle, **NO aplicada a prod** (fallback activo, ver
+> [ADR-0010](../architecture/adr/0010-allowlist-acceso-por-correo.md)). Llaveada por email (el uid de
+> auth no existe antes del primer login).
+
+| Columna | Tipo | Nulo | Notas |
+|---|---|---|---|
+| `email` | text PK | no | normalizado (minúsculas) por la app |
+| `rol` | enum `rol_usuario` | no | rol con que entrará el correo |
+| `area_id` | uuid FK→areas | sí | requerido solo para rol AREA (invariante) |
+| `estado` | enum `estado_usuario` | no | default `ACTIVO` |
+| `invitado_por` | uuid FK→usuarios | sí | quién pre-aprobó |
+| `created_at` | timestamptz | no | |
+
+### `permisos_rol_modulo` — RBAC editable, matriz rol × módulo (0023, **NO aplicada**, deny-directo)
+> Migración `0023` escrita + espejada en Drizzle, **NO aplicada a prod** (fallback a la semilla de
+> `MODULOS`, ver [ADR-0011](../architecture/adr/0011-rbac-editable-matriz-resta.md)). `modulo_id` es
+> `text` libre (los módulos viven en código `shared/src/modulos.ts`, validados en la app).
+
+| Columna | Tipo | Nulo | Notas |
+|---|---|---|---|
+| `id` | uuid PK | no | `defaultRandom` |
+| `rol` | enum `rol_usuario` | no | |
+| `modulo_id` | text | no | id de `MODULOS` (sin FK/CHECK, ver ADR-0011) |
+| `nivel` | enum `nivel_permiso` | no | default `NINGUNO` |
+| `actualizado_por` | uuid FK→usuarios | sí | |
+| `updated_at` | timestamptz | no | |
+| — | — | — | **UNIQUE** `(rol, modulo_id)` |
 
 ---
 
@@ -320,7 +352,8 @@ se crea automáticamente el `funcionario` (ver ADR-0009).
 | `activo` | boolean | no | default `true` |
 | `orden` | integer | no | |
 
-Sembrados con los valores canónicos del v1 (ver `0020_vacantes.sql` para el listado completo por tabla).
+Sembrados con los valores canónicos del v1 (ver `0020_vacantes.sql` y `0021_vacante_areas.sql`;
+`vacante_areas` y el motivo `REINGRESO` se siembran en la `0021`).
 
 ### `vacantes`
 | Columna | Tipo | Nulo | Notas |

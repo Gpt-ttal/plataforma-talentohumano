@@ -1,4 +1,4 @@
-import { asc, eq, sql } from "drizzle-orm"
+import { asc, eq, isNotNull, sql } from "drizzle-orm"
 import type { AreaVistoBueno } from "@pys/shared"
 import { estadoInicialAreaNueva } from "@pys/shared"
 import type { AreaRepo } from "../../domain/ports/AreaRepo.js"
@@ -136,9 +136,42 @@ export const areaRepository: AreaRepo = {
         .returning({ id: areas.id })
       if (filas.length === 0) throw new ErrorNoEncontrado("El área no existe.")
 
-      // Recalcular el estado global de los funcionarios con fila en esta área:
-      // si se desactiva y era el único bloqueante, suben a LISTO_PARA_LIQUIDAR;
-      // si se reactiva, vuelven a PENDIENTE.
+      // Al REACTIVAR: sembrar la aprobación faltante para los trámites en curso
+      // (`fecha_retiro` NOT NULL) nacidos mientras el área estaba inactiva.
+      // `iniciarTramiteDesvinculacion` solo siembra áreas ACTIVAS, así que esos
+      // trámites no tienen fila para ésta y `recomputarEstado` (innerJoin
+      // `activa=true`) la ignoraría, dejándolos subir sin su visto bueno. Mismo
+      // mecanismo que `crearArea`, acotado a trámites (los no-trámite reciben su
+      // fila al iniciar trámite). Se siembra ANTES del recompute para que la
+      // unión salga sola. Los no-trámite no la necesitan (aún no hay circuito).
+      if (activa) {
+        const enTramite = await tx
+          .select({ id: funcionarios.id, estadoGlobal: funcionarios.estadoGlobal })
+          .from(funcionarios)
+          .where(isNotNull(funcionarios.fechaRetiro))
+        const conFila = await tx
+          .select({ funcionarioId: aprobaciones.funcionarioId })
+          .from(aprobaciones)
+          .where(eq(aprobaciones.areaId, id))
+        const yaTienen = new Set(conFila.map((r) => r.funcionarioId))
+        const faltantes = enTramite.filter((f) => !yaTienen.has(f.id))
+        if (faltantes.length > 0) {
+          await tx
+            .insert(aprobaciones)
+            .values(
+              faltantes.map((f) => ({
+                funcionarioId: f.id,
+                areaId: id,
+                estado: estadoInicialAreaNueva(f.estadoGlobal),
+              })),
+            )
+            .onConflictDoNothing()
+        }
+      }
+
+      // Recalcular la UNIÓN (filas existentes + recién sembradas): al seleccionar
+      // después del insert, `afectados` ya las incluye. Al desactivar, recalcula
+      // a los que tenían fila (si era el único bloqueante suben a LISTO).
       const afectados = await tx
         .selectDistinct({ funcionarioId: aprobaciones.funcionarioId })
         .from(aprobaciones)

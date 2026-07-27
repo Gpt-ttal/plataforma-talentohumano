@@ -1,6 +1,6 @@
 import { Router } from "express"
 import rateLimit from "express-rate-limit"
-import { casos, requireAuth } from "../container.js"
+import { casos, requireAuth, requirePermiso } from "../container.js"
 import { asyncHandler } from "../asyncHandler.js"
 import { requireRol } from "../middleware/requireRol.js"
 import { requireActivo } from "../middleware/requireActivo.js"
@@ -48,6 +48,7 @@ capacitacionesRouter.post(
 
 // ── Rutas autenticadas ────────────────────────────────────────────────────────
 capacitacionesRouter.use(requireAuth, requireActivo)
+capacitacionesRouter.use(requirePermiso("capacitaciones"))
 
 const ROLES_CAP = ["SUPERADMIN", "TALENTO_HUMANO", "SST"] as const
 

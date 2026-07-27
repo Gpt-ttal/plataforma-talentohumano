@@ -14,6 +14,13 @@ vi.mock("../src/context/ThemeContext", () => ({
   useTheme: () => ({ esDark: false, alternar: vi.fn() }),
 }))
 
+// `useModulosVisibles` usa react-query; en este test (sin QueryClientProvider) se
+// stubea a `null` = fallback "mostrar todo". `moduloDeRuta` (puro) se conserva.
+vi.mock("../src/hooks/usePermisos", async (importActual) => ({
+  ...(await importActual<typeof import("../src/hooks/usePermisos")>()),
+  useModulosVisibles: () => null,
+}))
+
 function usuario(parche: Partial<Usuario> = {}): Usuario {
   return {
     id: "u1",

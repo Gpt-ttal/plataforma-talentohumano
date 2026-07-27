@@ -3,7 +3,6 @@ import {
   ESTADO_VINCULACION_LABEL,
   ESTADOS_VINCULACION,
   estadoVinculacion,
-  estadoVinculacionPill,
   POR_PAGINA_DEFECTO,
   TIPO_VINCULACION_LABEL,
   TIPOS_VINCULACION,
@@ -11,10 +10,10 @@ import {
 import type { Empleado, EstadoVinculacion, TipoVinculacion } from "@pys/shared"
 import { usePersonal } from "../../hooks/usePersonal"
 import { Avatar } from "../../components/ui/Avatar"
+import { EstadoVinculacionPill } from "../../components/ui/EstadoPill"
 import { Buscador } from "../../components/ui/Buscador"
 import { ChipFiltro } from "../../components/ui/ChipFiltro"
 import { EmptyState } from "../../components/ui/EmptyState"
-import { FilaDesplegable } from "../../components/ui/FilaDesplegable"
 import { ListaSkeleton } from "../../components/ui/ListaSkeleton"
 import { Paginacion } from "../../components/ui/Paginacion"
 import { SpotSinEmpleados } from "../../components/ui/spot/Spots"
@@ -24,8 +23,9 @@ const BASE = "/personal"
 
 /**
  * Catálogo del maestro de empleados: alta manual + búsqueda/filtros server-driven
- * + listado. El detalle/acciones (expediente 360°, Finalizar contrato, Otro sí,
- * Actualizar datos) viven en `ExpedientePage` (ruta propia `/personal/:id`).
+ * + listado. Cada fila es un enlace a `/personal/:id` que abre la hoja de vida
+ * 360° (detalle + acciones: Finalizar contrato, Otro sí, Actualizar datos) en un
+ * modal sobre el maestro (ruta hija montada en el `<Outlet/>` de `PersonalPage`).
  */
 export function CatalogoPersonal() {
   const [searchParams] = useSearchParams()
@@ -144,37 +144,28 @@ function hrefSinPagina(cambio: {
   return s ? `${BASE}?${s}` : BASE
 }
 
-// ── Fila de empleado ────────────────────────────────────────────────────────
+// ── Fila de empleado (enlace al modal de expediente 360°) ──────────────────
 
 function FilaEmpleado({ empleado: e }: { empleado: Empleado }) {
-  const { className: pillCls, dot, label } = estadoVinculacionPill(estadoVinculacion(e))
-
   return (
-    <FilaDesplegable
-      cabecera={
-        <span className="flex min-w-0 items-center gap-3">
-          <Avatar nombre={e.nombreCompleto} size="md" />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate font-medium text-navy-900 dark:text-foreground">
-              {e.nombreCompleto}
-            </span>
-            <span className="block text-xs text-silver-600 tabular-nums">
-              CC {e.documento} · {e.cargo} · {e.areaOrigen}
-            </span>
-          </span>
-          <span className={pillCls}>
-            <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-            {label}
-          </span>
-        </span>
-      }
+    <Link
+      to={e.id}
+      className="premium-card row-fade group flex min-w-0 items-center gap-3 rounded-xl px-3 py-3 shadow-luxe transition-shadow hover:shadow-luxe-lg sm:px-4"
     >
-      <Link
-        to={e.id}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-navy-600 transition-colors hover:text-gold-600"
-      >
-        Ver ficha completa <span aria-hidden>→</span>
-      </Link>
-    </FilaDesplegable>
+      <Avatar nombre={e.nombreCompleto} size="md" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium text-navy-900 dark:text-foreground">
+          {e.nombreCompleto}
+        </span>
+        <span className="block text-xs text-silver-600 tabular-nums">
+          CC {e.documento} · {e.cargo} · {e.areaOrigen}
+        </span>
+      </span>
+      <EstadoVinculacionPill estado={estadoVinculacion(e)} />
+      <Icon
+        name="arrow"
+        className="h-4 w-4 shrink-0 text-silver-500 transition-colors group-hover:text-gold-500"
+      />
+    </Link>
   )
 }

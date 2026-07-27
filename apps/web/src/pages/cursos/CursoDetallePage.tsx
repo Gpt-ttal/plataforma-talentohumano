@@ -43,8 +43,8 @@ const inputCls =
   "rounded-lg border border-silver-300 bg-white px-3 py-2 text-sm text-navy-800 focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400 disabled:opacity-50"
 
 /**
- * Página dedicada `/cursos/:id` (NO modal — mismo precedente que
- * `ExpedientePage.tsx` de Administración de Personal). Cabecera con
+ * Página dedicada `/cursos/:id` (NO modal — este módulo conserva página propia,
+ * a diferencia de Personal/Vacantes que migraron a modal). Cabecera con
  * transición de registro + QR, pestañas Contenido/Inscritos server-driven
  * por `?vista=`, editor anidado módulos→lecciones y el panel de inscritos en
  * vivo (`refetchInterval` de 5s ya construido en la Fase 5).

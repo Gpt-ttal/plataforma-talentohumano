@@ -2,12 +2,13 @@ import { useState } from "react"
 import { toast } from "sonner"
 import type { CatalogoVacanteItem, Vacante } from "@pys/shared"
 import { useEditarVacante, useVacantesCatalogos } from "../../../hooks/useVacantes"
+import { useGuardaCierre } from "../../../components/ui/Modal"
 import {
   BotonAbrir,
+  CampoForm,
   FilaGuardarCancelar,
   inputCls,
-  labelCls,
-  labelTextCls,
+  MensajeError,
   mensajeError,
 } from "../../personal/bloques-editables/compartido"
 
@@ -27,6 +28,7 @@ export function ReclutamientoEditor({ vacante }: { vacante: Vacante }) {
   const [fuenteId, setFuenteId] = useState(idPorClave(catalogos.data?.fuentes ?? [], vacante.fuente))
   const [salario, setSalario] = useState(vacante.salario !== null ? String(vacante.salario) : "")
   const [error, setError] = useState<string | null>(null)
+  useGuardaCierre(abierto, "vacante-reclutamiento")
 
   async function confirmar() {
     setError(null)
@@ -55,60 +57,67 @@ export function ReclutamientoEditor({ vacante }: { vacante: Vacante }) {
   return (
     <div className="mt-3 space-y-3 rounded-lg border border-silver-300 p-3 dark:border-border">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <select
-          value={modalidadId}
-          onChange={(ev) => setModalidadId(ev.target.value)}
-          disabled={editar.isPending}
-          className={inputCls}
-        >
-          <option value="">Modalidad (sin especificar)</option>
-          {(catalogos.data?.modalidades ?? []).map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.nombre}
-            </option>
-          ))}
-        </select>
-        <select
-          value={dedicacionId}
-          onChange={(ev) => setDedicacionId(ev.target.value)}
-          disabled={editar.isPending}
-          className={inputCls}
-        >
-          <option value="">Dedicación (sin especificar)</option>
-          {(catalogos.data?.dedicaciones ?? []).map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.nombre}
-            </option>
-          ))}
-        </select>
-        <select
-          value={escalafonId}
-          onChange={(ev) => setEscalafonId(ev.target.value)}
-          disabled={editar.isPending}
-          className={inputCls}
-        >
-          <option value="">Escalafón (sin especificar)</option>
-          {(catalogos.data?.escalafones ?? []).map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.nombre}
-            </option>
-          ))}
-        </select>
-        <select
-          value={fuenteId}
-          onChange={(ev) => setFuenteId(ev.target.value)}
-          disabled={editar.isPending}
-          className={inputCls}
-        >
-          <option value="">Fuente de reclutamiento (sin especificar)</option>
-          {(catalogos.data?.fuentes ?? []).map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.nombre}
-            </option>
-          ))}
-        </select>
-        <label className={labelCls}>
-          <span className={labelTextCls}>Salario</span>
+        <CampoForm label="Modalidad">
+          <select
+            value={modalidadId}
+            onChange={(ev) => setModalidadId(ev.target.value)}
+            disabled={editar.isPending}
+            className={inputCls}
+          >
+            <option value="">Sin especificar</option>
+            {(catalogos.data?.modalidades ?? []).map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nombre}
+              </option>
+            ))}
+          </select>
+        </CampoForm>
+        <CampoForm label="Dedicación">
+          <select
+            value={dedicacionId}
+            onChange={(ev) => setDedicacionId(ev.target.value)}
+            disabled={editar.isPending}
+            className={inputCls}
+          >
+            <option value="">Sin especificar</option>
+            {(catalogos.data?.dedicaciones ?? []).map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.nombre}
+              </option>
+            ))}
+          </select>
+        </CampoForm>
+        <CampoForm label="Escalafón">
+          <select
+            value={escalafonId}
+            onChange={(ev) => setEscalafonId(ev.target.value)}
+            disabled={editar.isPending}
+            className={inputCls}
+          >
+            <option value="">Sin especificar</option>
+            {(catalogos.data?.escalafones ?? []).map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.nombre}
+              </option>
+            ))}
+          </select>
+        </CampoForm>
+        <CampoForm label="Fuente de reclutamiento">
+          <select
+            value={fuenteId}
+            onChange={(ev) => setFuenteId(ev.target.value)}
+            disabled={editar.isPending}
+            className={inputCls}
+          >
+            <option value="">Sin especificar</option>
+            {(catalogos.data?.fuentes ?? []).map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.nombre}
+              </option>
+            ))}
+          </select>
+        </CampoForm>
+        <CampoForm label="Salario">
           <input
             type="number"
             min={0}
@@ -118,14 +127,14 @@ export function ReclutamientoEditor({ vacante }: { vacante: Vacante }) {
             disabled={editar.isPending}
             className={inputCls}
           />
-        </label>
+        </CampoForm>
       </div>
       <FilaGuardarCancelar
         pending={editar.isPending}
         onGuardar={() => void confirmar()}
         onCancelar={() => setAbierto(false)}
       />
-      {error && <p className="text-xs text-estado-rechazo">{error}</p>}
+      <MensajeError>{error}</MensajeError>
     </div>
   )
 }

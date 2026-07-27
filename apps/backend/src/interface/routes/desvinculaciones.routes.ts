@@ -1,7 +1,7 @@
 import { Router } from "express"
 import multer from "multer"
 import rateLimit from "express-rate-limit"
-import { casos, requireAuth } from "../container.js"
+import { casos, requireAuth, requirePermiso } from "../container.js"
 import { asyncHandler } from "../asyncHandler.js"
 import { requireRol } from "../middleware/requireRol.js"
 import { requireActivo } from "../middleware/requireActivo.js"
@@ -28,6 +28,8 @@ export const desvinculacionesRouter = Router()
 desvinculacionesRouter.param("id", paramUuid("id"))
 
 desvinculacionesRouter.use(requireAuth, requireActivo)
+// La importación de desvinculaciones opera sobre el maestro de Personal.
+desvinculacionesRouter.use(requirePermiso("personal"))
 
 const ROLES_DESVINCULACIONES = ["SUPERADMIN", "TALENTO_HUMANO"] as const
 

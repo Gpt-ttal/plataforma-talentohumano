@@ -18,3 +18,5 @@ salvo para marcar `Deprecated` / `Superseded by ADR-XXXX`).
 | [0007](0007-plataforma-modulos-declarativos.md) | Plataforma con registro declarativo de módulos | Sesiones 24–25 |
 | [0008](0008-concurrencia-optimista-lock-condicional.md) | Concurrencia con lock pesimista + UPDATE condicional (no locks distribuidos) | Sesiones 24, 43 |
 | [0009](0009-puente-vacante-funcionario.md) | Puente Vacante→Funcionario: crear el empleado al contratar la vacante | Sesión 53 |
+| [0010](0010-allowlist-acceso-por-correo.md) | Allowlist de acceso por correo (invertir el autoregistro) | Sesión 55 |
+| [0011](0011-rbac-editable-matriz-resta.md) | RBAC editable (matriz rol × módulo que RESTA sobre `requireRol`) | Sesión 55 |

@@ -2,12 +2,13 @@ import { useState } from "react"
 import { toast } from "sonner"
 import type { CatalogoVacanteItem, Vacante } from "@pys/shared"
 import { useEditarVacante, useVacantesCatalogos } from "../../../hooks/useVacantes"
+import { useGuardaCierre } from "../../../components/ui/Modal"
 import {
   BotonAbrir,
+  CampoForm,
   FilaGuardarCancelar,
   inputCls,
-  labelCls,
-  labelTextCls,
+  MensajeError,
   mensajeError,
 } from "../../personal/bloques-editables/compartido"
 
@@ -30,6 +31,7 @@ export function SolicitudEditor({ vacante }: { vacante: Vacante }) {
   const [motivoId, setMotivoId] = useState(idPorClave(catalogos.data?.motivos ?? [], vacante.motivo))
   const [fechaRequerimiento, setFechaRequerimiento] = useState(vacante.fechaRequerimiento)
   const [error, setError] = useState<string | null>(null)
+  useGuardaCierre(abierto, "vacante-solicitud")
 
   async function confirmar() {
     setError(null)
@@ -66,8 +68,7 @@ export function SolicitudEditor({ vacante }: { vacante: Vacante }) {
   return (
     <div className="mt-3 space-y-3 rounded-lg border border-silver-300 p-3 dark:border-border">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <label className={labelCls}>
-          <span className={labelTextCls}>Cargo</span>
+        <CampoForm label="Cargo">
           <input
             value={cargo}
             maxLength={200}
@@ -75,70 +76,79 @@ export function SolicitudEditor({ vacante }: { vacante: Vacante }) {
             disabled={editar.isPending}
             className={inputCls}
           />
-        </label>
-        <label className={labelCls}>
-          <span className={labelTextCls}>N.º de posiciones</span>
+        </CampoForm>
+        <CampoForm label="N.º de posiciones">
           <input
             type="number"
             min={1}
             value={posiciones}
             onChange={(ev) => setPosiciones(ev.target.value)}
             disabled={editar.isPending}
+            aria-invalid={!!error}
             className={inputCls}
           />
-        </label>
-        <select
-          value={areaId}
-          onChange={(ev) => setAreaId(ev.target.value)}
-          disabled={editar.isPending}
-          className={inputCls}
-        >
-          <option value="">Área (sin asignar)</option>
-          {(catalogos.data?.areas ?? []).map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.nombre}
-            </option>
-          ))}
-        </select>
-        <select
-          value={motivoId}
-          onChange={(ev) => setMotivoId(ev.target.value)}
-          disabled={editar.isPending}
-          className={inputCls}
-        >
-          <option value="">Motivo (sin especificar)</option>
-          {(catalogos.data?.motivos ?? []).map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.nombre}
-            </option>
-          ))}
-        </select>
-        <input
-          value={jefe}
-          maxLength={200}
-          onChange={(ev) => setJefe(ev.target.value)}
-          placeholder="Jefe inmediato"
-          disabled={editar.isPending}
-          className={inputCls}
-        />
-        <input
-          value={reemplazo}
-          maxLength={200}
-          onChange={(ev) => setReemplazo(ev.target.value)}
-          placeholder="Reemplazo de (si aplica)"
-          disabled={editar.isPending}
-          className={inputCls}
-        />
-        <input
-          value={nombreNuevo}
-          maxLength={200}
-          onChange={(ev) => setNombreNuevo(ev.target.value)}
-          placeholder="Nombre del candidato/nuevo empleado"
-          disabled={editar.isPending}
-          className={inputCls}
-        />
-        <label className={labelCls}>
-          <span className={labelTextCls}>Fecha de requerimiento</span>
+        </CampoForm>
+        <CampoForm label="Área / programa">
+          <select
+            value={areaId}
+            onChange={(ev) => setAreaId(ev.target.value)}
+            disabled={editar.isPending}
+            className={inputCls}
+          >
+            <option value="">Sin asignar</option>
+            {(catalogos.data?.areas ?? []).map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.nombre}
+              </option>
+            ))}
+          </select>
+        </CampoForm>
+        <CampoForm label="Motivo">
+          <select
+            value={motivoId}
+            onChange={(ev) => setMotivoId(ev.target.value)}
+            disabled={editar.isPending}
+            className={inputCls}
+          >
+            <option value="">Sin especificar</option>
+            {(catalogos.data?.motivos ?? []).map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nombre}
+              </option>
+            ))}
+          </select>
+        </CampoForm>
+        <CampoForm label="Jefe inmediato">
+          <input
+            value={jefe}
+            maxLength={200}
+            onChange={(ev) => setJefe(ev.target.value)}
+            placeholder="Nombre del jefe"
+            disabled={editar.isPending}
+            className={inputCls}
+          />
+        </CampoForm>
+        <CampoForm label="Reemplazo de (si aplica)">
+          <input
+            value={reemplazo}
+            maxLength={200}
+            onChange={(ev) => setReemplazo(ev.target.value)}
+            placeholder="Nombre de la persona reemplazada"
+            disabled={editar.isPending}
+            className={inputCls}
+          />
+        </CampoForm>
+        <CampoForm label="Candidato / nuevo empleado">
+          <input
+            value={nombreNuevo}
+            maxLength={200}
+            onChange={(ev) => setNombreNuevo(ev.target.value)}
+            placeholder="Nombre del candidato"
+            disabled={editar.isPending}
+            className={inputCls}
+          />
+        </CampoForm>
+        <CampoForm label="Fecha de requerimiento">
           <input
             type="date"
             value={fechaRequerimiento}
@@ -146,14 +156,14 @@ export function SolicitudEditor({ vacante }: { vacante: Vacante }) {
             disabled={editar.isPending}
             className={inputCls}
           />
-        </label>
+        </CampoForm>
       </div>
       <FilaGuardarCancelar
         pending={editar.isPending}
         onGuardar={() => void confirmar()}
         onCancelar={() => setAbierto(false)}
       />
-      {error && <p className="text-xs text-estado-rechazo">{error}</p>}
+      <MensajeError>{error}</MensajeError>
     </div>
   )
 }

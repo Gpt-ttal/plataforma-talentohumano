@@ -127,7 +127,7 @@ function Resumen({
           label="Vencidas sin avance"
           value={fmt(kpis.vencidasSinAvance)}
           sub="Vencidas y aún en Reclutamiento"
-          dot="bg-gold-400"
+          dot="bg-estado-aviso"
         />
         <Metric
           label="Días prom. contratación"

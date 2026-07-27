@@ -5,9 +5,7 @@ import type { TipoVinculacion } from "@pys/shared"
 import { ApiError } from "../../lib/api"
 import { useCrearEmpleado } from "../../hooks/usePersonal"
 import { Modal } from "../../components/ui/Modal"
-
-export const inputCls =
-  "rounded-lg border border-silver-300 bg-white px-3 py-2 text-sm text-navy-800 focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400 disabled:opacity-50 dark:bg-surface-2 dark:text-foreground dark:border-border"
+import { inputCls, MensajeError } from "./bloques-editables/compartido"
 
 /** Alta manual de un empleado (nace ACTIVO, sin trámite ni aprobaciones), en modal. */
 export function RegistrarEmpleadoForm({ onClose }: { onClose: () => void }) {
@@ -61,11 +59,11 @@ export function RegistrarEmpleadoForm({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Modal onClose={onClose} ariaLabel="Registrar empleado">
+    <Modal onClose={onClose} ariaLabelledby="titulo-registrar-empleado">
       <div className="space-y-4">
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-silver-600">
+        <h2 id="titulo-registrar-empleado" className="font-display text-lg font-semibold text-navy-900 dark:text-foreground">
           Registrar empleado
-        </span>
+        </h2>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Campo etiqueta="Documento">
@@ -166,11 +164,11 @@ export function RegistrarEmpleadoForm({ onClose }: { onClose: () => void }) {
             type="button"
             disabled={!puedeCrear}
             onClick={() => void handleCrear()}
-            className="rounded-lg bg-navy-deep px-4 py-2 text-sm font-semibold text-white shadow-luxe ring-1 ring-gold/40 transition hover:shadow-gold disabled:opacity-50"
+            className="inline-flex min-h-[44px] items-center rounded-lg bg-navy-deep px-4 py-2 text-sm font-semibold text-white shadow-luxe ring-1 ring-gold/40 transition hover:shadow-gold disabled:opacity-50"
           >
             {crear.isPending ? "Registrando…" : "Registrar empleado"}
           </button>
-          {error && <p className="text-xs text-estado-rechazo">{error}</p>}
+          <MensajeError>{error}</MensajeError>
         </div>
       </div>
     </Modal>

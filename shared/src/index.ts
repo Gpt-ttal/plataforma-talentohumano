@@ -1,6 +1,7 @@
 export * from "./domain.js"
 export * from "./estado.js"
 export * from "./permisos.js"
+export * from "./permisosRbac.js"
 export * from "./usuarios.js"
 export * from "./paginacion.js"
 export * from "./ui.js"

@@ -6,6 +6,7 @@ import { rutaInicialPorRol } from "@pys/shared"
 import { queryClient } from "./lib/queryClient"
 import { AuthProvider, useAuth } from "./context/AuthContext"
 import { ThemeProvider } from "./context/ThemeContext"
+import { PaletteProvider } from "./context/PaletteContext"
 import { Layout } from "./components/Layout"
 import { ProtectedRoute } from "./components/ProtectedRoute"
 import { RoleSwitcher } from "./components/dev/RoleSwitcher"
@@ -18,6 +19,14 @@ import { MiAreaPage } from "./pages/miarea/MiAreaPage"
 import { MatrizPage } from "./pages/matriz/MatrizPage"
 import { UsuariosPage } from "./pages/usuarios/UsuariosPage"
 import { AreasPage } from "./pages/areas/AreasPage"
+import { ConfiguracionLayout } from "./pages/configuracion/ConfiguracionLayout"
+import { GeneralPage } from "./pages/configuracion/GeneralPage"
+import { AparienciaPage } from "./pages/configuracion/AparienciaPage"
+import { SeguridadPage } from "./pages/configuracion/SeguridadPage"
+import { SistemaPage } from "./pages/configuracion/SistemaPage"
+import { UsuariosConfigPage } from "./pages/configuracion/UsuariosConfigPage"
+import { RolesPage } from "./pages/configuracion/RolesPage"
+import { CatalogosPage } from "./pages/configuracion/CatalogosPage"
 import { PanelControlPage } from "./pages/panel/PanelControlPage"
 import { ArchivoPage } from "./pages/archivo/ArchivoPage"
 import { ExpedienteModal } from "./pages/archivo/ExpedienteModal"
@@ -25,11 +34,11 @@ import { CapacitacionesPage } from "./pages/capacitaciones/CapacitacionesPage"
 import { CapacitacionModal } from "./pages/capacitaciones/CapacitacionModal"
 import { RegistroAsistenciaPage } from "./pages/asistencia/RegistroAsistenciaPage"
 import { PersonalPage } from "./pages/personal/PersonalPage"
-import { ExpedientePage } from "./pages/personal/ExpedientePage"
+import { ExpedienteEmpleadoModal } from "./pages/personal/ExpedienteEmpleadoModal"
 import { ImportacionPage } from "./pages/desvinculaciones/ImportacionPage"
 import { VacantesPage } from "./pages/vacantes/VacantesPage"
 import { VacantesResumenPage } from "./pages/vacantes/VacantesResumenPage"
-import { VacanteDetallePage } from "./pages/vacantes/VacanteDetallePage"
+import { VacanteModal } from "./pages/vacantes/VacanteModal"
 // Cursos & Planificador se cargan bajo demanda: Tiptap (editor de lecciones) y su
 // vendor solo se descargan al entrar al módulo, no en el arranque ni en el login.
 const CursosPage = lazy(() =>
@@ -95,6 +104,7 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
+        <PaletteProvider>
         <AuthProvider>
           <BrowserRouter>
             <Routes>
@@ -229,7 +239,8 @@ export function App() {
                 }
               />
 
-              {/* Administración de Personal — maestro de empleados (SA + TH) */}
+              {/* Administración de Personal — maestro de empleados (SA + TH). El
+                  expediente 360° es un modal por ruta hija (`:id`) sobre el maestro. */}
               <Route
                 path="/personal"
                 element={
@@ -237,19 +248,13 @@ export function App() {
                     <PersonalPage />
                   </ProtectedRoute>
                 }
-              />
-              {/* Expediente 360° (hoja de vida completa) — ruta propia */}
-              <Route
-                path="/personal/:id"
-                element={
-                  <ProtectedRoute roles={["SUPERADMIN", "TALENTO_HUMANO"]}>
-                    <ExpedientePage />
-                  </ProtectedRoute>
-                }
-              />
+              >
+                <Route path=":id" element={<ExpedienteEmpleadoModal />} />
+              </Route>
 
-              {/* Vacantes — seguimiento de procesos de contratación (SA + TH). Rutas
-                  hermanas top-level (mismo patrón que /personal + /personal/:id). */}
+              {/* Vacantes — seguimiento de procesos de contratación (SA + TH). El
+                  detalle es un modal por ruta hija (`:id`) sobre el listado; el
+                  resumen es hermano estático top-level (gana a `:id` en RRv6). */}
               <Route
                 path="/vacantes"
                 element={
@@ -257,20 +262,14 @@ export function App() {
                     <VacantesPage />
                   </ProtectedRoute>
                 }
-              />
+              >
+                <Route path=":id" element={<VacanteModal />} />
+              </Route>
               <Route
                 path="/vacantes/resumen"
                 element={
                   <ProtectedRoute roles={["SUPERADMIN", "TALENTO_HUMANO"]}>
                     <VacantesResumenPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/vacantes/:id"
-                element={
-                  <ProtectedRoute roles={["SUPERADMIN", "TALENTO_HUMANO"]}>
-                    <VacanteDetallePage />
                   </ProtectedRoute>
                 }
               />
@@ -304,6 +303,68 @@ export function App() {
                   </ProtectedRoute>
                 }
               />
+
+              {/* Configuración — suite de ajustes (todos los roles activos; las
+                  sub-páginas de gobierno se ocultan por rol y las guarda el backend).
+                  El índice redirige a la primera sub-página visible para cualquiera. */}
+              <Route
+                path="/configuracion"
+                element={
+                  <ProtectedRoute
+                    roles={[
+                      "SUPERADMIN",
+                      "TALENTO_HUMANO",
+                      "CONTROL_INTERNO",
+                      "AREA",
+                      "SST",
+                    ]}
+                  >
+                    <ConfiguracionLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Navigate to="/configuracion/general" replace />} />
+                <Route path="general" element={<GeneralPage />} />
+                <Route path="apariencia" element={<AparienciaPage />} />
+                <Route path="seguridad" element={<SeguridadPage />} />
+                {/* Sistema: detalle de infraestructura → solo SA y TH. */}
+                <Route
+                  path="sistema"
+                  element={
+                    <ProtectedRoute roles={["SUPERADMIN", "TALENTO_HUMANO"]}>
+                      <SistemaPage />
+                    </ProtectedRoute>
+                  }
+                />
+                {/* Usuarios: gobierno de acceso (allowlist + roles) — solo SA. La
+                    guarda de rol la reaplica el backend en cada endpoint. */}
+                <Route
+                  path="usuarios"
+                  element={
+                    <ProtectedRoute roles={["SUPERADMIN"]}>
+                      <UsuariosConfigPage />
+                    </ProtectedRoute>
+                  }
+                />
+                {/* Matriz RBAC editable — solo SA. */}
+                <Route
+                  path="roles"
+                  element={
+                    <ProtectedRoute roles={["SUPERADMIN"]}>
+                      <RolesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                {/* Catálogos (áreas de visto bueno y más) — solo SA. */}
+                <Route
+                  path="catalogos"
+                  element={
+                    <ProtectedRoute roles={["SUPERADMIN"]}>
+                      <CatalogosPage />
+                    </ProtectedRoute>
+                  }
+                />
+              </Route>
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -312,6 +373,7 @@ export function App() {
             <RoleSwitcher />
           </BrowserRouter>
         </AuthProvider>
+        </PaletteProvider>
       </ThemeProvider>
     </QueryClientProvider>
   )

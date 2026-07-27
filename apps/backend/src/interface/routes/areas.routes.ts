@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { casos, requireAuth } from "../container.js"
+import { casos, requireAuth, requirePermiso } from "../container.js"
 import { asyncHandler } from "../asyncHandler.js"
 import { requireRol } from "../middleware/requireRol.js"
 import { requireActivo } from "../middleware/requireActivo.js"
@@ -18,6 +18,8 @@ export const areasRouter = Router()
 areasRouter.param("id", paramUuid("id"))
 
 areasRouter.use(requireAuth, requireActivo)
+// El catálogo de áreas es parte del módulo Paz y Salvo.
+areasRouter.use(requirePermiso("paz-y-salvo"))
 
 // Lectura: cualquier usuario activo (`?incluirInactivas=1` lo gobierna el caso de uso).
 areasRouter.get("/", asyncHandler(c.listar))

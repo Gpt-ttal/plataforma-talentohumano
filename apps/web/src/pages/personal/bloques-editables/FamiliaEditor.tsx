@@ -3,13 +3,14 @@ import { toast } from "sonner"
 import { GENEROS, GENERO_LABEL, PARENTESCOS, PARENTESCO_LABEL } from "@pys/shared"
 import type { Familiar, Genero, Parentesco } from "@pys/shared"
 import { useCrearFamiliar, useEliminarFamiliar } from "../../../hooks/usePersonal"
+import { useGuardaCierre } from "../../../components/ui/Modal"
 import {
   BotonAbrir,
+  CampoForm,
   FilaEliminable,
   FilaGuardarCancelar,
   inputCls,
-  labelCls,
-  labelTextCls,
+  MensajeError,
   mensajeError,
 } from "./compartido"
 
@@ -31,6 +32,7 @@ export function FamiliaEditor({
   const [genero, setGenero] = useState<Genero | "">("")
   const [error, setError] = useState<string | null>(null)
   const [aEliminar, setAEliminar] = useState<string | null>(null)
+  useGuardaCierre(abierto, "familia-editor")
 
   async function agregar() {
     setError(null)
@@ -93,28 +95,32 @@ export function FamiliaEditor({
       ) : (
         <div className="space-y-3 rounded-lg border border-silver-300 p-3 dark:border-border">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <select
-              value={parentesco}
-              onChange={(ev) => setParentesco(ev.target.value as Parentesco)}
-              disabled={crear.isPending}
-              className={inputCls}
-            >
-              {PARENTESCOS.map((p) => (
-                <option key={p} value={p}>
-                  {PARENTESCO_LABEL[p]}
-                </option>
-              ))}
-            </select>
-            <input
-              value={nombre}
-              maxLength={160}
-              onChange={(ev) => setNombre(ev.target.value)}
-              placeholder="Nombre completo"
-              disabled={crear.isPending}
-              className={inputCls}
-            />
-            <label className={labelCls}>
-              <span className={labelTextCls}>Fecha de nacimiento (opcional)</span>
+            <CampoForm label="Parentesco">
+              <select
+                value={parentesco}
+                onChange={(ev) => setParentesco(ev.target.value as Parentesco)}
+                disabled={crear.isPending}
+                className={inputCls}
+              >
+                {PARENTESCOS.map((p) => (
+                  <option key={p} value={p}>
+                    {PARENTESCO_LABEL[p]}
+                  </option>
+                ))}
+              </select>
+            </CampoForm>
+            <CampoForm label="Nombre completo">
+              <input
+                value={nombre}
+                maxLength={160}
+                onChange={(ev) => setNombre(ev.target.value)}
+                placeholder="Nombre y apellidos"
+                disabled={crear.isPending}
+                aria-invalid={!!error}
+                className={inputCls}
+              />
+            </CampoForm>
+            <CampoForm label="Fecha de nacimiento (opcional)">
               <input
                 type="date"
                 value={fechaNacimiento}
@@ -122,20 +128,22 @@ export function FamiliaEditor({
                 disabled={crear.isPending}
                 className={inputCls}
               />
-            </label>
-            <select
-              value={genero}
-              onChange={(ev) => setGenero(ev.target.value as Genero | "")}
-              disabled={crear.isPending}
-              className={inputCls}
-            >
-              <option value="">Género (sin especificar)</option>
-              {GENEROS.map((g) => (
-                <option key={g} value={g}>
-                  {GENERO_LABEL[g]}
-                </option>
-              ))}
-            </select>
+            </CampoForm>
+            <CampoForm label="Género">
+              <select
+                value={genero}
+                onChange={(ev) => setGenero(ev.target.value as Genero | "")}
+                disabled={crear.isPending}
+                className={inputCls}
+              >
+                <option value="">Sin especificar</option>
+                {GENEROS.map((g) => (
+                  <option key={g} value={g}>
+                    {GENERO_LABEL[g]}
+                  </option>
+                ))}
+              </select>
+            </CampoForm>
           </div>
           <FilaGuardarCancelar
             pending={crear.isPending}
@@ -144,7 +152,7 @@ export function FamiliaEditor({
             onGuardar={() => void agregar()}
             onCancelar={() => setAbierto(false)}
           />
-          {error && <p className="text-xs text-estado-rechazo">{error}</p>}
+          <MensajeError>{error}</MensajeError>
         </div>
       )}
     </div>

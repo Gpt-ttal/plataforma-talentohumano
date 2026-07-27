@@ -1,33 +1,27 @@
 import { useState } from "react"
-import { Link, useSearchParams } from "react-router-dom"
+import { Link, Outlet, useSearchParams } from "react-router-dom"
 import { ESTADO_VACANTE_LABEL, ESTADOS_VACANTE, POR_PAGINA_DEFECTO } from "@pys/shared"
 import type { EstadoVacante, VacanteDerivada } from "@pys/shared"
 import { useVacantes, useVacantesCatalogos } from "../../hooks/useVacantes"
 import { Buscador } from "../../components/ui/Buscador"
 import { ChipFiltro } from "../../components/ui/ChipFiltro"
 import { EmptyState } from "../../components/ui/EmptyState"
-import { FilaDesplegable } from "../../components/ui/FilaDesplegable"
 import { ListaSkeleton } from "../../components/ui/ListaSkeleton"
 import { Paginacion } from "../../components/ui/Paginacion"
 import { HeaderMetaDot, PageHeader } from "../../components/ui/PageHeader"
 import { Segmented } from "../../components/ui/Segmented"
 import { Icon } from "../../components/ui/dash/Icon"
-import {
-  AprobacionVacantePill,
-  EstadoCapturadoVacantePill,
-  EstadoVacantePill,
-  FaseVacantePill,
-} from "../../components/ui/VacantePills"
+import { EstadoVacantePill } from "../../components/ui/VacantePills"
 import { NuevaVacanteModal } from "./NuevaVacanteModal"
 
 const BASE = "/vacantes"
 
 /**
- * Listado de Vacantes — vista por defecto (herramienta diaria). La fila
- * colapsada muestra solo el STATUS derivado (§3.5 del spec de diseño); fase,
- * aprobación y estado capturado quedan en el cuerpo expandido para no saturar
- * la lectura con 3 semáforos distintos. El detalle completo vive en su propia
- * página (`/vacantes/:id`), no en modal.
+ * Listado de Vacantes — vista por defecto (herramienta diaria). Cada fila es un
+ * enlace a `/vacantes/:id` que abre la ficha completa en un modal centrado sobre
+ * la lista (ruta hija montada en `<Outlet/>`), sin salir de la página. La fila
+ * muestra solo el STATUS derivado (§3.5 del spec); fase, aprobación y estado
+ * capturado viven dentro del modal para no saturar con 3 semáforos distintos.
  */
 export function VacantesPage() {
   const [searchParams] = useSearchParams()
@@ -137,6 +131,9 @@ export function VacantesPage() {
           />
         </div>
       )}
+
+      {/* Modal de detalle (ruta hija `:id`): se monta encima sin desmontar la lista. */}
+      <Outlet />
     </div>
   )
 }
@@ -206,54 +203,32 @@ function FiltroArea({
   )
 }
 
-// ── Fila de vacante ───────────────────────────────────────────────────────
+// ── Fila de vacante (enlace al modal de detalle) ──────────────────────────
 
 function FilaVacante({ vacante: v, areaNombre }: { vacante: VacanteDerivada; areaNombre: string | null }) {
   return (
-    <FilaDesplegable
-      cabecera={
-        <span className="flex min-w-0 items-center gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-navy-50 ring-1 ring-navy-200 dark:bg-surface-2 dark:ring-border">
-            <Icon name="briefcase" className="h-4.5 w-4.5 text-navy-700 dark:text-foreground" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate font-medium text-navy-900 dark:text-foreground">
-              {v.cargo}
-            </span>
-            <span className="block text-xs tabular-nums text-silver-600">
-              {v.posiciones} posición{v.posiciones === 1 ? "" : "es"}
-              {areaNombre ? ` · ${areaNombre}` : ""}
-              {v.requerimiento ? ` · N.º ${v.requerimiento}` : ""}
-            </span>
-          </span>
-          {v.status && <EstadoVacantePill status={v.status} />}
-        </span>
-      }
+    <Link
+      to={v.id}
+      className="premium-card row-fade group flex min-w-0 items-center gap-3 rounded-xl px-3 py-3 shadow-luxe transition-shadow hover:shadow-luxe-lg sm:px-4"
     >
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <EstadoCapturadoVacantePill estado={v.estado} />
-          <FaseVacantePill fase={v.fase} />
-          {v.aprobacion && <AprobacionVacantePill aprobacion={v.aprobacion} />}
-        </div>
-        <p className="text-xs text-silver-600">
-          Requerimiento: {new Date(v.fechaRequerimiento).toLocaleDateString("es-CO")}
-          {v.diasParaVencer !== null && v.status !== "CUBIERTA" && v.status !== "CERRADA" && (
-            <>
-              {" · "}
-              {v.diasParaVencer >= 0
-                ? `vence en ${v.diasParaVencer} día${v.diasParaVencer === 1 ? "" : "s"}`
-                : `vencida hace ${-v.diasParaVencer} día${-v.diasParaVencer === 1 ? "" : "s"}`}
-            </>
-          )}
-        </p>
-        <Link
-          to={`/vacantes/${v.id}`}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-navy-600 transition-colors hover:text-gold-600 dark:text-foreground dark:hover:text-gold-400"
-        >
-          Ver detalle completo <span aria-hidden>→</span>
-        </Link>
-      </div>
-    </FilaDesplegable>
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-navy-50 ring-1 ring-navy-200 transition-colors group-hover:ring-gold-200 dark:bg-surface-2 dark:ring-border">
+        <Icon name="briefcase" className="h-4.5 w-4.5 text-navy-700 dark:text-foreground" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium text-navy-900 dark:text-foreground">
+          {v.cargo}
+        </span>
+        <span className="block text-xs tabular-nums text-silver-600">
+          {v.posiciones} posición{v.posiciones === 1 ? "" : "es"}
+          {areaNombre ? ` · ${areaNombre}` : ""}
+          {v.requerimiento ? ` · N.º ${v.requerimiento}` : ""}
+        </span>
+      </span>
+      {v.status && <EstadoVacantePill status={v.status} />}
+      <Icon
+        name="arrow"
+        className="h-4 w-4 shrink-0 text-silver-500 transition-colors group-hover:text-gold-500"
+      />
+    </Link>
   )
 }

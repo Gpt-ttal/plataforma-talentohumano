@@ -2,7 +2,16 @@ import { useState } from "react"
 import { toast } from "sonner"
 import type { Experiencia } from "@pys/shared"
 import { useCrearExperiencia, useEliminarExperiencia } from "../../../hooks/usePersonal"
-import { BotonAbrir, FilaEliminable, FilaGuardarCancelar, inputCls, labelCls, labelTextCls, mensajeError } from "./compartido"
+import { useGuardaCierre } from "../../../components/ui/Modal"
+import {
+  BotonAbrir,
+  CampoForm,
+  FilaEliminable,
+  FilaGuardarCancelar,
+  inputCls,
+  MensajeError,
+  mensajeError,
+} from "./compartido"
 
 // ── Experiencia laboral (1-N) ─────────────────────────────────────────────────
 
@@ -23,6 +32,7 @@ export function ExperienciaEditor({
   const [descripcion, setDescripcion] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [aEliminar, setAEliminar] = useState<string | null>(null)
+  useGuardaCierre(abierto, "experiencia-editor")
 
   async function agregar() {
     setError(null)
@@ -88,24 +98,29 @@ export function ExperienciaEditor({
       ) : (
         <div className="space-y-3 rounded-lg border border-silver-300 p-3 dark:border-border">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <input
-              value={empresa}
-              maxLength={200}
-              onChange={(ev) => setEmpresa(ev.target.value)}
-              placeholder="Empresa"
-              disabled={crear.isPending}
-              className={inputCls}
-            />
-            <input
-              value={cargo}
-              maxLength={160}
-              onChange={(ev) => setCargo(ev.target.value)}
-              placeholder="Cargo"
-              disabled={crear.isPending}
-              className={inputCls}
-            />
-            <label className={labelCls}>
-              <span className={labelTextCls}>Fecha inicio</span>
+            <CampoForm label="Empresa">
+              <input
+                value={empresa}
+                maxLength={200}
+                onChange={(ev) => setEmpresa(ev.target.value)}
+                placeholder="Razón social"
+                disabled={crear.isPending}
+                aria-invalid={!!error}
+                className={inputCls}
+              />
+            </CampoForm>
+            <CampoForm label="Cargo">
+              <input
+                value={cargo}
+                maxLength={160}
+                onChange={(ev) => setCargo(ev.target.value)}
+                placeholder="p. ej. Analista"
+                disabled={crear.isPending}
+                aria-invalid={!!error}
+                className={inputCls}
+              />
+            </CampoForm>
+            <CampoForm label="Fecha inicio">
               <input
                 type="date"
                 value={fechaInicio}
@@ -113,9 +128,8 @@ export function ExperienciaEditor({
                 disabled={crear.isPending}
                 className={inputCls}
               />
-            </label>
-            <label className={labelCls}>
-              <span className={labelTextCls}>Fecha fin (vacío = actual)</span>
+            </CampoForm>
+            <CampoForm label="Fecha fin (vacío = actual)">
               <input
                 type="date"
                 value={fechaFin}
@@ -123,17 +137,19 @@ export function ExperienciaEditor({
                 disabled={crear.isPending}
                 className={inputCls}
               />
-            </label>
+            </CampoForm>
           </div>
-          <textarea
-            value={descripcion}
-            onChange={(ev) => setDescripcion(ev.target.value)}
-            placeholder="Descripción (opcional)"
-            rows={2}
-            maxLength={1000}
-            disabled={crear.isPending}
-            className={`${inputCls} w-full resize-none`}
-          />
+          <CampoForm label="Descripción (opcional)">
+            <textarea
+              value={descripcion}
+              onChange={(ev) => setDescripcion(ev.target.value)}
+              placeholder="Funciones y logros"
+              rows={2}
+              maxLength={1000}
+              disabled={crear.isPending}
+              className={`${inputCls} w-full resize-none`}
+            />
+          </CampoForm>
           <FilaGuardarCancelar
             pending={crear.isPending}
             guardandoLabel="Agregando…"
@@ -141,7 +157,7 @@ export function ExperienciaEditor({
             onGuardar={() => void agregar()}
             onCancelar={() => setAbierto(false)}
           />
-          {error && <p className="text-xs text-estado-rechazo">{error}</p>}
+          <MensajeError>{error}</MensajeError>
         </div>
       )}
     </div>

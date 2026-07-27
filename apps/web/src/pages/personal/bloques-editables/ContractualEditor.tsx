@@ -4,7 +4,15 @@ import { MODALIDADES, MODALIDAD_LABEL, TIPOS_CONTRATO, TIPO_CONTRATO_LABEL } fro
 import type { EmpleadoContractual, Modalidad, TipoContrato } from "@pys/shared"
 import { useAreas } from "../../../hooks/useAreas"
 import { useEditarContractual } from "../../../hooks/usePersonal"
-import { BotonAbrir, FilaGuardarCancelar, inputCls, labelCls, labelTextCls, mensajeError } from "./compartido"
+import { useGuardaCierre } from "../../../components/ui/Modal"
+import {
+  BotonAbrir,
+  CampoForm,
+  FilaGuardarCancelar,
+  inputCls,
+  MensajeError,
+  mensajeError,
+} from "./compartido"
 
 // ── Bloque contractual extendido (1-1) ────────────────────────────────────────
 
@@ -27,6 +35,7 @@ export function ContractualEditor({
   const [fechaPrimerIngreso, setFechaPrimerIngreso] = useState(contractual.fechaPrimerIngreso ?? "")
   const [observacion, setObservacion] = useState(contractual.observacion ?? "")
   const [error, setError] = useState<string | null>(null)
+  useGuardaCierre(abierto, "contractual-editor")
 
   async function confirmar() {
     setError(null)
@@ -58,47 +67,52 @@ export function ContractualEditor({
   return (
     <div className="mt-3 space-y-3 rounded-lg border border-silver-300 p-3 dark:border-border">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <select
-          value={areaId}
-          onChange={(ev) => setAreaId(ev.target.value)}
-          disabled={editar.isPending}
-          className={inputCls}
-        >
-          <option value="">Área (sin asignar)</option>
-          {(areas ?? []).map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.nombre}
-            </option>
-          ))}
-        </select>
-        <select
-          value={tipoContrato}
-          onChange={(ev) => setTipoContrato(ev.target.value as TipoContrato | "")}
-          disabled={editar.isPending}
-          className={inputCls}
-        >
-          <option value="">Tipo de contrato (sin especificar)</option>
-          {TIPOS_CONTRATO.map((t) => (
-            <option key={t} value={t}>
-              {TIPO_CONTRATO_LABEL[t]}
-            </option>
-          ))}
-        </select>
-        <select
-          value={modalidad}
-          onChange={(ev) => setModalidad(ev.target.value as Modalidad | "")}
-          disabled={editar.isPending}
-          className={inputCls}
-        >
-          <option value="">Modalidad (sin especificar)</option>
-          {MODALIDADES.map((m) => (
-            <option key={m} value={m}>
-              {MODALIDAD_LABEL[m]}
-            </option>
-          ))}
-        </select>
-        <label className={labelCls}>
-          <span className={labelTextCls}>Fecha de primer ingreso</span>
+        <CampoForm label="Área">
+          <select
+            value={areaId}
+            onChange={(ev) => setAreaId(ev.target.value)}
+            disabled={editar.isPending}
+            className={inputCls}
+          >
+            <option value="">Sin asignar</option>
+            {(areas ?? []).map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.nombre}
+              </option>
+            ))}
+          </select>
+        </CampoForm>
+        <CampoForm label="Tipo de contrato">
+          <select
+            value={tipoContrato}
+            onChange={(ev) => setTipoContrato(ev.target.value as TipoContrato | "")}
+            disabled={editar.isPending}
+            className={inputCls}
+          >
+            <option value="">Sin especificar</option>
+            {TIPOS_CONTRATO.map((t) => (
+              <option key={t} value={t}>
+                {TIPO_CONTRATO_LABEL[t]}
+              </option>
+            ))}
+          </select>
+        </CampoForm>
+        <CampoForm label="Modalidad">
+          <select
+            value={modalidad}
+            onChange={(ev) => setModalidad(ev.target.value as Modalidad | "")}
+            disabled={editar.isPending}
+            className={inputCls}
+          >
+            <option value="">Sin especificar</option>
+            {MODALIDADES.map((m) => (
+              <option key={m} value={m}>
+                {MODALIDAD_LABEL[m]}
+              </option>
+            ))}
+          </select>
+        </CampoForm>
+        <CampoForm label="Fecha de primer ingreso">
           <input
             type="date"
             value={fechaPrimerIngreso}
@@ -106,47 +120,55 @@ export function ContractualEditor({
             disabled={editar.isPending}
             className={inputCls}
           />
-        </label>
-        <input
-          value={jefeInmediato}
-          maxLength={160}
-          onChange={(ev) => setJefeInmediato(ev.target.value)}
-          placeholder="Jefe inmediato"
-          disabled={editar.isPending}
-          className={inputCls}
-        />
-        <input
-          value={programa}
-          maxLength={160}
-          onChange={(ev) => setPrograma(ev.target.value)}
-          placeholder="Programa"
-          disabled={editar.isPending}
-          className={inputCls}
-        />
-        <input
-          value={escalafon}
-          maxLength={80}
-          onChange={(ev) => setEscalafon(ev.target.value)}
-          placeholder="Escalafón"
-          disabled={editar.isPending}
-          className={inputCls}
-        />
+        </CampoForm>
+        <CampoForm label="Jefe inmediato">
+          <input
+            value={jefeInmediato}
+            maxLength={160}
+            onChange={(ev) => setJefeInmediato(ev.target.value)}
+            placeholder="Nombre del jefe"
+            disabled={editar.isPending}
+            className={inputCls}
+          />
+        </CampoForm>
+        <CampoForm label="Programa">
+          <input
+            value={programa}
+            maxLength={160}
+            onChange={(ev) => setPrograma(ev.target.value)}
+            placeholder="Programa o dependencia"
+            disabled={editar.isPending}
+            className={inputCls}
+          />
+        </CampoForm>
+        <CampoForm label="Escalafón">
+          <input
+            value={escalafon}
+            maxLength={80}
+            onChange={(ev) => setEscalafon(ev.target.value)}
+            placeholder="Categoría / escalafón"
+            disabled={editar.isPending}
+            className={inputCls}
+          />
+        </CampoForm>
       </div>
-      <textarea
-        value={observacion}
-        onChange={(ev) => setObservacion(ev.target.value)}
-        placeholder="Observación (opcional)"
-        rows={2}
-        maxLength={1000}
-        disabled={editar.isPending}
-        className={`${inputCls} w-full resize-none`}
-      />
+      <CampoForm label="Observación (opcional)">
+        <textarea
+          value={observacion}
+          onChange={(ev) => setObservacion(ev.target.value)}
+          placeholder="Nota contractual"
+          rows={2}
+          maxLength={1000}
+          disabled={editar.isPending}
+          className={`${inputCls} w-full resize-none`}
+        />
+      </CampoForm>
       <FilaGuardarCancelar
         pending={editar.isPending}
         onGuardar={() => void confirmar()}
         onCancelar={() => setAbierto(false)}
       />
-      {error && <p className="text-xs text-estado-rechazo">{error}</p>}
+      <MensajeError>{error}</MensajeError>
     </div>
   )
 }

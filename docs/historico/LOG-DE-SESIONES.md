@@ -2195,3 +2195,165 @@
   (Capacitaciones/Cursos) es feature nueva, no inconsistencia. Desvinculaciones sin cambios (el flujo
   existente cubre cualquier funcionario). Documentación al cierre: ADR-0009 + índice, `CLAUDE.md`
   §6/§9, `DOMINIO.md`, `DICCIONARIO-DATOS.md`, `PROGRESO.md`, esta entrada, `BITACORA-IA.md`, memoria.
+
+### 2026-07-25 — Sesión 54: Coherencia entre módulos (Tiers 1-5) — bug real F1 + sincronía en vivo + guardas de registro + blindaje del sync (TDD)
+
+- **Contexto:** dos planes en cola (modales de detalle para Vacantes/Personal, y coherencia entre
+  módulos). Se validó que **no se pisan ni discrepan** (conjuntos de archivos disjuntos; el fix de
+  `["expediente"]` de Archivo no toca la clave namespaced de Personal). Se ejecutó primero el de
+  coherencia (`wise-seeking-moonbeam.md`) por traer el único bug de correctitud real; el de modales
+  (`peppy-forging-lantern.md`) queda para después, sin conflicto.
+- **Tier 1 (F1 — bug real, TDD):** reactivar un área NO re-sembraba su aprobación en trámites en curso
+  nacidos mientras estaba inactiva → el trámite podía subir a `LISTO_PARA_LIQUIDAR`/`PAZ_Y_SALVO` sin su
+  visto bueno (silencioso). Fix en [`cambiarActivaArea`](../../apps/backend/src/infrastructure/db/areaRepository.ts):
+  al reactivar, siembra las filas faltantes (acotado a trámites `fecha_retiro NOT NULL`, mismo mecanismo
+  que `crearArea`) ANTES del recompute, para que la unión salga sola. Test de integración gated añadido
+  a `concurrencia-estadoArea.integration.test.ts` (**saneamiento senior:** área insertada directa, no
+  `crearArea`, para no backfillear a todos los funcionarios del DB de test).
+- **Tier 2 (sincronía en vivo, `realtime.ts`):** (R2) `invalidarTramite` ahora **delega** en
+  `invalidarVistasTramite` (fuente única compartida con las mutaciones) → cubre `["expediente"]` del
+  Archivo que antes divergía; se eliminó la extracción de `id` del payload (invalida `["funcionario"]`
+  por prefijo). (R1/R3) nuevas suscripciones a `areas` y `usuarios` con sus invalidaciones (incluye
+  `matriz`/`mi-area`). El `ALTER PUBLICATION` para `areas`/`usuarios` queda **gated** (no aplicado); el
+  código es inocuo sin él.
+- **Tier 3 (registro declarativo — guardas + doc honesta, TDD):** (3.1) `chart-bar` faltaba en
+  `IconName`/`ICON_PATH` (el tile "Reportes" pintaba glifo vacío) → se agregó + `ICONOS_DISPONIBLES`
+  exportado + guarda `tests/iconos-modulos.test.ts` (RED reprodujo `["reportes:chart-bar"]`, GREEN
+  verde). (3.2) `sectionsForRole` exportado + guarda `tests/sidebar-modulos.test.ts` (sidebar cubre los
+  módulos ACTIVO de cada rol de plataforma). (3.3) ADR-0007 + `CLAUDE.md` §7 corregidos: el **lanzador**
+  se deriva de `MODULOS`, el **sidebar** se **valida** por tests (no se deriva) — se eliminó la
+  afirmación falsa "leen de la misma fuente".
+- **Tier 4 (blindaje del sync, TDD):** `aplicarRegistroSync` (1) **omite** empleados retirados
+  (`fecha_retiro` seteada) — maestro congelado para Paz y Salvo — auditando `SYNC_OMITIDO_RETIRADO`; y
+  (2) **no pisa** `cargo`/`fechaFinContrato` en un empleado existente (Personal los administra por
+  novedad auditada; sí se toman en el alta). Dos casos de integración gated añadidos. `schemas.ts`
+  documenta los campos **sync-only** (guarda de intención).
+- **Tier 5 (drift/limpieza):** encabezado del `DICCIONARIO-DATOS` (`0001`–`0021`, `0019` en espejo no
+  aplicada) + puntero de seed de Vacantes (`0021`); se eliminó el duplicado `ETIQUETA_VINCULO` en
+  `capacitaciones.ts` en favor de `TIPO_VINCULO_LABEL` (fuente única, con test-guarda); comentario stale
+  "mirrors supabase.ts" en `tramiteRepo.ts` corregido.
+- **Verificación (todo verde):** `build shared` OK · shared **312** · backend **370** pass + **23** skip
+  · web **15** · `tsc --noEmit` backend y `typecheck` web limpios · `npm run build` raíz OK. Los tests de
+  integración (F1 + sync) quedan **gated por `DATABASE_URL_TEST`** — NO corridos contra prod. **Working
+  tree SIN commitear.**
+- **Pendiente vivo:** el `ALTER PUBLICATION supabase_realtime ADD TABLE public.areas, public.usuarios;`
+  requiere autorización explícita (habilita R1/R3 en runtime). El plan de modales (`peppy-forging-lantern`)
+  sigue en cola, sin conflicto con lo hecho aquí.
+
+### 2026-07-27 — Sesión 55: Suite de Configuración (adaptada de SIGAF) — allowlist + RBAC editable + catálogos + paletas (TDD, 4 fases)
+
+- **Contexto:** el usuario pidió *"replicar la página de configuraciones del proyecto SIGAF"* pero
+  **adaptándola** (*"adapta, esa es la clave"*): SIGAF tiene RBAC granular con `requirePermission`; este
+  repo tiene roles fijos + `requireRol` + módulos declarativos (`MODULOS`). Plan aprobado de 4 fases
+  (`zesty-imagining-thacker.md`). Hecho decisivo: rol/estado se releen de BD por request → cambios de
+  permiso surten efecto sin re-login.
+- **Fase 1 (shell + sub-páginas, sin BD):** `pages/configuracion/` — `ConfiguracionLayout` (header +
+  aside filtrado por rol + `Outlet`), `configuracionNav.ts` (fuente única del nav), `ui.tsx`
+  (SummaryTile/InfoRow/LoadingPanel). Sub-páginas General/Apariencia (tema)/Seguridad/Sistema (health a
+  `/api/health`). Rutas en `App.tsx` (índice→general) + entrada "Configuración" en el sidebar de todos
+  los roles (sección universal `AJUSTES_SECTION` en `Layout.tsx`).
+- **Fase 2 (allowlist, [ADR-0010](../architecture/adr/0010-allowlist-acceso-por-correo.md)):** migración
+  `0022_usuarios_preaprobados.sql` (**no aplicada**) + espejo Drizzle. `asegurarUsuario` invertido a
+  gate (TDD, 7 casos): existente→entra; SA de bootstrap→entra; pre-aprobado→entra con su rol/área;
+  sin pre-aprobación→403; **fallback merge-safe** si la tabla no existe (`42P01`)→autoregistro histórico.
+  Puerto/repo `PreaprobacionRepo`, 3 casos de uso (`exigirRol` SA), router `/api/usuarios/preaprobados`.
+  Frontend: `GestionPreaprobados` + `UsuariosConfigPage` (reusa `ListaUsuarios` extraída de la página
+  legada).
+- **Fase 3 (RBAC editable, [ADR-0011](../architecture/adr/0011-rbac-editable-matriz-resta.md)):** dominio
+  puro `shared/src/permisosRbac.ts` (TDD, 9 casos: niveles, defaults desde `MODULOS`, seed, visibilidad).
+  Migración `0023_permisos_rol_modulo.sql` (**no aplicada**) + enum `nivel_permiso` + espejo Drizzle
+  (`unique(rol,modulo_id)`). Loader `cargarMatriz` (lectura fresca + merge + fallback a semilla),
+  3 casos de uso, middleware `requirePermiso` montado tras `requireRol` en los 9 routers de módulo,
+  endpoints `GET /permisos`, `PUT /permisos/:rol`, `GET /permisos/mios`. **Triple anti-lockout:** router
+  por `requireRol`, SA inmutable (400), columna SA deshabilitada en UI. Frontend: `RolesPage` (matriz),
+  `usePermisos` (filtrado de sidebar/lanzador desde el rol **efectivo**, respeta impersonación).
+- **Fase 4 (catálogos + paletas):** `CatalogosPage` reusa `CatalogoAreas` (extraída de `AreasPage`).
+  `PaletteContext` (andamiaje honesto): swap de variables CSS de acento (`--gold`/`--navy`), persistido,
+  **sin tocar `estado-*`** (Semáforo Único intocable); las escalas Tailwind son hex fijas, así que el
+  cambio ajusta el acento ambiental, no recolorea cada utilidad — documentado como base para paletas
+  completas futuras. Selector conectado en `AparienciaPage`.
+- **Verificación (gate de cierre en verde):** `build shared` OK · shared **321** · backend **385** pass
+  (unit; integración gated por DB, no corridos) · web **15** · `tsc --noEmit` backend y web limpios ·
+  `npm run build` raíz OK. Tests nuevos: `asegurarUsuario` (7), `usuarios`/preaprobados (+3),
+  `permisosRbac` (9 shared), `permisos` backend (10). **Working tree SIN commitear.**
+- **Pendiente vivo:** aplicar `0022` y `0023` a prod requiere autorización explícita por-migración
+  (activan allowlist y matriz RBAC respectivamente); hasta entonces el fallback preserva el
+  comportamiento actual. Smoke manual de la suite tras aplicar.
+
+### 2026-07-27 — Sesión 56: Saneamiento UI/UX de Vacantes + Administración de Personal (a11y, token `aviso`, targets táctiles, dedup)
+
+- **Contexto:** una auditoría UI/UX de ambos módulos (frontend `apps/web`) dio 12/20 con patrones
+  sistémicos, no fallos aislados. Plan aprobado (`dise-a-el-plan-ocmpleto-merry-shamir.md`) para atacar
+  la raíz (P1+P2+P3) tratando la refactor página-dedicada→modal como **dirección vigente** (se endurece
+  su ejecución, no se revierte). Skills activas: senior-architect, senior-fullstack, senior-frontend.
+- **Grupo 1 (primitivas, mayor apalancamiento):** `Modal.tsx` — × de 32→**44px**, `aria-labelledby`
+  opcional (con `aria-label` de respaldo durante el skeleton), **guarda dirty-close** (contexto
+  `GuardaCierreContext` + hook exportado `useGuardaCierre(activo, id)`: los editores registran su edición
+  abierta y `cerrar()` pide `window.confirm` si hay alguna), prop `cerrarAlClickFuera` (default `true`),
+  y **retiro de `backdrop-blur`** (filtro caro; el fade basta). `DetalleModalLayout` — nav de secciones a
+  `min-h-[44px]` + nota de acople de los offsets negativos con el padding del Modal. `compartido.tsx` —
+  `inputCls` `bg-white`→**`bg-card`** (token documentado; elimina el ban y el override dark), nuevas
+  primitivas **`CampoForm`** (label persistente, fuente única) y **`MensajeError`** (`role="alert"`,
+  `text-sm`, `null` si vacío), y botones (`BotonAbrir`/`FilaGuardarCancelar`/`FilaEliminable`) a 44px.
+- **Grupo 2 (token `aviso` + retiro de oro decorativo):** nuevo 7.º dominio semántico ámbar
+  `--estado-aviso`/`--estado-avisoBg` (claro #B45309/#FEF3C7, oscuro cálido) en `index.css` +
+  `tailwind.config.ts` (`estado.aviso`/`avisoBg`). Se retiró el oro **decorativo** que competía con el
+  sello: `PanelAvisosVacante` y KPI "Vencidas sin avance"→ámbar; `SugeridoBadge`→`estado.info`
+  (informativo); fondos salariales (`BloqueSalarial` + `SalarialEditor`)→neutro `border-hairline
+  bg-surface-2` (la sensibilidad ya la marca el candado). El oro **de acción** (botón "Marcar como…" y su
+  panel) se conserva, deliberado.
+- **Grupo 3 (a11y de formularios, patrón repetido):** cada control con solo `placeholder` se envolvió en
+  `<CampoForm label>` (label persistente + placeholder como hint) y cada error plano pasó a
+  `<MensajeError>`; `aria-invalid` en campos con validación puntual. Aplicado a los 6 editores de
+  `bloques-editables/`, `AccionesEmpleado` (3 sub-formularios + centraliza `inputCls`), `FotoEditor`
+  (`text-sm`+44px, `<img loading=lazy decoding=async>`), `RegistrarEmpleadoForm`, las 4 secciones de
+  Vacantes, `NuevaVacanteModal` y `AccionesVacante`. **`useGuardaCierre` cableado** en cada editor y
+  `cerrarAlClickFuera={false}` + `ariaLabelledby` (id en el `<h1>` de identidad) en los dos modales de
+  detalle.
+- **Grupo 4 (limpieza):** h3 duplicado "Avance del proceso"→**"Fase actual"** en `AccionesVacante`;
+  eyebrows de los create-modals (`NuevaVacanteModal`, `RegistrarEmpleadoForm`) que violaban el ban →
+  `<h2>` con `id`; sección "Acciones" agregada a la nav de `Expediente`; **dedup del pill de vínculo** →
+  nuevo `EstadoVinculacionPill` en `EstadoPill.tsx`, consumido en `CatalogoPersonal` y `Expediente`;
+  flechas de fila `text-silver-400`→**`text-silver-500`** (contraste AA de icono con significado) en
+  Catálogo y Listado; comentarios obsoletos que citaban los archivos borrados `VacanteDetallePage`/
+  `ExpedientePage` saneados en 5 sitios (preservando el marco histórico "antes").
+- **Verificación (gate del plan, en verde):** `build shared` OK · `tsc --noEmit` web **limpio** ·
+  detector Impeccable sobre los targets tocados → **`[]`** (sin oro decorativo ni `bg-white`) ·
+  `npm run build` raíz OK. **Working tree SIN commitear.**
+- **Desviaciones deliberadas del plan (con criterio):** los errores "ricos" (caja + botón Reintentar en
+  `NuevaVacanteModal`, y el bloqueo de fase en `AvanceFase`) **no** se degradaron a `MensajeError` plano
+  —se les añadió `role="alert"` para no perder la afordancia/énfasis. El saneamiento de comentarios
+  obsoletos se amplió a `CamposDetalle`, `VacanteBloques`, `ExpedienteBloques` y `CursoDetallePage`
+  (más allá de `CierreEditor`), por ser referencias a archivos borrados.
+- **Pendiente vivo:** **inspección visual acotada** (paso 5 del gate: 1 ronda claro+oscuro,
+  desktop+móvil, con la app en `:3000`) — verificar labels visibles, nav táctil, × de 44px, panel de
+  avisos en ámbar (no oro), bloque salarial neutro, y el `window.confirm` al cerrar con una edición
+  abierta. Techo esperado del módulo tras el fix: 17-18/20.
+
+### 2026-07-27 — Sesión 57: Aplicación a prod de `0022`/`0023` (allowlist + RBAC editable) por conexión directa
+
+- **Contexto:** el MCP de Supabase **no estaba conectado** en la sesión (solo Gamma/Gmail/Drive), así que
+  el flujo estándar `list_migrations`/`apply_migration`/`get_advisors` de §6 no estaba disponible. Con
+  autorización explícita del usuario (por-archivo y por vía directa), se aplicaron ambas migraciones vía
+  conexión directa a Postgres usando la `DATABASE_URL` de `apps/backend/.env` y la librería `pg`.
+- **Validación previa (read-only):** confirmado baseline — `usuarios_preaprobados`/`permisos_rol_modulo`
+  ausentes; enums `rol_usuario`/`estado_usuario` presentes; `areas`/`usuarios` con PK `uuid`;
+  `gen_random_uuid()` disponible. **Hallazgo:** `schema_migrations` no registra `0001`–`0003` ni `0021`
+  (ni `0019`), pero se verificó que su schema **sí existe** en prod (p.ej. `vacante_areas` + FK
+  `vacantes.area_id→vacante_areas`) → es una brecha de **registro**, no de estado real.
+- **Aplicación:** cada migración en **transacción** (DDL + `INSERT` en `schema_migrations` atómicos),
+  leyendo el `.sql` tal cual del repo. `0022` → `20260727000022`; `0023` → `20260727000023`. Ambas COMMIT.
+- **Verificación post:** `0022` — 6 columnas exactas, PK `email`, FKs `area_id→areas`/`invitado_por→usuarios`,
+  `estado` default `ACTIVO`, RLS on, 0 políticas. `0023` — enum `nivel_permiso`, `unique(rol,modulo_id)`,
+  RLS on, 0 políticas, **16 celdas** semilla (= visibilidad actual; el "18" fue un error de anotación del
+  script, no de la migración), spot-checks correctos. Ambas registradas → `list_migrations` ahora las lista.
+- **Advisors (emulados, sin Management API):** `rls_enabled_no_policy` INFO en ambas (esperado, ADR-0006);
+  grants a `anon`/`authenticated` presentes pero **denegados por RLS-sin-política** (solo `service_role`
+  las ve) = deny-directo correcto; **cero** funciones `SECURITY DEFINER` nuevas.
+- **Efecto operativo:** el **gate de allowlist quedó ACTIVO** con la tabla **vacía** (usuarios existentes:
+  1 ACTIVO). Sin riesgo de lockout (existentes + SA de bootstrap siempre entran), pero **logins nuevos no
+  pre-aprobados → 403**. `0023` sin cambio observable (semilla = visibilidad actual).
+- **Docs:** CLAUDE.md §6/§9, ADR-0010/0011 (Status → aplicada), PROGRESO (estado global + Configuración +
+  pendientes). **Working tree SIN commitear.**
+- **Pendiente vivo:** poblar la allowlist en Configuración → Usuarios; smoke manual de la suite
+  (pre-aprobar correo + primer login; editar matriz RBAC + efecto sin re-login).

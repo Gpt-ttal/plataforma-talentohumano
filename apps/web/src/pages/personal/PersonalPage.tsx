@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Outlet } from "react-router-dom"
 import { CatalogoPersonal } from "./CatalogoPersonal"
 import { RegistrarEmpleadoForm } from "./RegistrarEmpleadoForm"
 import { HeaderMetaDot, PageHeader } from "../../components/ui/PageHeader"
@@ -37,6 +38,9 @@ export function PersonalPage() {
       />
       {crearAbierto && <RegistrarEmpleadoForm onClose={() => setCrearAbierto(false)} />}
       <CatalogoPersonal />
+
+      {/* Modal de expediente 360° (ruta hija `:id`): se monta sobre el maestro. */}
+      <Outlet />
     </div>
   )
 }

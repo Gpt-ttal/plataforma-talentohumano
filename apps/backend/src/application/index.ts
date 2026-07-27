@@ -42,6 +42,18 @@ export { cambiarActivaArea } from "./areas/cambiarActivaArea.js"
 export { asegurarUsuario } from "./auth/asegurarUsuario.js"
 export type { ResultadoAlta } from "./auth/asegurarUsuario.js"
 
+// Allowlist de acceso (pre-aprobación por correo)
+export { listarPreaprobados } from "./preaprobados/listarPreaprobados.js"
+export { crearPreaprobado } from "./preaprobados/crearPreaprobado.js"
+export { eliminarPreaprobado } from "./preaprobados/eliminarPreaprobado.js"
+
+// RBAC editable (permisos rol × módulo)
+export { cargarMatriz } from "./permisos/cargarMatriz.js"
+export type { CargadorMatriz } from "./permisos/cargarMatriz.js"
+export { listarMatrizPermisos } from "./permisos/listarMatrizPermisos.js"
+export { actualizarPermisosRol } from "./permisos/actualizarPermisosRol.js"
+export { modulosVisibles } from "./permisos/modulosVisibles.js"
+
 // Administración de Personal
 export { crearEmpleado } from "./personal/crearEmpleado.js"
 export { editarEmpleado } from "./personal/editarEmpleado.js"

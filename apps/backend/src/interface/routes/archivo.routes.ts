@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { casos, requireAuth } from "../container.js"
+import { casos, requireAuth, requirePermiso } from "../container.js"
 import { asyncHandler } from "../asyncHandler.js"
 import { requireRol } from "../middleware/requireRol.js"
 import { requireActivo } from "../middleware/requireActivo.js"
@@ -23,6 +23,8 @@ archivoRouter.use(
   requireActivo,
   requireRol("SUPERADMIN", "TALENTO_HUMANO"),
 )
+// El archivo es parte del módulo Paz y Salvo: la matriz RBAC puede restar acceso.
+archivoRouter.use(requirePermiso("paz-y-salvo"))
 
 archivoRouter.get("/", asyncHandler(c.listar))
 archivoRouter.get("/export", asyncHandler(c.exportar))

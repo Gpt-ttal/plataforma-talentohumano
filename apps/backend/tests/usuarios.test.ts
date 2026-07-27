@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from "vitest"
 import { asignarRol } from "../src/application/usuarios/asignarRol"
 import { cambiarEstadoUsuario } from "../src/application/usuarios/cambiarEstadoUsuario"
+import { crearPreaprobado } from "../src/application/preaprobados/crearPreaprobado"
+import { eliminarPreaprobado } from "../src/application/preaprobados/eliminarPreaprobado"
+import { listarPreaprobados } from "../src/application/preaprobados/listarPreaprobados"
 import {
   ErrorAutorizacion,
   ErrorNoEncontrado,
@@ -100,5 +103,59 @@ describe("cambiarEstadoUsuario (solo SUPERADMIN + invariante)", () => {
     const uc = cambiarEstadoUsuario({ repo })
     await uc(SA, { usuarioId: "u2", estado: "INACTIVO" })
     expect(repo.actualizarUsuario).toHaveBeenCalledWith("u2", { estado: "INACTIVO" })
+  })
+})
+
+describe("allowlist de acceso (solo SUPERADMIN)", () => {
+  it("listar/crear/eliminar rechazan a quien no es SUPERADMIN → 403", async () => {
+    const repo = { listar: vi.fn(), crear: vi.fn(), eliminar: vi.fn() } as any
+    const actor = hacerUsuario({ rol: "TALENTO_HUMANO" })
+    await expect(listarPreaprobados({ repo })(actor)).rejects.toBeInstanceOf(
+      ErrorAutorizacion,
+    )
+    await expect(
+      crearPreaprobado({ repo })(actor, { email: "x@americana.edu.co", rol: "SST" }),
+    ).rejects.toBeInstanceOf(ErrorAutorizacion)
+    await expect(
+      eliminarPreaprobado({ repo })(actor, { email: "x@americana.edu.co" }),
+    ).rejects.toBeInstanceOf(ErrorAutorizacion)
+    expect(repo.crear).not.toHaveBeenCalled()
+    expect(repo.eliminar).not.toHaveBeenCalled()
+  })
+
+  it("crear rechaza AREA sin área (invariante) → 400", async () => {
+    const repo = { crear: vi.fn() } as any
+    await expect(
+      crearPreaprobado({ repo })(SA, { email: "a@americana.edu.co", rol: "AREA" }),
+    ).rejects.toBeInstanceOf(ErrorValidacion)
+    expect(repo.crear).not.toHaveBeenCalled()
+  })
+
+  it("crear rechaza un correo con formato inválido → 400 (sin tocar el repo)", async () => {
+    const repo = { crear: vi.fn() } as any
+    for (const email of ["no-es-correo", "sin-dominio@", "@sin-local.co", "espacio @x.co"]) {
+      await expect(
+        crearPreaprobado({ repo })(SA, { email, rol: "SST" }),
+      ).rejects.toBeInstanceOf(ErrorValidacion)
+    }
+    expect(repo.crear).not.toHaveBeenCalled()
+  })
+
+  it("crear fuerza área a null para roles distintos de AREA y sella invitadoPor", async () => {
+    const repo = {
+      crear: vi.fn().mockImplementation(async (d: any) => ({ ...d, createdAt: "t" })),
+    } as any
+    await crearPreaprobado({ repo })(SA, {
+      email: "th@americana.edu.co",
+      rol: "TALENTO_HUMANO",
+      areaId: "a1",
+    })
+    expect(repo.crear).toHaveBeenCalledWith({
+      email: "th@americana.edu.co",
+      rol: "TALENTO_HUMANO",
+      areaId: null,
+      estado: "ACTIVO",
+      invitadoPor: "sa",
+    })
   })
 })

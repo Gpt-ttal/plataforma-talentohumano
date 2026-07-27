@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { casos, requireAuth } from "../container.js"
+import { casos, requireAuth, requirePermiso } from "../container.js"
 import { asyncHandler } from "../asyncHandler.js"
 import { requireRol } from "../middleware/requireRol.js"
 import { requireActivo } from "../middleware/requireActivo.js"
@@ -20,6 +20,7 @@ personalRouter.param("formacionId", paramUuid("formacionId"))
 personalRouter.param("experienciaId", paramUuid("experienciaId"))
 
 personalRouter.use(requireAuth, requireActivo, requireRol("SUPERADMIN", "TALENTO_HUMANO"))
+personalRouter.use(requirePermiso("personal"))
 
 personalRouter.get("/", asyncHandler(c.listar))
 personalRouter.post("/", asyncHandler(c.crear))

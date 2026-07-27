@@ -9,7 +9,7 @@
  */
 
 import type { RolUsuario } from "./domain.js";
-import { formatFechaHora } from "./ui.js";
+import { formatFechaHora, TIPO_VINCULO_LABEL } from "./ui.js";
 
 /** Ámbito ("dueño") de una capacitación. Mismo motor, visibilidad por ámbito. */
 export type AmbitoCapacitacion = "TH" | "SST";
@@ -161,12 +161,6 @@ export function normalizarDocumento(doc: string): string {
 
 // ── Export CSV de asistencias ────────────────────────────────────────────────
 
-const ETIQUETA_VINCULO: Record<TipoVinculo, string> = {
-  PLANTA: "Planta",
-  CONTRATISTA: "Contratista",
-  EXTERNO: "Externo",
-};
-
 const COLUMNAS_CSV = [
   "Nombre",
   "Documento",
@@ -198,7 +192,7 @@ export function construirCsvAsistencias(
       a.documento,
       a.correo ?? "",
       a.dependencia ?? "",
-      ETIQUETA_VINCULO[a.tipoVinculo],
+      TIPO_VINCULO_LABEL[a.tipoVinculo],
       formatFechaHora(a.registradaEn),
     ].map((c) => escaparCsv(c)),
   );

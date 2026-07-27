@@ -118,4 +118,11 @@ describe("construirCsvAsistencias", () => {
       "Nombre,Documento,Correo,Dependencia,Vínculo,Registrada",
     )
   })
+
+  it("la columna Vínculo usa la etiqueta legible del tipo (CONTRATISTA → Contratista)", () => {
+    // Guarda del acoplamiento a `TIPO_VINCULO_LABEL` (fuente única de la etiqueta);
+    // evita que se reintroduzca un mapa duplicado.
+    const csv = construirCsvAsistencias([asistencia({ tipoVinculo: "CONTRATISTA" })])
+    expect(csv.split("\n")[1]).toContain("Contratista")
+  })
 })

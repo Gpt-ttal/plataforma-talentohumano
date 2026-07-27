@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { errorInvarianteUsuario } from "../src/usuarios";
+import { errorInvarianteUsuario, esEmailValido } from "../src/usuarios";
+
+describe("esEmailValido", () => {
+  it("acepta correos bien formados (normaliza caja/espacios)", () => {
+    expect(esEmailValido("leo@americana.edu.co")).toBe(true);
+    expect(esEmailValido("  LEO@Americana.Edu.CO  ")).toBe(true);
+  });
+
+  it("rechaza cadenas que no son correos", () => {
+    for (const mal of ["", "no-es-correo", "sin-dominio@", "@sin-local.co", "a b@x.co", "a@b"]) {
+      expect(esEmailValido(mal)).toBe(false);
+    }
+  });
+});
 
 describe("errorInvarianteUsuario", () => {
   it("acepta un usuario de área ACTIVO con área asignada", () => {

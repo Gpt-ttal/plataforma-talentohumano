@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { casos, requireAuth } from "../container.js"
+import { casos, requireAuth, requirePermiso } from "../container.js"
 import { asyncHandler } from "../asyncHandler.js"
 import { requireRol } from "../middleware/requireRol.js"
 import { requireActivo } from "../middleware/requireActivo.js"
@@ -19,6 +19,8 @@ funcionariosRouter.param("id", paramUuid("id"))
 funcionariosRouter.param("areaId", paramUuid("areaId"))
 
 funcionariosRouter.use(requireAuth, requireActivo)
+// La matriz RBAC puede restar acceso al módulo (suma a las guardas de rol por ruta).
+funcionariosRouter.use(requirePermiso("paz-y-salvo"))
 
 // Lecturas de supervisión (TH / CI / SA)
 funcionariosRouter.get(

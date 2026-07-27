@@ -166,6 +166,7 @@ el frontmatter); el modo oscuro remapea los mismos roles semánticos — ver Do'
 - **Azul Liquidación** (#3B6FD4 sobre #E8EFFC): en curso, a la espera del siguiente rol (liquidación generada, capacitación en curso).
 - **Plata Pendiente** (#8B93A6): pendiente, sin urgencia cromática.
 - **Rojo Rechazo** (#A4231F sobre #FDE8E8): no aprobado. El único rojo del sistema; se usa con cuidado.
+- **Ámbar Aviso** (#B45309 sobre #FEF3C7, tokens `--estado-aviso`/`--estado-avisoBg`, escala Tailwind `estado.aviso`/`estado.avisoBg`): advertencia **informativa** — vencimientos, avisos de vacante, KPIs de alerta. Nace para **devolver significado al oro**: lo que antes se pintaba con `gold-*` decorativo (que competía con el sello) ahora es ámbar, y el oro queda reservado a acción e hito. No es el sello ni un estado del semáforo; es el 7.º dominio semántico de color.
 
 ### Neutral
 - **Ink / Foreground** (#0A1830 en claro): color de cuerpo de texto sobre superficies claras. Token semántico `--foreground`, se invierte a casi-blanco en oscuro.

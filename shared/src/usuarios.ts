@@ -17,6 +17,15 @@ export function normalizarEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/**
+ * ¿El correo tiene un formato básico válido (`algo@algo.dominio`)? Valida sobre el
+ * correo ya normalizado. No verifica el dominio institucional — eso es asunto de
+ * `decidirAltaUsuario`; esto solo descarta typos y cadenas que no son correos.
+ */
+export function esEmailValido(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizarEmail(email));
+}
+
 export interface DatosAlta {
   email: string;
   nombre: string;

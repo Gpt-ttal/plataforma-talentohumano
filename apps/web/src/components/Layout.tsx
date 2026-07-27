@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation } from "react-router-dom"
 import type { RolUsuario } from "@pys/shared"
 import { ROL_LABEL } from "@pys/shared"
 import { useAuth } from "../context/AuthContext"
+import { useModulosVisibles, moduloDeRuta } from "../hooks/usePermisos"
 import { BotonSalir } from "./BotonSalir"
 import { ThemeToggle } from "./ThemeToggle"
 
@@ -28,6 +29,7 @@ type IconName =
   | "file"
   | "graduation"
   | "menu"
+  | "settings"
   | "upload"
   | "users"
 
@@ -59,6 +61,7 @@ const routeLabels: { path: string; title: string; section: string }[] = [
   { path: "/cursos", title: "Cursos", section: "Formacion" },
   { path: "/planificador", title: "Planificador", section: "Formacion" },
   { path: "/inicio", title: "Panel de control", section: "Plataforma" },
+  { path: "/configuracion", title: "Configuracion", section: "Ajustes" },
 ]
 
 function iconPath(name: IconName): string {
@@ -77,6 +80,8 @@ function iconPath(name: IconName): string {
     file: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6ZM14 2v6h6M8 13h8M8 17h5",
     graduation: "M22 10v6M2 10l10-5 10 5-10 5-10-5ZM6 12v5c3.33 1.67 6.67 1.67 10 0v-5",
     menu: "M4 6h16M4 12h16M4 18h16",
+    settings:
+      "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z",
     upload: "M12 16V4M6 10l6-6 6 6M4 20h16",
     users: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
   }[name]
@@ -99,7 +104,23 @@ function Icon({ name, className = "h-4 w-4" }: { name: IconName; className?: str
   )
 }
 
-function sectionsForRole(rol: RolUsuario): NavSection[] {
+// Sección universal: todos los roles activos ven "Configuración". Sus sub-páginas de
+// gobierno se filtran por rol dentro de la suite; aquí solo se expone la entrada.
+const AJUSTES_SECTION: NavSection = {
+  id: "ajustes",
+  title: "Ajustes",
+  items: [
+    {
+      href: "/configuracion",
+      label: "Configuracion",
+      icon: "settings",
+      active: (p) => p.startsWith("/configuracion"),
+      status: "core",
+    },
+  ],
+}
+
+function seccionesBase(rol: RolUsuario): NavSection[] {
   // rolVePlataforma(rol) == true → SA | TH: ven /inicio + módulo + (solo SA) Usuarios.
   // rolVePlataforma(rol) == false → CI | AREA (acotados): solo su trabajo en el módulo.
 
@@ -391,6 +412,14 @@ function sectionsForRole(rol: RolUsuario): NavSection[] {
   ]
 }
 
+/**
+ * Secciones del sidebar por rol: las propias del rol + la sección universal de
+ * Ajustes (Configuración), visible para todo rol activo.
+ */
+export function sectionsForRole(rol: RolUsuario): NavSection[] {
+  return [...seccionesBase(rol), AJUSTES_SECTION]
+}
+
 function routeInfo(pathname: string) {
   return (
     routeLabels.find((r) => pathname === r.path || pathname.startsWith(`${r.path}/`)) ??
@@ -490,10 +519,20 @@ export function Layout() {
     setCollapsed(localStorage.getItem("pys_sidebar") === "collapsed")
   }, [])
 
-  const sections = useMemo(
-    () => (usuario ? sectionsForRole(usuario.rol) : []),
-    [usuario],
-  )
+  // La matriz RBAC solo FILTRA lo que el rol ya vería; `null` (cargando/fallo) = todo.
+  const visibles = useModulosVisibles()
+  const sections = useMemo(() => {
+    if (!usuario) return []
+    return sectionsForRole(usuario.rol)
+      .map((s) => ({
+        ...s,
+        items: s.items.filter((item) => {
+          const modulo = moduloDeRuta(item.href)
+          return modulo === null || !visibles || visibles.has(modulo)
+        }),
+      }))
+      .filter((s) => s.items.length > 0)
+  }, [usuario, visibles])
   const info = routeInfo(pathname)
 
   // Sin usuario (cargando o no autenticado): la guarda hija decide; sin chrome.

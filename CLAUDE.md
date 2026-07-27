@@ -175,10 +175,13 @@ es-CO para fechas/números. Theming claro/oscuro por tokens CSS semánticos.
 
 ### Estado de la BD
 
-Migraciones `0001`–`0018`, `0020` y `0021` **aplicadas a producción**, en orden. La
-`0019_sync_personal.sql` (módulo Sync de Personal) está **escrita y espejada en Drizzle, pero NO
-aplicada a prod** — pendiente de autorización (se aplicó `0020`/`0021` primero porque no dependen de
-`0019`). La `0021_vacante_areas.sql` repunta `vacantes.area_id` al catálogo propio `vacante_areas`
+Migraciones `0001`–`0018`, `0020`, `0021`, `0022` y `0023` **aplicadas a producción**. Las `0022` y
+`0023` se aplicaron el **2026-07-27** por conexión directa (el MCP de Supabase no estaba disponible en
+esa sesión), en transacción y registradas en `schema_migrations` (versiones `20260727000022` /
+`20260727000023`); ya **no hay fallback activo** para ellas. La única pendiente es la
+`0019_sync_personal.sql` (Sync de Personal), **escrita y espejada en Drizzle pero NO aplicada** —
+el backend cae a **fallback** (preserva `cargo`/`fechaFinContrato`) hasta que se autorice.
+La `0021_vacante_areas.sql` repunta `vacantes.area_id` al catálogo propio `vacante_areas`
 (≠ `areas`, que es el de paz y salvo). El esquema real vive en
 `supabase/migrations/*.sql` (fuente de verdad) y su espejo Drizzle en
 `apps/backend/src/infrastructure/db/schema.ts`. Detalle tabla por tabla:
@@ -215,7 +218,9 @@ Comando: cmd /c npx -y @supabase/mcp-server-supabase@latest --project-ref=...
 > (concurrencia) + spec `docs/superpowers/specs/2026-06-30-plataforma-multi-modulo-concurrencia-design.md`.
 
 - **Registro declarativo de módulos:** `shared/src/modulos.ts` (`MODULOS`, `modulosParaRol`) es la
-  fuente única de qué módulos existen y quién los ve. Sidebar y lanzador lo consumen; nunca hardcodean.
+  fuente única de los **tiles del lanzador** y su visibilidad por rol; el lanzador se deriva de ahí, el
+  sidebar es navegación granular **validada por tests** contra `MODULOS` (no se deriva, pero no puede
+  desincronizarse en silencio).
 - **Roles plataforma vs. acotados:** `rolVePlataforma()` → SA y TH ven `/inicio`; CI/AREA/SST entran
   directo a su trabajo (`rutaInicialPorRol`).
 - **Sincronía en vivo (Supabase Realtime):** un canal por sesión → `queryClient.invalidateQueries`.
@@ -280,10 +285,19 @@ duplicación. En síntesis (todo en un solo batch al cierre, ver [[feedback-memo
 - **Estado por feature (qué es verdad hoy):** [`docs/historico/PROGRESO.md`](docs/historico/PROGRESO.md).
 - **Historial completo sesión por sesión:** [`docs/historico/LOG-DE-SESIONES.md`](docs/historico/LOG-DE-SESIONES.md).
 
-**Resumen en 3 líneas:** producto maduro en producción (migraciones `0001`–`0018`, `0020` y `0021`
-aplicadas). Módulo **Vacantes** completo (backend + UI enrutada) y **acoplado a Personal**: contratar
-una vacante crea el funcionario en la misma transacción ([ADR-0009](docs/architecture/adr/0009-puente-vacante-funcionario.md)).
+**Resumen en 3 líneas:** producto maduro en producción (migraciones `0001`–`0018`, `0020`, `0021`,
+`0022` y `0023` aplicadas). Módulo **Vacantes** completo (backend + UI enrutada) y **acoplado a
+Personal**: contratar una vacante crea el funcionario en la misma transacción ([ADR-0009](docs/architecture/adr/0009-puente-vacante-funcionario.md)).
+**Suite de Configuración** en producción: allowlist de acceso por correo
+([ADR-0010](docs/architecture/adr/0010-allowlist-acceso-por-correo.md)) y RBAC editable rol×módulo
+([ADR-0011](docs/architecture/adr/0011-rbac-editable-matriz-resta.md)) **activos** desde 2026-07-27
+(`0022`/`0023` aplicadas; allowlist vacía → solo el gate; la matriz RBAC semilla = visibilidad actual).
 En curso el **Sync de Personal desde Iceberg** (`sync-personal`, Fases 1-3/7: dominio + migración
-`0019` no-aplicada + aplicación con TDD, verde). Pendientes vivos = Fases 4-7 del sync, auto-inscripción
-en inducción (backlog), smoke tests manuales (Desvinculaciones, Cursos/Planificador) y limpieza de
-código muerto (Sesión 47). Working tree sin commitear (constraint del proyecto).
+`0019` no-aplicada + aplicación con TDD, verde; **blindado** en Sesión 54: omite retirados y no pisa
+`cargo`/`fechaFinContrato`). La **coherencia entre módulos** (Sesión 54, Tiers 1-5) cerró el bug de
+reactivación de área (F1), unificó la invalidación de trámite y agregó guardas de registro (iconos +
+sidebar). Pendientes vivos = **poblar la allowlist** (`0022` ya activa: correos nuevos no pre-aprobados
+→ 403), Fases 4-7 del sync, `ALTER PUBLICATION … ADD TABLE areas, usuarios`
+(gated, habilita R1/R3), plan de **modales de detalle** Vacantes/Personal (en cola, sin conflicto),
+auto-inscripción en inducción (backlog), smoke tests manuales (Desvinculaciones, Cursos/Planificador) y
+limpieza de código muerto (Sesión 47). Working tree sin commitear (constraint del proyecto).

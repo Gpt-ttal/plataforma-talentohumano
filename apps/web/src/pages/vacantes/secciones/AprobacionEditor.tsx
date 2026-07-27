@@ -3,12 +3,13 @@ import { toast } from "sonner"
 import { APROBACIONES_PRESUPUESTO_VACANTE, APROBACION_VACANTE_LABEL } from "@pys/shared"
 import type { AprobacionPresupuestoVacante, Vacante } from "@pys/shared"
 import { useEditarVacante } from "../../../hooks/useVacantes"
+import { useGuardaCierre } from "../../../components/ui/Modal"
 import {
   BotonAbrir,
+  CampoForm,
   FilaGuardarCancelar,
   inputCls,
-  labelCls,
-  labelTextCls,
+  MensajeError,
   mensajeError,
 } from "../../personal/bloques-editables/compartido"
 
@@ -19,6 +20,7 @@ export function AprobacionEditor({ vacante }: { vacante: Vacante }) {
   const [aprobacion, setAprobacion] = useState<AprobacionPresupuestoVacante | "">(vacante.aprobacion ?? "")
   const [fechaAprobacion, setFechaAprobacion] = useState(vacante.fechaAprobacion ?? "")
   const [error, setError] = useState<string | null>(null)
+  useGuardaCierre(abierto, "vacante-aprobacion")
 
   async function confirmar() {
     setError(null)
@@ -44,21 +46,22 @@ export function AprobacionEditor({ vacante }: { vacante: Vacante }) {
   return (
     <div className="mt-3 space-y-3 rounded-lg border border-silver-300 p-3 dark:border-border">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <select
-          value={aprobacion}
-          onChange={(ev) => setAprobacion(ev.target.value as AprobacionPresupuestoVacante | "")}
-          disabled={editar.isPending}
-          className={inputCls}
-        >
-          <option value="">Aprobación (sin especificar)</option>
-          {APROBACIONES_PRESUPUESTO_VACANTE.map((a) => (
-            <option key={a} value={a}>
-              {APROBACION_VACANTE_LABEL[a]}
-            </option>
-          ))}
-        </select>
-        <label className={labelCls}>
-          <span className={labelTextCls}>Fecha de aprobación</span>
+        <CampoForm label="Aprobación">
+          <select
+            value={aprobacion}
+            onChange={(ev) => setAprobacion(ev.target.value as AprobacionPresupuestoVacante | "")}
+            disabled={editar.isPending}
+            className={inputCls}
+          >
+            <option value="">Sin especificar</option>
+            {APROBACIONES_PRESUPUESTO_VACANTE.map((a) => (
+              <option key={a} value={a}>
+                {APROBACION_VACANTE_LABEL[a]}
+              </option>
+            ))}
+          </select>
+        </CampoForm>
+        <CampoForm label="Fecha de aprobación">
           <input
             type="date"
             value={fechaAprobacion}
@@ -66,14 +69,14 @@ export function AprobacionEditor({ vacante }: { vacante: Vacante }) {
             disabled={editar.isPending}
             className={inputCls}
           />
-        </label>
+        </CampoForm>
       </div>
       <FilaGuardarCancelar
         pending={editar.isPending}
         onGuardar={() => void confirmar()}
         onCancelar={() => setAbierto(false)}
       />
-      {error && <p className="text-xs text-estado-rechazo">{error}</p>}
+      <MensajeError>{error}</MensajeError>
     </div>
   )
 }

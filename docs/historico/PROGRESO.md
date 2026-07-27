@@ -5,9 +5,12 @@
 > feature, actualiza el párrafo correspondiente aquí y agrega el detalle al Log.
 
 **Estado global:** producto maduro en producción. Working tree **sin commitear** (constraint del
-proyecto); la BD de producción está alineada con las migraciones `0001`–`0018` + `0020` (la `0019`
-sigue sin aplicar). Todos los gates en verde en el último cierre (Sesión 52): shared 299/299 · backend
-366 pass + 15 skip · web 11/11 · `npm run build` raíz exit 0 sin warnings.
+proyecto); la BD de producción está alineada con las migraciones `0001`–`0018` + `0020` + `0021` +
+`0022` + `0023` (esta última pareja aplicada el 2026-07-27 por conexión directa; la `0019` sigue sin
+aplicar). Todos los gates en verde en el último cierre (Sesión 54): shared 312 · backend
+370 pass + 23 skip · web 15 · `tsc`/`typecheck` limpios · `npm run build` raíz exit 0 sin warnings.
+Pendiente de autorización: `ALTER PUBLICATION … ADD TABLE areas, usuarios` (habilita el realtime de esos
+catálogos, ya cableado en `realtime.ts`).
 
 ---
 
@@ -15,8 +18,10 @@ sigue sin aplicar). Todos los gates en verde en el último cierre (Sesión 52): 
 
 - **Migración a monorepo Vite + Express** — COMPLETA. El árbol Next.js ya no existe. Auth híbrida
   (Supabase Auth + autorización centralizada en el backend). Ver ADR-0001/0002.
-- **Registro declarativo de módulos + Supabase Realtime** — COMPLETO. Sidebar y lanzador leen de
-  `shared/src/modulos.ts`; sincronía en vivo por canal `plataforma-sync`. Ver ADR-0007.
+- **Registro declarativo de módulos + Supabase Realtime** — COMPLETO. El **lanzador** se deriva de
+  `shared/src/modulos.ts`; el **sidebar** (navegación granular) se **valida** contra `MODULOS` por
+  tests-guarda (no se deriva). Sincronía en vivo por canal `plataforma-sync` (invalidación de trámite
+  centralizada en `invalidarVistasTramite`; suscritos también `areas`/`usuarios`). Ver ADR-0007.
 - **Theming claro/oscuro** — COMPLETO (tokens CSS semánticos, toggle en sidebar/header).
 - **Herramienta de dev — impersonación de rol** — COMPLETA (solo para el SUPERADMIN real).
 
@@ -78,6 +83,26 @@ sigue sin aplicar). Todos los gates en verde en el último cierre (Sesión 52): 
   desvinculaciones (Excel → previsualizar → confirmar parcial). **Pendiente: smoke test manual del
   circuito completo.**
 
+## Configuración (suite de ajustes)
+
+- **EN PRODUCCIÓN** (Sesión 55 en código; migraciones `0022`/`0023` aplicadas el 2026-07-27, adaptada de la Configuración de SIGAF).
+  Suite `/configuracion` (shell + aside por rol) con 7 sub-páginas: **General**, **Apariencia** (tema
+  claro/oscuro + selector de paleta de acento vía `PaletteContext`), **Seguridad** (identidad de sesión +
+  cerrar sesión), **Sistema** (health check), **Usuarios** (allowlist + gestión de registrados),
+  **Roles y permisos** (matriz RBAC editable), **Catálogos** (áreas de visto bueno). Visible a todos los
+  roles activos; las de gobierno (Usuarios/Roles/Catálogos) solo SA.
+- **Allowlist de acceso** ([ADR-0010](../architecture/adr/0010-allowlist-acceso-por-correo.md)): el
+  autoregistro se invirtió a pre-aprobación por correo — solo emails que el SA autoriza pueden crear su
+  cuenta al primer login (el SA de bootstrap y los usuarios existentes siempre entran). Tabla
+  `usuarios_preaprobados` (migración `0022`, **aplicada 2026-07-27**; gate **activo**). Allowlist
+  actualmente vacía → poblarla en Configuración → Usuarios para incorporar correos nuevos.
+- **RBAC editable** ([ADR-0011](../architecture/adr/0011-rbac-editable-matriz-resta.md)): matriz rol ×
+  módulo (`NINGUNO/LECTURA/ESCRITURA/ADMIN`) que solo RESTA sobre `requireRol`. Dominio puro en
+  `shared/src/permisosRbac.ts`; enforcement por `requirePermiso` (ruta) + filtrado de sidebar/lanzador
+  (respeta impersonación). Triple anti-lockout (router por `requireRol`, SA inmutable, columna SA
+  deshabilitada). Tabla `permisos_rol_modulo` (migración `0023`, **aplicada 2026-07-27**; 16 celdas
+  semilla = visibilidad actual, sin cambio observable). Lectura fresca por request → cambios sin re-login.
+
 ## Calidad / mantenimiento
 
 - **Auditoría de backend + BD** — 11 hallazgos cerrados o aceptados (Sesiones 39–41).
@@ -98,6 +123,13 @@ sigue sin aplicar). Todos los gates en verde en el último cierre (Sesión 52): 
   funcionario end-to-end (puente ADR-0009).
 - **Mandato abierto desde Sesión 47:** limpieza estricta de código muerto/legacy con evidencia
   (aún sin ejecutar; esperar pedido explícito del usuario).
+- **Poblar la allowlist + smoke de Configuración (tras aplicar `0022`/`0023` el 2026-07-27):** ambas
+  migraciones ya están en prod y el gate de allowlist está **activo** con la tabla **vacía** → cualquier
+  login `@americana` nuevo y no pre-aprobado recibe **403** (los existentes y el SA de bootstrap siempre
+  entran). Acción pendiente: agregar en Configuración → Usuarios los correos a incorporar, y smoke manual
+  de la suite (pre-aprobar un correo, verificar primer login; editar la matriz RBAC y verificar el efecto
+  sin re-login). Nota de registro: `0001`–`0003` y `0021` figuran aplicadas en el schema pero no en
+  `schema_migrations` (brecha histórica de trackeo); `0022`/`0023` sí quedaron registradas.
 - **Sync de Personal (Iceberg):** Fases 4-7 pendientes (ver Administración de Personal). Aplicar la
   migración `0019` a prod requiere autorización explícita. TBD de diseño: estructura real de
   `empleado_bancario`, semántica de `categoria`, contrato de transporte n8n (con Analítica), seed

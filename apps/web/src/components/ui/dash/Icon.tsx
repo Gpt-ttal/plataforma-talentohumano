@@ -38,6 +38,7 @@ export type IconName =
   | "iceberg"
   | "grad-cap"
   | "calculator"
+  | "chart-bar"
 
 const ICON_PATH: Record<IconName, string> = {
   arrow: "M5 12h14M13 6l6 6-6 6",
@@ -83,7 +84,15 @@ const ICON_PATH: Record<IconName, string> = {
   "grad-cap": "M22 9 12 5 2 9l10 4 10-4ZM6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M22 9v5",
   calculator:
     "M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2ZM8 6h8v3H8zM8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01M16 17h.01",
+  "chart-bar": "M3 3v18h18M8 17v-5M13 17V9M18 17v-8",
 }
+
+/**
+ * Set en runtime de los nombres de ícono disponibles. Lo consume la guarda de
+ * coherencia `MODULOS[].icono ⊆ iconos` (tests/iconos-modulos.test.ts) para que
+ * un módulo no declare un ícono inexistente (que pintaría `<path d={undefined}>`).
+ */
+export const ICONOS_DISPONIBLES: ReadonlySet<string> = new Set(Object.keys(ICON_PATH));
 
 // Sub-trazo de acento oro para íconos que lo llevan (tachado de mail-off, waterline
 // del iceberg). Se pinta encima con stroke literal del Sello, no `currentColor`.

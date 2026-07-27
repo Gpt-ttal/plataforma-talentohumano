@@ -91,6 +91,21 @@ export interface Usuario {
   updatedAt: string;
 }
 
+/**
+ * Entrada de la allowlist de acceso (migración 0022). El superadmin pre-aprueba un
+ * correo con el rol/área/estado con que entrará; en su primer login se materializa
+ * como `Usuario`. Se llavea por `email` (el uuid de auth no existe aún). Ver
+ * `asegurarUsuario` para el gate.
+ */
+export interface Preaprobacion {
+  email: string;
+  rol: RolUsuario;
+  areaId: string | null;
+  estado: EstadoUsuario;
+  invitadoPor: string | null;
+  createdAt: string;
+}
+
 /** Una dependencia que debe dar visto bueno (catálogo configurable). */
 export interface AreaVistoBueno {
   id: string;

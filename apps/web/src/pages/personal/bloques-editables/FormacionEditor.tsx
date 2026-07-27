@@ -3,7 +3,16 @@ import { toast } from "sonner"
 import { NIVELES_FORMACION, NIVEL_FORMACION_LABEL } from "@pys/shared"
 import type { Formacion, NivelFormacion } from "@pys/shared"
 import { useCrearFormacion, useEliminarFormacion } from "../../../hooks/usePersonal"
-import { BotonAbrir, FilaEliminable, FilaGuardarCancelar, inputCls, mensajeError } from "./compartido"
+import { useGuardaCierre } from "../../../components/ui/Modal"
+import {
+  BotonAbrir,
+  CampoForm,
+  FilaEliminable,
+  FilaGuardarCancelar,
+  inputCls,
+  MensajeError,
+  mensajeError,
+} from "./compartido"
 
 // ── Formación académica (1-N) ─────────────────────────────────────────────────
 
@@ -24,6 +33,7 @@ export function FormacionEditor({
   const [anioFin, setAnioFin] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [aEliminar, setAEliminar] = useState<string | null>(null)
+  useGuardaCierre(abierto, "formacion-editor")
 
   async function agregar() {
     setError(null)
@@ -88,55 +98,66 @@ export function FormacionEditor({
       ) : (
         <div className="space-y-3 rounded-lg border border-silver-300 p-3 dark:border-border">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <select
-              value={nivel}
-              onChange={(ev) => setNivel(ev.target.value as NivelFormacion)}
-              disabled={crear.isPending}
-              className={inputCls}
-            >
-              {NIVELES_FORMACION.map((n) => (
-                <option key={n} value={n}>
-                  {NIVEL_FORMACION_LABEL[n]}
-                </option>
-              ))}
-            </select>
-            <input
-              value={titulo}
-              maxLength={200}
-              onChange={(ev) => setTitulo(ev.target.value)}
-              placeholder="Título obtenido"
-              disabled={crear.isPending}
-              className={inputCls}
-            />
-            <input
-              value={institucion}
-              maxLength={200}
-              onChange={(ev) => setInstitucion(ev.target.value)}
-              placeholder="Institución (opcional)"
-              disabled={crear.isPending}
-              className={inputCls}
-            />
+            <CampoForm label="Nivel">
+              <select
+                value={nivel}
+                onChange={(ev) => setNivel(ev.target.value as NivelFormacion)}
+                disabled={crear.isPending}
+                className={inputCls}
+              >
+                {NIVELES_FORMACION.map((n) => (
+                  <option key={n} value={n}>
+                    {NIVEL_FORMACION_LABEL[n]}
+                  </option>
+                ))}
+              </select>
+            </CampoForm>
+            <CampoForm label="Título obtenido">
+              <input
+                value={titulo}
+                maxLength={200}
+                onChange={(ev) => setTitulo(ev.target.value)}
+                placeholder="p. ej. Ingeniería de Sistemas"
+                disabled={crear.isPending}
+                aria-invalid={!!error}
+                className={inputCls}
+              />
+            </CampoForm>
+            <CampoForm label="Institución (opcional)">
+              <input
+                value={institucion}
+                maxLength={200}
+                onChange={(ev) => setInstitucion(ev.target.value)}
+                placeholder="Universidad o instituto"
+                disabled={crear.isPending}
+                className={inputCls}
+              />
+            </CampoForm>
             <div className="flex gap-2">
-              <input
-                type="number"
-                value={anioInicio}
-                min={1900}
-                max={2100}
-                onChange={(ev) => setAnioInicio(ev.target.value)}
-                placeholder="Año inicio"
-                disabled={crear.isPending}
-                className={inputCls}
-              />
-              <input
-                type="number"
-                value={anioFin}
-                min={1900}
-                max={2100}
-                onChange={(ev) => setAnioFin(ev.target.value)}
-                placeholder="Año fin"
-                disabled={crear.isPending}
-                className={inputCls}
-              />
+              <CampoForm label="Año inicio">
+                <input
+                  type="number"
+                  value={anioInicio}
+                  min={1900}
+                  max={2100}
+                  onChange={(ev) => setAnioInicio(ev.target.value)}
+                  placeholder="2015"
+                  disabled={crear.isPending}
+                  className={inputCls}
+                />
+              </CampoForm>
+              <CampoForm label="Año fin">
+                <input
+                  type="number"
+                  value={anioFin}
+                  min={1900}
+                  max={2100}
+                  onChange={(ev) => setAnioFin(ev.target.value)}
+                  placeholder="2020"
+                  disabled={crear.isPending}
+                  className={inputCls}
+                />
+              </CampoForm>
             </div>
           </div>
           <FilaGuardarCancelar
@@ -146,7 +167,7 @@ export function FormacionEditor({
             onGuardar={() => void agregar()}
             onCancelar={() => setAbierto(false)}
           />
-          {error && <p className="text-xs text-estado-rechazo">{error}</p>}
+          <MensajeError>{error}</MensajeError>
         </div>
       )}
     </div>

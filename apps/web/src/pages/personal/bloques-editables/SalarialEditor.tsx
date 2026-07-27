@@ -2,7 +2,15 @@ import { useState } from "react"
 import { toast } from "sonner"
 import type { DatosSalariales } from "@pys/shared"
 import { useGuardarSalarial } from "../../../hooks/usePersonal"
-import { BotonAbrir, FilaGuardarCancelar, inputCls, mensajeError } from "./compartido"
+import { useGuardaCierre } from "../../../components/ui/Modal"
+import {
+  BotonAbrir,
+  CampoForm,
+  FilaGuardarCancelar,
+  inputCls,
+  MensajeError,
+  mensajeError,
+} from "./compartido"
 
 // ── Bloque salarial (1-1, SENSIBLE) ───────────────────────────────────────────
 
@@ -27,6 +35,7 @@ export function SalarialEditor({
   const [eps, setEps] = useState(salarial?.eps ?? "")
   const [afp, setAfp] = useState(salarial?.afp ?? "")
   const [error, setError] = useState<string | null>(null)
+  useGuardaCierre(abierto, "salarial-editor")
 
   async function confirmar() {
     setError(null)
@@ -55,75 +64,89 @@ export function SalarialEditor({
   }
 
   return (
-    <div className="mt-3 space-y-3 rounded-lg border border-gold-200/60 bg-gold-50/40 p-3 dark:border-gold-200/20 dark:bg-surface-2">
+    <div className="mt-3 space-y-3 rounded-lg border border-hairline bg-surface-2 p-3">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <input
-          type="number"
-          min={0}
-          value={salarioBasico}
-          onChange={(ev) => setSalarioBasico(ev.target.value)}
-          placeholder="Salario básico"
-          disabled={guardar.isPending}
-          className={inputCls}
-        />
-        <input
-          type="number"
-          min={0}
-          value={auxilioTransporte}
-          onChange={(ev) => setAuxilioTransporte(ev.target.value)}
-          placeholder="Auxilio de transporte"
-          disabled={guardar.isPending}
-          className={inputCls}
-        />
-        <input
-          type="number"
-          min={0}
-          value={promedioDevengado}
-          onChange={(ev) => setPromedioDevengado(ev.target.value)}
-          placeholder="Promedio devengado"
-          disabled={guardar.isPending}
-          className={inputCls}
-        />
-        <input
-          type="number"
-          min={0}
-          value={honorarios}
-          onChange={(ev) => setHonorarios(ev.target.value)}
-          placeholder="Honorarios (OPS)"
-          disabled={guardar.isPending}
-          className={inputCls}
-        />
-        <input
-          value={eps}
-          maxLength={120}
-          onChange={(ev) => setEps(ev.target.value)}
-          placeholder="EPS"
-          disabled={guardar.isPending}
-          className={inputCls}
-        />
-        <input
-          value={afp}
-          maxLength={120}
-          onChange={(ev) => setAfp(ev.target.value)}
-          placeholder="AFP"
-          disabled={guardar.isPending}
-          className={inputCls}
-        />
+        <CampoForm label="Salario básico">
+          <input
+            type="number"
+            min={0}
+            value={salarioBasico}
+            onChange={(ev) => setSalarioBasico(ev.target.value)}
+            placeholder="p. ej. 2500000"
+            disabled={guardar.isPending}
+            className={inputCls}
+          />
+        </CampoForm>
+        <CampoForm label="Auxilio de transporte">
+          <input
+            type="number"
+            min={0}
+            value={auxilioTransporte}
+            onChange={(ev) => setAuxilioTransporte(ev.target.value)}
+            placeholder="p. ej. 162000"
+            disabled={guardar.isPending}
+            className={inputCls}
+          />
+        </CampoForm>
+        <CampoForm label="Promedio devengado">
+          <input
+            type="number"
+            min={0}
+            value={promedioDevengado}
+            onChange={(ev) => setPromedioDevengado(ev.target.value)}
+            placeholder="p. ej. 2800000"
+            disabled={guardar.isPending}
+            className={inputCls}
+          />
+        </CampoForm>
+        <CampoForm label="Honorarios (OPS)">
+          <input
+            type="number"
+            min={0}
+            value={honorarios}
+            onChange={(ev) => setHonorarios(ev.target.value)}
+            placeholder="p. ej. 3000000"
+            disabled={guardar.isPending}
+            className={inputCls}
+          />
+        </CampoForm>
+        <CampoForm label="EPS">
+          <input
+            value={eps}
+            maxLength={120}
+            onChange={(ev) => setEps(ev.target.value)}
+            placeholder="Entidad de salud"
+            disabled={guardar.isPending}
+            className={inputCls}
+          />
+        </CampoForm>
+        <CampoForm label="AFP">
+          <input
+            value={afp}
+            maxLength={120}
+            onChange={(ev) => setAfp(ev.target.value)}
+            placeholder="Fondo de pensiones"
+            disabled={guardar.isPending}
+            className={inputCls}
+          />
+        </CampoForm>
       </div>
-      <input
-        value={valorEnLetras}
-        maxLength={200}
-        onChange={(ev) => setValorEnLetras(ev.target.value)}
-        placeholder="Valor en letras (opcional)"
-        disabled={guardar.isPending}
-        className={`${inputCls} w-full`}
-      />
+      <CampoForm label="Valor en letras (opcional)">
+        <input
+          value={valorEnLetras}
+          maxLength={200}
+          onChange={(ev) => setValorEnLetras(ev.target.value)}
+          placeholder="Dos millones quinientos mil pesos…"
+          disabled={guardar.isPending}
+          className={`${inputCls} w-full`}
+        />
+      </CampoForm>
       <FilaGuardarCancelar
         pending={guardar.isPending}
         onGuardar={() => void confirmar()}
         onCancelar={() => setAbierto(false)}
       />
-      {error && <p className="text-xs text-estado-rechazo">{error}</p>}
+      <MensajeError>{error}</MensajeError>
     </div>
   )
 }

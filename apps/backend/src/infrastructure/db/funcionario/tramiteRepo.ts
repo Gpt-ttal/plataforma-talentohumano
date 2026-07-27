@@ -82,7 +82,7 @@ export function mapFuncionario(r: FuncionarioRow): Funcionario {
   }
 }
 
-// ── Estado-area ordering (mirrors supabase.ts RANGO_ESTADO_AREA) ─────────────
+// ── Estado-area ordering (ranking local; único consumidor) ───────────────────
 
 const RANGO_ESTADO_AREA: Record<EstadoArea, number> = {
   PENDIENTE: 0,
